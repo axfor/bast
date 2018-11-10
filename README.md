@@ -1,6 +1,6 @@
 # bast
 
-## golang 服务轻量 JSON API 框架
+## golang轻量JSON API服务框架
 
 
 > 项目依赖
