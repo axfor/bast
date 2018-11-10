@@ -1,4 +1,5 @@
-//https://github.com/bwmarrin/snowflake
+//Copyright 2018 The axx Authors. All rights reserved.
+// see https://github.com/bwmarrin/snowflake
 // Package snowflake provides a very simple Twitter snowflake generator and parser.
 
 package ids
