@@ -137,10 +137,14 @@ func NewNode(node int64) (*Node, error) {
 
 // GenerateX creates and returns a unique snowflake ID
 func (n *NodeX) GenerateX() ID {
+	var nowTime int64
+	newItem := &nodeItem{time: n.ni.time, step: n.ni.step}
+	ok := false
 	for {
 		// fmt.Printf("time=%d\n", n.ni.time)
-		nowTime := time.Now().UnixNano() / 1000000
-		newItem := &nodeItem{time: n.ni.time, step: n.ni.step}
+		nowTime = time.Now().UnixNano() / 1000000
+		newItem.time = n.ni.time
+		newItem.step = n.ni.step
 		if newItem.time == nowTime {
 			newItem.step = (newItem.step + 1) & stepMask
 			if newItem.step == 0 {
@@ -154,14 +158,12 @@ func (n *NodeX) GenerateX() ID {
 		newItem.time = nowTime
 		newItem.temp = newItem
 		preNi := n.ni
-		ok := atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)),
-			uintptr(unsafe.Pointer(n.ni)),
-			uintptr(unsafe.Pointer(newItem)))
+		ok = atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)), uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
 		if ok {
 			preNi.temp = nil
 			// fmt.Printf("time2=%d\n", n.ni.time)
-			r := ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | (n.ni.step)))
-			return r
+			// r :=
+			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | (n.ni.step)))
 		}
 		// else {
 		// 	// fmt.Printf("false,")

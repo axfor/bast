@@ -26,6 +26,7 @@ type App struct {
 	Server *http.Server
 	Before BeforeHandle
 	After  AfterHandle
+	Debug  bool
 }
 
 //init application
@@ -164,6 +165,11 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 func Run(addr string) {
 	defer clear()
 	doRun(addr)
+}
+
+//Debug set app debug status
+func Debug(debug bool) {
+	app.Debug = debug
 }
 
 //doRun real run app

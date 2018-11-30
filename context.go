@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -206,18 +207,18 @@ func (c *Context) NoData(msg ...string) {
 	c.FailResult(msgs, SerNoDataError)
 }
 
-//OutStr 输出字符串信息
-//param:
-//	str 消息
-func (c *Context) OutStr(str string) {
-	c.ResponseWriter.Write([]byte(str))
-}
-
-//Out 输出字节流数据
+//Say 输出字节流数据
 //param:
 //	data 数据
-func (c *Context) Out(data []byte) {
+func (c *Context) Say(data []byte) {
 	c.ResponseWriter.Write(data)
+}
+
+//SayStr 输出字符串信息
+//param:
+//	str 消息
+func (c *Context) SayStr(str string) {
+	c.ResponseWriter.Write([]byte(str))
 }
 
 //SendFile 发送文件
@@ -380,6 +381,24 @@ func (c *Context) GetBool(key string) bool {
 func (c *Context) GetStrings(key string) []string {
 	c.ParseForm()
 	return c.Request.Form[key]
+}
+
+//Form 获取请求参数(含表单与URL)
+func (c *Context) Form() url.Values {
+	c.ParseForm()
+	return c.Request.Form
+}
+
+//PostForm 获取表单请求参数
+func (c *Context) PostForm() url.Values {
+	c.ParseForm()
+	return c.Request.PostForm
+}
+
+//Query 获取请求URL参数
+func (c *Context) Query() url.Values {
+	c.ParseForm()
+	return c.Request.URL.Query()
 }
 
 //GetInt 获取请求信息里面指定参数值并转化位int
@@ -568,6 +587,16 @@ func (c *Context) baseURL() string {
 		scheme = "https://"
 	}
 	return strings.Join([]string{scheme, c.Request.Host}, "")
+}
+
+//Redirect 重定向
+func (c *Context) Redirect(url string) {
+	http.Redirect(c.ResponseWriter, c.Request, url, http.StatusFound)
+}
+
+//TemporaryRedirect 重定向(307重定向，可以避免POST重定向后数据丢失)
+func (c *Context) TemporaryRedirect(url string) {
+	http.Redirect(c.ResponseWriter, c.Request, url, http.StatusTemporaryRedirect)
 }
 
 //Reset 重置请求与响应对象
