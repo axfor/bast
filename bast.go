@@ -4,6 +4,7 @@ package bast
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,6 +17,11 @@ import (
 
 var (
 	app *App
+	//HTTPClient 默认http client
+	HTTPClient = &http.Client{}
+	tr         = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	//HTTPSClient 默认https client
+	HTTPSClient = &http.Client{Transport: tr}
 )
 
 //App is application major data
