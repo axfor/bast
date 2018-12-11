@@ -4,10 +4,19 @@ package bast
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
@@ -27,6 +36,7 @@ type App struct {
 	Before BeforeHandle
 	After  AfterHandle
 	Debug  bool
+	Daemon bool
 }
 
 //init application
@@ -57,7 +67,10 @@ func After(f AfterHandle) {
 
 // ListenAndServe see net/http ListenAndServe
 func (app *App) ListenAndServe() error {
-	return http.ListenAndServe(app.Addr, app.Router)
+	app.Server.Addr = app.Addr
+	app.Server.Handler = app.Router
+	return app.Server.ListenAndServe()
+	//  return http.ListenAndServe(app.Addr, app.Router)
 }
 
 // Post registers the handler function for the given pattern
@@ -163,6 +176,9 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 
 //Run app
 func Run(addr string) {
+	if r, _ := parseArgs(); r != 0 {
+		return
+	}
 	defer clear()
 	doRun(addr)
 }
@@ -178,19 +194,152 @@ func doRun(addr string) {
 	logs.Info("app-runing-addr=" + app.Addr)
 	err := app.ListenAndServe()
 	if err != nil {
-		//app.Server.Shutdown(nil)
-		logs.Info("app-listenAndServe-error=" + err.Error())
+		logs.Info("app-listenAndServe-error=" + err.Error() + ",pid=" + strconv.Itoa(os.Getpid()))
 	}
 	logs.Info("app-finish")
 }
 
+func parseArgs() (int, error) {
+	args := os.Args[1:]
+	lg := len(args)
+	r := 0
+	var err error
+	for i := 0; i < lg; i++ {
+		arg := args[i]
+		switch arg {
+		case "start":
+			start()
+			err = errors.New("start child process")
+			r = 1
+			break
+		case "reload":
+			reload()
+			err = errors.New("inside child process for reload")
+			r = 1
+			break
+		case "stop":
+			stop()
+			err = errors.New("stop child process")
+			r = 1
+			break
+		case "daemon":
+			daemon()
+			break
+		}
+	}
+	return r, err
+}
+
+func start() {
+	cmd := exec.Command(os.Args[0], "daemon")
+	cmd.Start()
+	if err := logPid(cmd.Process.Pid); err != nil {
+		fmt.Printf(err.Error())
+		cmd.Process.Kill()
+	}
+	// fmt.Println("[PID]", cmd.Process.Pid)
+	os.Exit(0)
+}
+
+func reload() {
+	sendSignal(syscall.SIGINT)
+	time.Sleep(30 * time.Millisecond)
+	start()
+}
+
+func stop() {
+	sendSignal(syscall.SIGINT)
+	os.Exit(0)
+}
+
+func sendSignal(sig os.Signal) error {
+	pid := getPid()
+	pro, err := os.FindProcess(pid) //通过pid获取子进程
+	if err != nil {
+		return err
+	}
+	err = pro.Signal(sig) //给子进程发送信号使之结束
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func daemon() {
+	app.Daemon = true
+	go signalListen()
+}
+
+func signalListen() {
+	c := make(chan os.Signal)
+	defer close(c)
+	signal.Notify(c)
+	for {
+		s := <-c
+		logs.Info("signal=" + s.String())
+		if s == syscall.SIGINT {
+			signal.Stop(c)
+			logs.Info("signal=syscall.SIGINT")
+			err := Shutdown(nil)
+			if err != nil {
+				logs.Info("shutdown-error=" + err.Error())
+			} else {
+				logs.Info("shutdown-ok=")
+			}
+			break
+		}
+	}
+}
+
+func logPid(pid int) error {
+	pidPath := filepath.Dir(os.Args[0]) + "/pid"
+	f, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return errors.New("创建pid文件失败")
+	}
+	defer f.Close()
+	if _, err := f.Write([]byte(strconv.Itoa(pid))); err != nil {
+		return errors.New("写如pid文件失败")
+	}
+	return nil
+}
+
+func removePid() error {
+	pidPath := filepath.Dir(os.Args[0]) + "/pid"
+	return os.Remove(pidPath)
+}
+
+func getPid() int {
+	pidPath := filepath.Dir(os.Args[0]) + "/pid"
+	f, _ := os.Open(pidPath)
+	defer f.Close()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return 0
+	}
+	p := string(data)
+	id, err := strconv.Atoi(p)
+	if err != nil {
+		return 0
+	}
+	return id
+}
+
 //Shutdown app
-func Shutdown(ctx context.Context) {
-	app.Server.Shutdown(ctx)
+func Shutdown(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+		// var cf context.CancelFunc
+		// ctx, cf = context.WithTimeout(context.Background(), 30*time.Second)
+		// if cf != nil {
+		// 	//
+		// }
+	}
+	return app.Server.Shutdown(ctx)
 }
 
 //clear res
 func clear() {
 	logs.ClearLogger()
 	ids.IDClear()
+	removePid()
 }
