@@ -4,7 +4,6 @@ package bast
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -69,7 +68,7 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 			fn += id
 			chunk, err := ctx.GetInt("chunk")   //chunk
 			chunks, err := ctx.GetInt("chunks") //chunks
-			fmt.Printf("chunk=%d,chunks=%d", chunk, chunks)
+			// fmt.Printf("chunk=%d,chunks=%d", chunk, chunks)
 			fileName := f.Filename
 			//m5.Write([]byte(fileName))
 			//m5FileName := hex.EncodeToString(m5.Sum(nil))

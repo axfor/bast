@@ -77,6 +77,11 @@ func (c *Context) JSONWithCode(v interface{}, code int) {
 	c.JSONWithCodeMsg(v, code, "")
 }
 
+//JSONWithMsg 输出JSON格式对象
+func (c *Context) JSONWithMsg(v interface{}, msg string) {
+	c.JSONWithCodeMsg(v, SerOK, msg)
+}
+
 //JSONWithCodeMsg 输出JSON格式对象
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 	_, isData := v.(*Data)

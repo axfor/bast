@@ -3,9 +3,12 @@
 package bast
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -18,13 +21,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/julienschmidt/httprouter"
 )
 
 var (
-	app *App
+	usageline = `帮助:
+	-h | -help                  显示帮助
+	-start                      以后台启动(可以与conf同时使用)
+	-stop                       平滑停止
+	-reload                     平滑升级程序(可以与conf同时使用)
+	-conf=you path/config.conf  配置文件路径 
+	`
+	flagStart, flagStop, flagReload, flagDaemon bool
+	flagConf                                    string
+	app                                         *App
 )
 
 //App is application major data
@@ -41,12 +54,31 @@ type App struct {
 
 //init application
 func init() {
+	parseCommandLine()
 	app = &App{Server: &http.Server{}, Router: httprouter.New()}
-	//app.Router.HandleOPTIONS = true
 	doHandle("OPTIONS", "/*filepath", nil)
 	app.pool.New = func() interface{} {
 		return &Context{}
 	}
+}
+
+//parseCommandLine parse commandLine
+func parseCommandLine() {
+	f := flag.NewFlagSet("bast", flag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Println(usageline)
+		os.Exit(0)
+	}
+	if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
+		f.Usage()
+	}
+	f.BoolVar(&flagStart, "start", false, "")
+	f.BoolVar(&flagStop, "stop", false, "")
+	f.BoolVar(&flagReload, "reload", false, "")
+	f.BoolVar(&flagDaemon, "daemon", false, "")
+	f.StringVar(&flagConf, "conf", "", "")
+	f.Parse(os.Args[1:])
+	parseConf(f)
 }
 
 //BeforeHandle is before then request handler
@@ -70,7 +102,6 @@ func (app *App) ListenAndServe() error {
 	app.Server.Addr = app.Addr
 	app.Server.Handler = app.Router
 	return app.Server.ListenAndServe()
-	//  return http.ListenAndServe(app.Addr, app.Router)
 }
 
 // Post registers the handler function for the given pattern
@@ -176,7 +207,7 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 
 //Run app
 func Run(addr string) {
-	if r, _ := parseArgs(); r != 0 {
+	if !Command() {
 		return
 	}
 	defer clear()
@@ -192,68 +223,141 @@ func Debug(debug bool) {
 func doRun(addr string) {
 	app.Addr = addr
 	logs.Info("app-runing-addr=" + app.Addr)
+	fmt.Println("app start")
 	err := app.ListenAndServe()
 	if err != nil {
-		logs.Info("app-listenAndServe-error=" + err.Error() + ",pid=" + strconv.Itoa(os.Getpid()))
+		fmt.Println("app start error=" + err.Error())
+		logs.Info("app-listenAndServe-error=" + err.Error()) //+ ",pid=" + strconv.Itoa(os.Getpid())
 	}
+	fmt.Println("app finish")
 	logs.Info("app-finish")
 }
 
-func parseArgs() (int, error) {
-	args := os.Args[1:]
-	lg := len(args)
-	r := 0
+//Command 解析命令行参数
+func Command() bool {
+	// args := os.Args[1:]
+	// lg := len(args)
+	r := true
 	var err error
-	for i := 0; i < lg; i++ {
-		arg := args[i]
-		switch arg {
-		case "start":
-			start()
-			err = errors.New("start child process")
-			r = 1
-			break
-		case "reload":
-			reload()
-			err = errors.New("inside child process for reload")
-			r = 1
-			break
-		case "stop":
-			stop()
-			err = errors.New("stop child process")
-			r = 1
-			break
-		case "daemon":
-			daemon()
-			break
-		}
+	if flagStart {
+		start()
+		err = errors.New("start child process")
+		r = false
+	} else if flagStop {
+		stop()
+		err = errors.New("stop child process")
+		r = false
+	} else if flagReload {
+		reload()
+		err = errors.New("inside child process for reload")
+		r = false
+	} else if flagDaemon {
+		daemon()
 	}
-	return r, err
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+	return r
 }
 
 func start() {
-	cmd := exec.Command(os.Args[0], "daemon")
+	path := Conf()
+	fmt.Println("start=" + path)
+	cmd := exec.Command(os.Args[0], "-daemon", "-conf="+path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	cmd.Start()
 	if err := logPid(cmd.Process.Pid); err != nil {
 		fmt.Printf(err.Error())
 		cmd.Process.Kill()
 	}
-	// fmt.Println("[PID]", cmd.Process.Pid)
+	if err := logMgr(); err != nil {
+		fmt.Printf(err.Error())
+		cmd.Process.Kill()
+	}
 	os.Exit(0)
 }
 
 func reload() {
-	sendSignal(syscall.SIGINT)
+	path := mgrPath()
+	fmt.Println("reload=" + path)
+	sendSignal(syscall.SIGINT, path)
 	time.Sleep(30 * time.Millisecond)
+	flagConf = path
 	start()
 }
 
 func stop() {
-	sendSignal(syscall.SIGINT)
+	path := mgrPath()
+	fmt.Println("stop=" + path)
+	sendSignal(syscall.SIGINT, path)
+	// fmt.Println("stop=" + path)
 	os.Exit(0)
 }
 
-func sendSignal(sig os.Signal) error {
-	pid := getPid()
+func mgrPath() string {
+	path := ""
+	pos := 0
+	mls := mgrList()
+	if mls != nil {
+		lg := len(mls)
+		if lg > 0 {
+			if lg > 1 {
+				fmt.Print("位置列表：\n")
+				for i := 0; i < lg; i++ {
+					fmt.Printf("    %d：", i+1)
+					fmt.Println(mls[i])
+				}
+				fmt.Print("请输入位置序号：")
+				for {
+					_, err := fmt.Scanf("%d", &pos)
+					if err != nil || pos <= 0 || pos > lg {
+						fmt.Print("请输入正确位置序号：")
+						continue
+					}
+					pos--
+					break
+				}
+				path = mls[pos]
+				mls = append(mls[:pos], mls[pos+1:]...)
+			} else {
+				path = mls[0]
+				mls = nil
+			}
+		}
+	}
+	syncMgr(mls)
+	return path
+}
+
+//Conf config path
+func Conf() string {
+	return flagConf
+}
+
+//AppDir app path
+func AppDir() string {
+	exPath := filepath.Dir(Conf())
+	return exPath
+}
+
+//parseConf parse config path
+func parseConf(f *flag.FlagSet) string {
+	exPath := filepath.Dir(os.Args[0])
+	fs := f.Lookup("conf")
+	if fs != nil {
+		flagConf = fs.Value.String()
+	}
+	// flag.StringVar(&conf, "conf", "", "")
+	if flagConf == "" {
+		cf := exPath + "/config.conf"
+		flagConf = cf
+	}
+	return flagConf
+}
+
+func sendSignal(sig os.Signal, path ...string) error {
+	pid := getPid(path...)
 	pro, err := os.FindProcess(pid) //通过pid获取子进程
 	if err != nil {
 		return err
@@ -264,6 +368,7 @@ func sendSignal(sig os.Signal) error {
 	}
 	return nil
 }
+
 func daemon() {
 	app.Daemon = true
 	go signalListen()
@@ -291,7 +396,7 @@ func signalListen() {
 }
 
 func logPid(pid int) error {
-	pidPath := filepath.Dir(os.Args[0]) + "/pid"
+	pidPath := pidPath()
 	f, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return errors.New("创建pid文件失败")
@@ -300,17 +405,85 @@ func logPid(pid int) error {
 	if _, err := f.Write([]byte(strconv.Itoa(pid))); err != nil {
 		return errors.New("写如pid文件失败")
 	}
+	f.Sync()
 	return nil
 }
 
+func logMgr() error {
+	cf := Conf()
+	mgrPath := os.Args[0] + ".mgr"
+	mls := mgrList()
+	if mls != nil {
+		for _, v := range mls {
+			if v == cf {
+				return nil
+			}
+		}
+	}
+	f, err := os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return errors.New("创建mgrFile文件失败")
+	}
+	defer f.Close()
+	if _, err := f.Write([]byte(cf + "\n")); err != nil {
+		return errors.New("写如mgrFile文件失败")
+	}
+	f.Sync()
+	return nil
+}
+
+func syncMgr(appList []string) error {
+	mgrPath := os.Args[0] + ".mgr"
+	cf := ""
+	if appList != nil {
+		for _, v := range appList {
+			cf += v + "\n"
+		}
+	}
+	// fmt.Println(mgrPath + "=" + cf)
+	f, err := os.OpenFile(mgrPath, os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return errors.New("同步mgrFile文件失败")
+	}
+	defer f.Close()
+	if _, err := f.WriteString(cf); err != nil {
+		return errors.New("同步mgrFile文件失败")
+	}
+	f.Sync()
+	return nil
+}
+
+func mgrList() []string {
+	mgrPath := os.Args[0] + ".mgr"
+	f, err := os.OpenFile(mgrPath, os.O_RDONLY, 0666)
+	if err != nil {
+		return nil
+	}
+	buf := bufio.NewReader(f)
+	ls := []string{}
+	for {
+		line, err := buf.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if line != "" {
+			ls = append(ls, line)
+		}
+		if err != nil {
+			if err == io.EOF {
+				return ls
+			}
+		}
+	}
+}
+
 func removePid() error {
-	pidPath := filepath.Dir(os.Args[0]) + "/pid"
+	pidPath := pidPath()
 	return os.Remove(pidPath)
 }
 
-func getPid() int {
-	pidPath := filepath.Dir(os.Args[0]) + "/pid"
-	f, _ := os.Open(pidPath)
+//getPid pid
+func getPid(path ...string) int {
+	ppath := pidPath(path...)
+	f, _ := os.Open(ppath)
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -324,6 +497,21 @@ func getPid() int {
 	return id
 }
 
+//pidPath pid filename path
+func pidPath(path ...string) string {
+	pidPath := ""
+	if path != nil {
+		pidPath = path[0]
+	}
+	if pidPath == "" {
+		pidPath = Conf() + ".pid"
+	} else {
+		pidPath += ".pid"
+	}
+	// fmt.Printf("%s\n", pidPath)
+	return pidPath
+}
+
 //Shutdown app
 func Shutdown(ctx context.Context) error {
 	if ctx == nil {
@@ -335,6 +523,20 @@ func Shutdown(ctx context.Context) error {
 		// }
 	}
 	return app.Server.Shutdown(ctx)
+}
+
+/******ID method **********/
+
+//ID create Unique ID
+func ID() int64 {
+	return ids.ID()
+}
+
+/******GUID method **********/
+
+//GUID create GUID
+func GUID() string {
+	return guid.GUID()
 }
 
 //clear res
