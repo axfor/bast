@@ -59,6 +59,14 @@ func (t Time) Value() (driver.Value, error) {
 	return t.Time, nil
 }
 
+//T time
+func (t *Time) T(v interface{}) *time.Time {
+	if !t.IsZero() {
+		return &t.Time
+	}
+	return nil
+}
+
 //Scan valueof time.Time
 func (t *Time) Scan(v interface{}) error {
 	value, ok := v.(time.Time)
@@ -120,8 +128,10 @@ func (t *Time) Format(layout string) string {
 	} else {
 		layout = strings.Replace(layout, "yyyy", "2006", 1)
 		layout = strings.Replace(layout, "MM", "01", 1)
-		layout = strings.Replace(layout, "mm", "01", 1)
 		layout = strings.Replace(layout, "dd", "01", 1)
+		layout = strings.Replace(layout, "hh", "01", 1)
+		layout = strings.Replace(layout, "mm", "01", 1)
+		layout = strings.Replace(layout, "ss", "01", 1)
 	}
 	return t.Time.Format(layout)
 }

@@ -510,7 +510,11 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	err = json.Unmarshal(body, obj)
 	// logs.Debug("JSONDecode=" + string(body))
 	if err != nil {
-		logs.Debug("JSONDecode-Err=" + err.Error() + ",detail=" + string(body))
+		if app.Debug {
+			logs.Debug("JSONDecode-Err=" + err.Error() + ",detail=" + string(body))
+		} else {
+			logs.Debug("JSONDecode-Err=" + err.Error())
+		}
 		body = nil
 		return err
 	}
@@ -535,7 +539,11 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
 	}
 	err = xml.Unmarshal(body, obj)
 	if err != nil {
-		logs.Debug("XMLDecode-Err=" + err.Error() + ",detail=" + string(body))
+		if app.Debug {
+			logs.Debug("XMLDecode-Err=" + err.Error() + ",detail=" + string(body))
+		} else {
+			logs.Debug("XMLDecode-Err=" + err.Error())
+		}
 		body = nil
 		return err
 	}
