@@ -316,6 +316,24 @@ func (c *Context) GetStringSplit(key, sep string) *[]string {
 	return nil
 }
 
+//GetIntSplit 获取请求信息里面指定参数值并以指定的字符分割成整数数组
+//param:
+//	key 键值
+//  sep 分割字符串
+func (c *Context) GetIntSplit(key, sep string) *[]int64 {
+	d := c.GetStrings(key)
+	if len(d) > 0 {
+		s := strings.Split(d[0], sep)
+		lg := len(s)
+		si := make([]int64, lg, lg)
+		for i := 0; i < lg; i++ {
+			si[i], _ = strconv.ParseInt(s[i], 10, 64)
+		}
+		return &si
+	}
+	return nil
+}
+
 //GetParam 获取请求里面的路由参数值
 //说明：xx/:name/:name2 里面的:name与:name2就是路由参数占位符
 //param:
