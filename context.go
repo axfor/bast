@@ -303,11 +303,11 @@ func (c *Context) GetTrimString(key string) string {
 	return strings.TrimSpace(c.GetString(key))
 }
 
-//GetStringSplit 获取请求信息里面指定参数值并以指定的字符分割成字符串数组
+//GetStringSlice 获取请求信息里面指定参数值并以指定的字符分割成字符串数组
 //param:
 //	key 键值
 //  sep 分割字符串
-func (c *Context) GetStringSplit(key, sep string) *[]string {
+func (c *Context) GetStringSlice(key, sep string) *[]string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
 		s := strings.Split(d[0], sep)
@@ -316,11 +316,11 @@ func (c *Context) GetStringSplit(key, sep string) *[]string {
 	return nil
 }
 
-//GetIntSplit 获取请求信息里面指定参数值并以指定的字符分割成整数数组
+//GetIntSlice 获取请求信息里面指定参数值并以指定的字符分割成整数数组
 //param:
 //	key 键值
 //  sep 分割字符串
-func (c *Context) GetIntSplit(key, sep string) *[]int64 {
+func (c *Context) GetIntSlice(key, sep string) *[]int64 {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
 		s := strings.Split(d[0], sep)
@@ -332,6 +332,31 @@ func (c *Context) GetIntSplit(key, sep string) *[]int64 {
 		return &si
 	}
 	return nil
+}
+
+//GetIntSliceAndRemovePrefix 获取请求信息里面指定参数值并以指定的字符分割成整数数组，并尝试移除前缀字符
+//param:
+//	key 	键值
+//  sep 	分割字符串
+//  prefix 	待移除的前缀字符
+func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) (*[]int64, bool) {
+	d := c.GetStrings(key)
+	has := false
+	if len(d) > 0 {
+		ss := d[0]
+		if prefix != "" {
+			has = strings.HasPrefix(ss, prefix)
+			ss = strings.TrimPrefix(d[0], prefix)
+		}
+		s := strings.Split(ss, sep)
+		lg := len(s)
+		si := make([]int64, lg, lg)
+		for i := 0; i < lg; i++ {
+			si[i], _ = strconv.ParseInt(s[i], 10, 64)
+		}
+		return &si, has
+	}
+	return nil, has
 }
 
 //GetParam 获取请求里面的路由参数值
