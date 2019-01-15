@@ -350,13 +350,18 @@ func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) (*[]int64,
 		}
 		s := strings.Split(ss, sep)
 		lg := len(s)
-		si := make([]int64, lg, lg)
+		si := make([]int64, 0, lg)
 		for i := 0; i < lg; i++ {
-			si[i], _ = strconv.ParseInt(s[i], 10, 64)
+			n, err := strconv.ParseInt(s[i], 10, 64)
+			if err == nil {
+				si = append(si, n)
+			}
 		}
-		return &si, has
+		if len(si) > 0 {
+			return &si, has
+		}
 	}
-	return nil, has
+	return nil, false
 }
 
 //GetParam 获取请求里面的路由参数值
