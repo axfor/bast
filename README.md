@@ -1,23 +1,6 @@
 # bast
 
-## lightweight REST API  for Golang
-
-
-> 项目依赖
-
-``` bash
-
- go get -u github.com/julienschmidt/httprouter
-
- // go get -u github.com/bwmarrin/snowflake
-
- // go get -u github.com/satori/go.uuid
-
- go get -u go.uber.org/zap
-
- go get -u gopkg.in/natefinch/lumberjack.v2
-
- ```
+## A lightweight RESTful  for Golang
 
 
 > 使用说明
@@ -39,7 +22,7 @@
 ``` golang
 
 bast.Get("/xxx", func(ctx *bast.Context){
-  
+    
 })
 
 ```
