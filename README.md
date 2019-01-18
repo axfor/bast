@@ -78,7 +78,7 @@ bast.Run(":9999")
 
 ### If Your program is ``` aibast ```
 
-#### ``` -h | -help ``` 
+####  -h | -help
 
 ``` bash
 
@@ -86,7 +86,7 @@ bast.Run(":9999")
 
 ```
 
-#### ``` -start ```    
+####  -start   
 
 ``` bash
 
@@ -94,7 +94,7 @@ bast.Run(":9999")
 
 ```
 
-#### ``` -stop  ```  
+#### -stop
 
 ``` bash
 
@@ -102,9 +102,9 @@ bast.Run(":9999")
 
 ```
 
-#### ``` -reload ```
+#### -reload    
 
-```     Graceful Restart  ```
+> ``` Graceful Restart  ```
 
 ``` bash
 
@@ -112,11 +112,24 @@ bast.Run(":9999")
 
 ```
 
-#### ``` -conf ```
+#### -conf
+
+> -conf 
 
 ``` bash
 
     aibast -conf=your path/config.conf 
+
+```
+
+### Such as
+
+> deploy program
+
+
+``` bash
+
+    aibast -start -conf=./config.conf 
 
 ```
 
