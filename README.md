@@ -76,7 +76,7 @@ bast.Run(":9999")
 
 # CommandLine
 
-### If Your program is ``` aibast ```
+### If Your program name is ``` aibast ```
 
 ####  -h | -help
 
