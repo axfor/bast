@@ -82,7 +82,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    aibast -h
+    ./aibast -h
 
 ```
 
@@ -90,7 +90,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    aibast -start
+    ./aibast -start
 
 ```
 
@@ -98,7 +98,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    aibast -stop
+    ./aibast -stop
 
 ```
 
@@ -108,17 +108,15 @@ bast.Run(":9999")
 
 ``` bash
 
-    aibast -reload
+    ./aibast -reload
 
 ```
 
-#### -conf
-
-> -conf 
+#### -conf 
 
 ``` bash
 
-    aibast -conf=your path/config.conf 
+    ./aibast -conf=your path/config.conf 
 
 ```
 
@@ -129,7 +127,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    aibast -start -conf=./config.conf 
+    ./aibast -start -conf=./config.conf 
 
 ```
 
