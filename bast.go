@@ -33,7 +33,7 @@ var (
 	-start                      以后台启动(可以与conf同时使用)
 	-stop                       平滑停止
 	-reload                     平滑升级程序(可以与conf同时使用)
-	-conf=you path/config.conf  配置文件路径 
+	-conf=your path/config.conf  配置文件路径 
 	`
 	flagStart, flagStop, flagReload, flagDaemon bool
 	flagConf                                    string

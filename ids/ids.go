@@ -8,15 +8,8 @@ import "github.com/aixiaoxiang/bast/snowflake"
 
 //ID 快捷ID生成
 func ID() int64 {
-	// n, _ := snowflake.NewNode(0)
-	// return n.Generate().Int64()
-	return IDX()
-}
-
-//IDX 快捷ID生成
-func IDX() int64 {
-	n, _ := snowflake.NewNodeX(0)
-	return n.GenerateX().Int64()
+	n, _ := snowflake.NewNode(0)
+	return n.Generate().Int64()
 }
 
 //IDWithNode 快捷ID生成

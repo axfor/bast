@@ -42,9 +42,9 @@ func (j JSONSyntaxError) Error() string {
 
 // Create a map for decoding Base58.  This speeds up the process tremendously.
 
-// A NodeX struct holds the basic information needed for a snowflake generator
+// A Node struct holds the basic information needed for a snowflake generator
 // node
-type NodeX struct {
+type Node struct {
 	node int64
 	ni   *nodeItem
 }
@@ -55,61 +55,19 @@ type nodeItem struct {
 	temp *nodeItem
 }
 
-// A Node struct holds the basic information needed for a snowflake generator
-// node
-type Node struct {
-	mu   sync.Mutex
-	time int64
-	node int64
-	step int64
-}
-
 // An ID is a custom type used for a snowflake ID.  This is used so we can
 // attach methods onto the ID.
 type ID int64
 
-var gmu sync.Mutex
 var gmux sync.Mutex
-var gNodeX *NodeX
 var gNode *Node
-
-// NewNodeX returns a new snowflake node that can be used to generate snowflake
-// IDs
-func NewNodeX(node int64) (*NodeX, error) {
-	if gNodeX == nil {
-		gmux.Lock()
-		defer gmux.Unlock()
-		if gNodeX != nil {
-			return gNodeX, nil
-		}
-		// re-calc in case custom NodeBits or StepBits were set
-		nodeMax = -1 ^ (-1 << NodeBits)
-		nodeMask = nodeMax << StepBits
-		stepMask = -1 ^ (-1 << StepBits)
-		timeShift = NodeBits + StepBits
-		nodeShift = StepBits
-
-		if node < 0 || node > nodeMax {
-			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
-		}
-
-		gNodeX = &NodeX{
-			// time: 0,
-			node: node,
-			ni:   &nodeItem{},
-			// step: 0,
-		}
-
-	}
-	return gNodeX, nil
-}
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
 // IDs
 func NewNode(node int64) (*Node, error) {
 	if gNode == nil {
-		gmu.Lock()
-		defer gmu.Unlock()
+		gmux.Lock()
+		defer gmux.Unlock()
 		if gNode != nil {
 			return gNode, nil
 		}
@@ -121,27 +79,26 @@ func NewNode(node int64) (*Node, error) {
 		nodeShift = StepBits
 
 		if node < 0 || node > nodeMax {
-
 			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 		}
 
 		gNode = &Node{
 			// time: 0,
 			node: node,
-			// n:    &nodeItem{time: 0, step: 0},
+			ni:   &nodeItem{},
 			// step: 0,
 		}
+
 	}
 	return gNode, nil
 }
 
-// GenerateX creates and returns a unique snowflake ID
-func (n *NodeX) GenerateX() ID {
+// Generate creates and returns a unique snowflake ID
+func (n *Node) Generate() ID {
 	var nowTime int64
 	newItem := &nodeItem{time: n.ni.time, step: n.ni.step}
 	ok := false
 	for {
-		// fmt.Printf("time=%d\n", n.ni.time)
 		nowTime = time.Now().UnixNano() / 1000000
 		newItem.time = n.ni.time
 		newItem.step = n.ni.step
@@ -161,41 +118,9 @@ func (n *NodeX) GenerateX() ID {
 		ok = atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)), uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
 		if ok {
 			preNi.temp = nil
-			// fmt.Printf("time2=%d\n", n.ni.time)
-			// r :=
 			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | (n.ni.step)))
 		}
-		// else {
-		// 	// fmt.Printf("false,")
-		// 	return ID(0)
-		// }
 	}
-}
-
-// Generate creates and returns a unique snowflake ID
-func (n *Node) Generate() ID {
-
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	now := time.Now().UnixNano() / 1000000
-
-	if n.time == now {
-		n.step = (n.step + 1) & stepMask
-
-		if n.step == 0 {
-			for now <= n.time {
-				now = time.Now().UnixNano() / 1000000
-			}
-		}
-	} else {
-		n.step = 0
-	}
-
-	n.time = now
-
-	r := ID((now-Epoch)<<timeShift | (n.node << nodeShift) | (n.step))
-
-	return r
 }
 
 // Int64 returns an int64 of the snowflake ID
@@ -260,12 +185,12 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-//Clear 清空
+//Clear gNode
 func Clear() {
-	if gNodeX != nil {
-		if gNodeX.ni != nil {
-			gNodeX.ni.temp = nil
+	if gNode != nil {
+		if gNode.ni != nil {
+			gNode.ni.temp = nil
 		}
-		gNodeX = nil
+		gNode = nil
 	}
 }
