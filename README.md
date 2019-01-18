@@ -3,7 +3,7 @@
 ## A lightweight RESTful  for Golang
 
 
-> install
+> Install
 
 ``` bash
 
@@ -14,8 +14,7 @@
 # API doc
 
 > Router
-
----
+ 
 
 ### Get
 
@@ -39,8 +38,7 @@ bast.Get("/xxx", func(ctx *bast.Context){
 })
 
 ```
-
----
+ 
 
 ### Post
 
@@ -54,14 +52,17 @@ type Person struct {
 
 bast.Post("/xxx", func(ctx *bast.Context){
      person := &Person{}  
-     ctx.JSONObj(person)
+     err := ctx.JSONObj(person)
+     if err != nil {
+		ctx.Failed("Sorry! invalid parameter")
+		return
+	}
      person.Age += 2
      ctx.JSON(person)
 })
 
 ```
-
----
+ 
 
 # Run
 
@@ -71,8 +72,7 @@ bast.Post("/xxx", func(ctx *bast.Context){
 bast.Run(":9999")
 
 ```
----
-
+  
 
 # CommandLine
 
@@ -104,7 +104,7 @@ bast.Run(":9999")
 
 #### -reload    
 
-> ``` Graceful Restart  ```
+> ``` graceful restart  ```
 
 ``` bash
 
@@ -122,7 +122,7 @@ bast.Run(":9999")
 
 ### Such as
 
-> deploy program
+> ``` deploy program ```
 
 
 ``` bash
@@ -131,4 +131,3 @@ bast.Run(":9999")
 
 ```
 
----
