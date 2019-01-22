@@ -143,7 +143,8 @@ base snowflake-golang, 4x+ performance optimization。 5000000 -> 20000000
 
 ```
 
-> benchmark test ``` go test   -bench=. -cpu=12 -benchmem ```
+> benchmark test ``` go test   -bench=. -cpu=12 -benchmem ```   
+physics cpu ``` 4 ```
 
 ``` bash
 
