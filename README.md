@@ -129,9 +129,10 @@ bast.Run(":9999")
 
 ```
 
-# Distributed system unique ID   
+# Distributed system unique ID    
 
-> [snowflake-golang](https://github.com/bwmarrin/snowflake)  or [snowflake-twitter](https://github.com/twitter/snowflake)
+> [snowflake-golang](https://github.com/bwmarrin/snowflake)  or [snowflake-twitter](https://github.com/twitter/snowflake)   
+base snowflake-golang, 4x+ performance optimization。 5000000 -> 20000000
 
 > use
 
@@ -142,7 +143,7 @@ bast.Run(":9999")
 
 ```
 
-> go test benchmark ``` go test   -bench=. -cpu=12 -benchmem ```
+> benchmark test ``` go test   -bench=. -cpu=12 -benchmem ```
 
 ``` bash
 
