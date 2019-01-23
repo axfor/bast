@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -46,12 +47,14 @@ type Context struct {
 }
 
 //Msgs 响应消息基本结构
+//easyjson:json
 type Msgs struct {
 	Code int    `gorm:"-" json:"code"`
 	Msg  string `gorm:"-" json:"msg"`
 }
 
 //Data 响应数据基本结构
+//easyjson:json
 type Data struct {
 	Msgs `gorm:"-"`
 	Data interface{} `gorm:"-"  json:"data"`
@@ -653,6 +656,35 @@ func (c *Context) baseURL() string {
 //Redirect 重定向
 func (c *Context) Redirect(url string) {
 	http.Redirect(c.ResponseWriter, c.Request, url, http.StatusFound)
+}
+
+//ClientIP return request client ip
+func (c *Context) ClientIP() string {
+	ps := c.Proxys()
+	if len(ps) > 0 && ps[0] != "" {
+		realIP, _, err := net.SplitHostPort(ps[0])
+		if err != nil {
+			realIP = ps[0]
+		}
+		return realIP
+	}
+	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+		return ip
+	}
+	return c.Request.RemoteAddr
+}
+
+// Proxys return request proxys
+// if request header has X-Real-IP, return it
+// if request header has X-Forwarded-For, return it
+func (c *Context) Proxys() []string {
+	if v := c.Request.Header.Get("X-Real-IP"); v != "" {
+		return strings.Split(v, ",")
+	}
+	if v := c.Request.Header.Get("X-Forwarded-For"); v != "" {
+		return strings.Split(v, ",")
+	}
+	return []string{}
 }
 
 //TemporaryRedirect 重定向(307重定向，可以避免POST重定向后数据丢失)
