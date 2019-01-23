@@ -2,13 +2,17 @@
 package ids
 
 import (
+	"errors"
 	"testing"
 )
 
-func Benchmark_ID(b *testing.B) {
-	b.RunParallel(func(pb *testing.PB) {
+func Benchmark_ID(t *testing.B) {
+	t.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ID()
+			id := ID()
+			if id <= 0 {
+				t.Error(errors.New("error"))
+			}
 		}
 	})
 }

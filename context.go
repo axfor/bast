@@ -47,14 +47,12 @@ type Context struct {
 }
 
 //Msgs 响应消息基本结构
-//easyjson:json
 type Msgs struct {
 	Code int    `gorm:"-" json:"code"`
 	Msg  string `gorm:"-" json:"msg"`
 }
 
 //Data 响应数据基本结构
-//easyjson:json
 type Data struct {
 	Msgs `gorm:"-"`
 	Data interface{} `gorm:"-"  json:"data"`
