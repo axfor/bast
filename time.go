@@ -94,28 +94,6 @@ func NowTime() *Time {
 	return &tt
 }
 
-// //Time 转化为 time.Time
-// func (t *Time) Time() time.Time {
-// 	//tt := time.Time(*t)
-// 	return t.Time
-// }
-
-// //TimePoint 转化为 *time.Time
-// func (t *Time) TimePoint() *time.Time {
-// 	tt := t.Time
-// 	if !tt.IsZero() {
-// 		return &tt
-// 	}
-// 	return nil
-// }
-
-// // IsZero reports whether t represents the zero time instant,
-// // January 1, year 1, 00:00:00 UTC.
-// func (t *Time) IsZero() bool {
-// 	tt := t.Time
-// 	return tt.IsZero()
-// }
-
 //String
 func (t *Time) String() string {
 	return t.Time.Format("2006-01-02 15:04:05")
@@ -179,28 +157,6 @@ func (t *Date) Scan(v interface{}) error {
 	}
 	return fmt.Errorf("can not convert %v to Date", v)
 }
-
-// //Time 转化为 time.Time
-// func (t *Date) Time() time.Time {
-// 	tt := time.Time(*t)
-// 	return tt
-// }
-
-// //TimePoint 转化为 *time.Time
-// func (t *Date) TimePoint() *time.Time {
-// 	tt := time.Time(*t)
-// 	if !tt.IsZero() {
-// 		return &tt
-// 	}
-// 	return nil
-// }
-
-// // IsZero reports whether t represents the zero time instant,
-// // January 1, year 1, 00:00:00 UTC.
-// func (t *Date) IsZero() bool {
-// 	tt := time.Time(*t)
-// 	return tt.IsZero()
-// }
 
 //String
 func (t *Date) String() string {

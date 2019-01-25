@@ -285,11 +285,7 @@ var logFormatter = func(values ...interface{}) (messages []interface{}) {
 			currentTime = "\n [" + time.Now().Format("2006-01-02 15:04:05") + "]"
 			source = fmt.Sprintf("(%v)", values[1])
 		}
-		if isDebug {
-			messages = []interface{}{source, currentTime}
-		} else {
-			messages = []interface{}{currentTime}
-		}
+		messages = []interface{}{source, currentTime}
 
 		if level == "sql" {
 			// duration
@@ -320,7 +316,7 @@ var logFormatter = func(values ...interface{}) (messages []interface{}) {
 						}
 					} else {
 						switch value.(type) {
-						case int, int8, int16, int32, int64, float32, float64:
+						case int, int8, int16, int32, int64, float32, float64, bool:
 							formattedValues = append(formattedValues, fmt.Sprintf("%v", value))
 							break
 						default:

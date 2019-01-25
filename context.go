@@ -429,6 +429,20 @@ func (c *Context) GetBool(key string) bool {
 	return false
 }
 
+//GetBoolWithDefault 获取请求信息里面指定参数值并转化位bool
+//param:
+//	key 键值
+func (c *Context) GetBoolWithDefault(key string, defaults bool) bool {
+	d := c.GetStrings(key)
+	if len(d) > 0 {
+		ok, err := strconv.ParseBool(d[0])
+		if err == nil {
+			return ok
+		}
+	}
+	return defaults
+}
+
 //GetStrings 获取请求信息里面指定参数值的字符
 //param:
 //	key 键值
