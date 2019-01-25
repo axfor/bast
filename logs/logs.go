@@ -46,23 +46,22 @@ type GormLogger struct {
 
 //Print Gorm日志打印
 func (*GormLogger) Print(v ...interface{}) {
-	m := logFormatter(v...)
-	if m != nil {
-		if !logger.logConf.Debug {
-			lg := len(m)
-			msg := ""
-			for i := 0; i < lg; i++ {
-				msg += m[i].(string)
-			}
-			if msg != "" && msg != "\n" {
-				source := fmt.Sprintf("(%v)", v[1])
-				InfoWithCaller(msg, source, zap.String("gorm", "true"))
-			}
-			return
+	if logger.logConf.Debug {
+		msg := gromLogFormatterDebug(v...)
+		if msg != nil {
+			gromDebugLogger.Println(msg...)
 		}
-		gromDebugLogger.Println(m...)
+	} else {
+		msg, level := gromLogFormatter(v...)
+		if msg != nil {
+			source := fmt.Sprintf("(%v)", v[1])
+			if level == "sql" {
+				InfoWithCaller("gorm", source, msg...)
+			} else {
+				ErrorWithCaller("gorm", source, msg...)
+			}
+		}
 	}
-
 }
 
 //LogInit 初始化日志库
@@ -268,35 +267,25 @@ func Caller(skip int) string {
 *********************************/
 
 //grom logFormatter
-var logFormatter = func(values ...interface{}) (messages []interface{}) {
-	isDebug := logger.logConf.Debug
+var gromLogFormatterDebug = func(values ...interface{}) (messages []interface{}) {
 	if len(values) > 1 {
 		var (
 			sql             string
 			formattedValues []string
 			level           = values[0]
-			currentTime     = ""
-			source          = ""
+			currentTime     = "\n\033[33m[" + time.Now().Format("2006-01-02 15:04:05") + "]\033[0m"
+			source          = fmt.Sprintf("\033[35m(%v)\033[0m", values[1])
 		)
-		if isDebug {
-			currentTime = "\n\033[33m[" + time.Now().Format("2006-01-02 15:04:05") + "]\033[0m"
-			source = fmt.Sprintf("\033[35m(%v)\033[0m", values[1])
-		} else {
-			currentTime = "\n [" + time.Now().Format("2006-01-02 15:04:05") + "]"
-			source = fmt.Sprintf("(%v)", values[1])
-		}
+
 		messages = []interface{}{source, currentTime}
 
 		if level == "sql" {
 			// duration
-			if isDebug {
-				messages = append(messages, fmt.Sprintf(" \033[36;1m[%.2fms]\033[0m ", float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0))
-			} else {
-				messages = append(messages, fmt.Sprintf(" [%.2fms] ", float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0))
-			}
-			// sql
+			messages = append(messages, fmt.Sprintf(" \033[36;1m[%.2fms]\033[0m ", float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0))
 
-			for _, value := range values[4].([]interface{}) {
+			// sql
+			vs := values[4].([]interface{})
+			for _, value := range vs {
 				indirectValue := reflect.Indirect(reflect.ValueOf(value))
 				if indirectValue.IsValid() {
 					value = indirectValue.Interface()
@@ -337,32 +326,110 @@ var logFormatter = func(values ...interface{}) (messages []interface{}) {
 				}
 			} else {
 				formattedValuesLength := len(formattedValues)
-				for index, value := range gromSQLRegexp.Split(values[3].(string), -1) {
+				vss := gromSQLRegexp.Split(values[3].(string), -1)
+				for index, value := range vss {
 					sql += value
 					if index < formattedValuesLength {
 						sql += formattedValues[index]
 					}
 				}
 			}
-
 			messages = append(messages, sql)
-			if isDebug {
-				messages = append(messages, fmt.Sprintf(" \n\033[36;31m[%v]\033[0m ", strconv.FormatInt(values[5].(int64), 10)+" rows affected or returned "))
-			} else {
-				messages = append(messages, fmt.Sprintf(" \n[%v] ", strconv.FormatInt(values[5].(int64), 10)+" rows affected or returned "))
-			}
-		} else {
-			if isDebug {
-				messages = append(messages, "\033[31;1m")
-			}
-			messages = append(messages, values[2:]...)
-			if isDebug {
-				messages = append(messages, "\033[0m")
-			}
+			messages = append(messages, fmt.Sprintf(" \n\033[36;31m[%v]\033[0m ", strconv.FormatInt(values[5].(int64), 10)+" rows affected or returned "))
 
+		} else {
+			messages = append(messages, "\033[31;1m")
+			messages = append(messages, values[2:]...)
+			messages = append(messages, "\033[0m")
 		}
 	}
+	return
+}
 
+//grom logFormatter
+var gromLogFormatter = func(values ...interface{}) (messages []zap.Field, levels string) {
+	if len(values) > 1 {
+		var (
+			sql             string
+			formattedValues []string
+			level           = values[0]
+			currentTime     = ""
+			source          = ""
+		)
+		currentTime = time.Now().Format("2006-01-02 15:04:05")
+		source, _ = values[1].(string)
+
+		messages = []zap.Field{}
+		messages = append(messages, zap.String("source", source))
+		messages = append(messages, zap.String("currentTime", currentTime))
+
+		if level == "sql" {
+			levels = "sql"
+			timeCost := strconv.FormatFloat(float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0, 'f', 0, 64) + "ms"
+			messages = append(messages, zap.String("timeCost", timeCost))
+
+			// sql
+			vs := values[4].([]interface{})
+			for _, value := range vs {
+				indirectValue := reflect.Indirect(reflect.ValueOf(value))
+				if indirectValue.IsValid() {
+					value = indirectValue.Interface()
+					if t, ok := value.(time.Time); ok {
+						formattedValues = append(formattedValues, fmt.Sprintf("'%v'", t.Format("2006-01-02 15:04:05")))
+					} else if b, ok := value.([]byte); ok {
+						if str := string(b); isPrintable(str) {
+							formattedValues = append(formattedValues, fmt.Sprintf("'%v'", str))
+						} else {
+							formattedValues = append(formattedValues, "'<binary>'")
+						}
+					} else if r, ok := value.(driver.Valuer); ok {
+						if value, err := r.Value(); err == nil && value != nil {
+							formattedValues = append(formattedValues, fmt.Sprintf("'%v'", value))
+						} else {
+							formattedValues = append(formattedValues, "NULL")
+						}
+					} else {
+						switch value.(type) {
+						case int, int8, int16, int32, int64, float32, float64, bool:
+							formattedValues = append(formattedValues, fmt.Sprintf("%v", value))
+							break
+						default:
+							formattedValues = append(formattedValues, fmt.Sprintf("'%v'", value))
+						}
+					}
+				} else {
+					formattedValues = append(formattedValues, "NULL")
+				}
+			}
+			// differentiate between $n placeholders or else treat like ?
+			if gromNumericPlaceHolderRegexp.MatchString(values[3].(string)) {
+				sql = values[3].(string)
+				for index, value := range formattedValues {
+					placeholder := fmt.Sprintf(`\$%d([^\d]|$)`, index+1)
+					sql = regexp.MustCompile(placeholder).ReplaceAllString(sql, value+"$1")
+				}
+			} else {
+				formattedValuesLength := len(formattedValues)
+				vss := gromSQLRegexp.Split(values[3].(string), -1)
+				for index, value := range vss {
+					sql += value
+					if index < formattedValuesLength {
+						sql += formattedValues[index]
+					}
+				}
+			}
+			messages = append(messages, zap.String("sql", sql))
+			rowsAffected := values[5].(int64)
+			messages = append(messages, zap.Int64("rows", rowsAffected))
+		} else {
+			key, ok := level.(string)
+			if !ok {
+				key = "log"
+			}
+			levels = key
+			messages = append(messages, zap.Any(key, values[2:]))
+		}
+	}
 	return
 }
 
