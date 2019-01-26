@@ -54,7 +54,7 @@ func (*GormLogger) Print(v ...interface{}) {
 	} else {
 		msg, level := gromLogFormatter(v...)
 		if msg != nil {
-			source := fmt.Sprintf("(%v)", v[1])
+			source, _ := v[1].(string)
 			if level == "sql" {
 				InfoWithCaller("gorm", source, msg...)
 			} else {

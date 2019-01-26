@@ -30,14 +30,15 @@ import (
 var (
 	usageline = `帮助:
 	-h | -help                  显示帮助
+	-develop                    以后开发模式启动(开发过程中配置)
 	-start                      以后台启动(可以与conf同时使用)
 	-stop                       平滑停止
 	-reload                     平滑升级程序(可以与conf同时使用)
 	-conf=your path/config.conf  配置文件路径 
 	`
-	flagStart, flagStop, flagReload, flagDaemon bool
-	flagConf                                    string
-	app                                         *App
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon bool
+	flagConf                                                 string
+	app                                                      *App
 )
 
 //App is application major data
@@ -72,12 +73,16 @@ func parseCommandLine() {
 	if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
 		f.Usage()
 	}
-	f.BoolVar(&flagStart, "start", false, "")
+	f.BoolVar(&flagDevelop, "develop", false, "")
+	f.BoolVar(&flagStart, "start", true, "")
 	f.BoolVar(&flagStop, "stop", false, "")
 	f.BoolVar(&flagReload, "reload", false, "")
 	f.BoolVar(&flagDaemon, "daemon", false, "")
 	f.StringVar(&flagConf, "conf", "", "")
 	f.Parse(os.Args[1:])
+	if flagDevelop || flagDaemon {
+		flagStart = false
+	}
 	parseConf(f)
 }
 
