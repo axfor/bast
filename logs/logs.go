@@ -446,4 +446,5 @@ func isPrintable(s string) bool {
 func ClearLogger() {
 	logger = nil
 	gromDebugLogger = nil
+	gromLogFormatter = nil
 }

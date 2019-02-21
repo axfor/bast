@@ -12,7 +12,6 @@ var (
 	tr         = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	//HTTPSClient is default https client
 	HTTPSClient = &http.Client{Transport: tr}
-
 	//HTTP is default http client
 	HTTP = &HTTPClientProxy{}
 )

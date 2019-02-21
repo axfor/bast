@@ -11,7 +11,7 @@
 
  ```
 
-# API doc
+# Router doc(Request example)
 
 > Router
  
@@ -34,6 +34,8 @@ bast.Get("/xxx", func(ctx *bast.Context){
         Name:name,
         Age:Age, 
      }
+     //handling
+     //...
      ctx.JSON(person)
 })
 
@@ -58,6 +60,8 @@ bast.Post("/xxx", func(ctx *bast.Context){
 	   return
      }
      person.Age += 2
+     //handling
+     //...
      ctx.JSON(person)
 }) 
 

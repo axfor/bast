@@ -51,7 +51,11 @@ func FileUpload(ctx *Context, dir string) {
 //FileHandleUpload 客户端上传多个文件,并带有请求参数
 func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo, error) {
 	//ctx.ParseForm()
-	ctx.ParseMultipartForm(32 << 40) //最大内存为64M
+	err := ctx.ParseMultipartForm(32 << 40) //最大内存为64M
+	if err != nil {
+		ctx.I("/files/upload-fileHandleUpload->parseMultipartForm-err=" + err.Error())
+		return nil, errors.New("上传格式不对")
+	}
 	mp := ctx.Request.MultipartForm
 	if mp == nil {
 		return nil, errors.New("上传格式不对")

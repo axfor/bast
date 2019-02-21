@@ -74,13 +74,16 @@ func parseCommandLine() {
 		f.Usage()
 	}
 	f.BoolVar(&flagDevelop, "develop", false, "")
-	f.BoolVar(&flagStart, "start", true, "")
+	f.BoolVar(&flagStart, "start", false, "")
 	f.BoolVar(&flagStop, "stop", false, "")
 	f.BoolVar(&flagReload, "reload", false, "")
 	f.BoolVar(&flagDaemon, "daemon", false, "")
 	f.StringVar(&flagConf, "conf", "", "")
 	f.Parse(os.Args[1:])
-	if flagDevelop || flagDaemon {
+	if len(os.Args) == 1 {
+		flagStart = true
+	}
+	if flagDevelop || flagStop || flagReload || flagDaemon {
 		flagStart = false
 	}
 	parseConf(f)
