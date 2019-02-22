@@ -83,6 +83,12 @@ func Now() Time {
 	return tt
 }
 
+//Nows 当前时间-指针
+func Nows() *Time {
+	tt := Time{Time: time.Now()}
+	return &tt
+}
+
 //NowPoint 当前时间-指针
 func NowPoint() *Time {
 	return NowTime()
@@ -116,6 +122,29 @@ func (t *Time) Format(layout string) string {
 
 //Date yyyy-MM-dd 格式日期
 type Date Time
+
+//NowDate 当前日期
+func NowDate() Date {
+	return Date(Now())
+}
+
+//NowDates 当前日期-指针
+func NowDates() *Date {
+	d := NowDate()
+	return &d
+}
+
+//DateByTime 根据time.Time构建 Date
+func DateByTime(t time.Time) Date {
+	tt := Time{Time: t}
+	return Date(tt)
+}
+
+//DatesByTime 根据time.Time构建 Date-指针
+func DatesByTime(t time.Time) *Date {
+	tt := DateByTime(t)
+	return &tt
+}
 
 //MarshalJSON 序列化方法
 func (t *Date) MarshalJSON() ([]byte, error) {
