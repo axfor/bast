@@ -4,6 +4,7 @@ package bast
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,7 +28,21 @@ func (t *Time) MarshalJSON() ([]byte, error) {
 
 //UnmarshalJSON 反序列化方法
 func (t *Time) UnmarshalJSON(b []byte) error {
+	tt, err := byteToTime(b, "")
+	if err == nil {
+		*t = tt
+	}
+	return err
+}
+
+func strToTime(t string, layout string) (Time, error) {
+	return byteToTime([]byte(t), layout)
+}
+
+func byteToTime(b []byte, layout string) (Time, error) {
+	var t Time
 	var err error
+
 	if b != nil && len(b) > 0 {
 		s := strings.Trim(string(b), "\"")
 		l := len(s)
@@ -35,18 +50,24 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 		loc, _ := time.LoadLocation("Local") //重要：获取时区
 		if l > 0 {
 			if l <= 10 {
-				v, err = time.ParseInLocation("2006-01-02", s, loc)
+				if layout == "" {
+					layout = "2006-01-02"
+				}
+				v, err = time.ParseInLocation(layout, s, loc)
 			} else {
-				v, err = time.ParseInLocation("2006-01-02 15:04:05", s, loc)
+				if layout == "" {
+					layout = "2006-01-02 15:04:05"
+				}
+				v, err = time.ParseInLocation(layout, s, loc)
 			}
 			if err == nil {
-				*t = Time{Time: v}
+				t = Time{Time: v}
 			} else {
-				//*t = nil
+				err = errors.New("bytes to time")
 			}
 		}
 	}
-	return err
+	return t, err
 }
 
 //Value 获取值
@@ -98,6 +119,27 @@ func NowPoint() *Time {
 func NowTime() *Time {
 	tt := Time{Time: time.Now()}
 	return &tt
+}
+
+//TimeByTime 根据time.Time构建 Time
+func TimeByTime(t time.Time) Time {
+	tt := Time{Time: t}
+	return Time(tt)
+}
+
+//TimesByTime 根据time.Time构建 Time-指针
+func TimesByTime(t time.Time) *Time {
+	tt := TimeByTime(t)
+	return &tt
+}
+
+//TimeWithString 字符串时间转化为时间
+func TimeWithString(t string, layout ...string) (Time, error) {
+	l := ""
+	if layout != nil {
+		l = layout[0]
+	}
+	return strToTime(t, l)
 }
 
 //String
