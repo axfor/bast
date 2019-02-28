@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-//Int json 序列化是 string 到 int
+//Int is auto handle string to int
 type Int int
 
-//UnmarshalJSON 反序列化方法
+//UnmarshalJSON JSON UnmarshalJSON
 func (c *Int) UnmarshalJSON(b []byte) error {
 	var err error
 	if b != nil && len(b) > 0 {
@@ -27,10 +27,50 @@ func (c *Int) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-//Int64 json 序列化是 string 到 Int64
+//UInt is auto handle string to uint
+type UInt uint
+
+//UnmarshalJSON JSON UnmarshalJSON
+func (c *UInt) UnmarshalJSON(b []byte) error {
+	var err error
+	if b != nil && len(b) > 0 {
+		var t uint64
+		if b[0] == '"' {
+			t, err = strconv.ParseUint(strings.TrimSuffix(strings.TrimPrefix(string(b), "\""), "\""), 10, 0)
+		} else {
+			t, err = strconv.ParseUint(string(b), 10, 0)
+		}
+		if err == nil {
+			*c = UInt(t)
+		}
+	}
+	return err
+}
+
+//UInt64 is auto handle string to uint
+type UInt64 uint64
+
+//UnmarshalJSON JSON UnmarshalJSON
+func (c *UInt64) UnmarshalJSON(b []byte) error {
+	var err error
+	if b != nil && len(b) > 0 {
+		var t uint64
+		if b[0] == '"' {
+			t, err = strconv.ParseUint(strings.TrimSuffix(strings.TrimPrefix(string(b), "\""), "\""), 10, 0)
+		} else {
+			t, err = strconv.ParseUint(string(b), 10, 0)
+		}
+		if err == nil {
+			*c = UInt64(t)
+		}
+	}
+	return err
+}
+
+//Int64 is auto handle string to int64
 type Int64 int64
 
-//UnmarshalJSON 反序列化方法
+//UnmarshalJSON JSON  UnmarshalJSON
 func (c *Int64) UnmarshalJSON(b []byte) error {
 	var err error
 	if b != nil && len(b) > 0 {
@@ -47,10 +87,10 @@ func (c *Int64) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-//Float32 json 序列化是 string 到 float32
+//Float32 is auto handle string to float32
 type Float32 float32
 
-//UnmarshalJSON 反序列化方法
+//UnmarshalJSON JSON UnmarshalJSON
 func (c *Float32) UnmarshalJSON(b []byte) error {
 	var err error
 	if b != nil && len(b) > 0 {
@@ -67,10 +107,10 @@ func (c *Float32) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-//Float64 json 序列化是 string 到 float64
+//Float64 is auto handle string to float64
 type Float64 float64
 
-//UnmarshalJSON 反序列化方法
+//UnmarshalJSON JSON UnmarshalJSON
 func (c *Float64) UnmarshalJSON(b []byte) error {
 	var err error
 	if b != nil && len(b) > 0 {

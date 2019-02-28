@@ -36,13 +36,19 @@ const (
 
 //Context is app Context
 type Context struct {
-	//Request 当前的请求信息
+	//Request A Request represents an HTTP request received by a server
+	// or to be sent by a client.
 	Request *http.Request
-	//ResponseWriter 请求信息
+	//In is Request alias
+	In *http.Request
+	//ResponseWriter A ResponseWriter interface is used by an HTTP handler to
+	// construct an HTTP response.
 	ResponseWriter http.ResponseWriter
-	//Params httprouter 路由参数,/:name/:age
+	//Out is ResponseWriter alias
+	Out http.ResponseWriter
+	//Params httprouter Params,/:name/:age
 	Params httprouter.Params
-	//isParseForm 是否已经解析了请求表单
+	//isParseForm Parse tag
 	isParseForm bool
 }
 
@@ -561,6 +567,13 @@ func (c *Context) JSONObj(obj interface{}) error {
 	return c.JSONDecode(c.Request.Body, obj)
 }
 
+//GetJSON 将当前请求流JSON格式转化为对象
+//param:
+//	obj 外部对象
+func (c *Context) GetJSON(obj interface{}) error {
+	return c.JSONObj(obj)
+}
+
 //JSONDecode 将请求流转化为对象
 //param:
 //	r reader 阅读流
@@ -589,6 +602,13 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 //	obj 外部对象
 func (c *Context) XMLObj(obj interface{}) error {
 	return c.XMLDecode(c.Request.Body, obj)
+}
+
+//GetXML 将当前请求流XML格式转化为对象
+//param:
+//	obj 外部对象
+func (c *Context) GetXML(obj interface{}) error {
+	return c.XMLObj(obj)
 }
 
 //XMLDecode 将请求流XML格式转化为对象
@@ -708,8 +728,11 @@ func (c *Context) TemporaryRedirect(url string) {
 func (c *Context) Reset() {
 	c.isParseForm = false
 	c.Request = nil
+	c.In = nil
 	c.ResponseWriter = nil
+	c.Out = nil
 	c.Params = nil
+	c.isParseForm = false
 }
 
 /******log method **********/
