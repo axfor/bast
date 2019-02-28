@@ -40,9 +40,10 @@ var (
 	-install        			  安装开机启动服务
 	-uninstall  				  卸载开机启动服务
 	`
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon, isInstall, isUninstall bool
-	flagConf, flagName                                                               string
-	app                                                                              *App
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon, isInstall bool
+	isUninstall, isForce                                                bool
+	flagConf, flagName                                                  string
+	app                                                                 *App
 )
 
 //App is application major data
@@ -83,6 +84,7 @@ func parseCommandLine() {
 	f.BoolVar(&flagReload, "reload", false, "")
 	f.BoolVar(&flagDaemon, "daemon", false, "")
 	f.BoolVar(&isUninstall, "uninstall", false, "")
+	f.BoolVar(&isForce, "force", false, "")
 	f.BoolVar(&isInstall, "install", false, "")
 	f.StringVar(&flagName, "name", "", "")
 	f.StringVar(&flagConf, "conf", "", "")
@@ -423,7 +425,7 @@ func install() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	var dependencies = []string{"-start", "-conf=" + flagConf}
+	var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
 
 	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
 	if err != nil {
@@ -442,7 +444,7 @@ func uninstall() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	var dependencies = []string{"-start", "-conf=" + flagConf}
+	var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
 	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
 	if err != nil {
 		fmt.Println("uninstall failed," + err.Error())
@@ -501,7 +503,13 @@ func logMgr() error {
 			}
 		}
 	}
-	f, err := os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	var f *os.File
+	var err error
+	if isForce {
+		f, err = os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	} else {
+		f, err = os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	}
 	if err != nil {
 		return errors.New("创建mgrFile文件失败")
 	}
@@ -535,6 +543,9 @@ func syncMgr(appList []string) error {
 }
 
 func mgrList() []string {
+	if isForce {
+		return nil
+	}
 	mgrPath := os.Args[0] + ".mgr"
 	f, err := os.OpenFile(mgrPath, os.O_RDONLY, 0666)
 	if err != nil {
