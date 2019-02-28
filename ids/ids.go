@@ -6,19 +6,19 @@ package ids
 
 import "github.com/aixiaoxiang/bast/snowflake"
 
-//ID 快捷ID生成
+//ID cenerate id
 func ID() int64 {
 	n, _ := snowflake.NewNode(0)
 	return n.Generate().Int64()
 }
 
-//IDWithNode 快捷ID生成
+//IDWithNode  cenerate id
 func IDWithNode(node int64) int64 {
 	n, _ := snowflake.NewNode(node)
 	return n.Generate().Int64()
 }
 
-//IDStr 快捷ID生成
+//IDStr  cenerate id
 func IDStr(node ...int64) string {
 	if node != nil {
 		n, _ := snowflake.NewNode(node[0])
@@ -28,7 +28,7 @@ func IDStr(node ...int64) string {
 	return n.Generate().String()
 }
 
-//IDClear 清空
+//IDClear clear
 func IDClear() {
 	snowflake.Clear()
 }

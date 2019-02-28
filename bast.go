@@ -163,9 +163,7 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-			//有使用自定义头 需要这个,Action, Module是例子
 			w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization,Access-Control-Allow-Origin,Content-Length,Content-Type,BaseUrl")
-			//
 			w.Header().Set("Access-Control-Max-Age", "1728000")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
@@ -182,8 +180,10 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 				ctx := app.pool.Get().(*Context)
 				ctx.Reset()
 				defer app.pool.Put(ctx)
-				ctx.ResponseWriter = w
 				ctx.Request = r
+				ctx.In = r
+				ctx.ResponseWriter = w
+				ctx.Out = w
 				ctx.Params = ps
 				defer func() {
 					if err := recover(); err != nil {
@@ -241,7 +241,7 @@ func doRun(addr string) {
 	logs.Info("app-finish")
 }
 
-//Command 解析命令行参数
+//Command Commandline args
 func Command() bool {
 	// args := os.Args[1:]
 	// lg := len(args)
