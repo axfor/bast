@@ -122,14 +122,46 @@ bast.Run(":9999")
 
 ```
 
+
+#### -install 
+
+> ``` daemon ```
+
+
+``` bash
+
+    ./aibast -install
+
+```
+
+
+#### -uninstall 
+
+``` bash
+
+    ./aibast -uninstall
+
+```
+
+
 ### Such as
+
+> ``` run program ```
+
+
+``` bash  
+
+    ./aibast -start -conf=./config.conf 
+
+```
+
 
 > ``` deploy program ```
 
 
 ``` bash  
 
-    ./aibast -start -conf=./config.conf 
+    ./aibast -install
 
 ```
 

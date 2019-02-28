@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -24,21 +25,24 @@ import (
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
+	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 )
 
 var (
 	usageline = `帮助:
-	-h | -help                  显示帮助
-	-develop                    以后开发模式启动(开发过程中配置)
-	-start                      以后台启动(可以与conf同时使用)
-	-stop                       平滑停止
-	-reload                     平滑升级程序(可以与conf同时使用)
-	-conf=your path/config.conf  配置文件路径 
+	-h | -help                    显示帮助
+	-develop                      以后开发模式启动(开发过程中配置)
+	-start                        以后台启动(可以与conf同时使用)
+	-stop                         平滑停止
+	-reload                       平滑升级程序(可以与conf同时使用)
+	-conf=your path/config.conf   配置文件路径  
+	-install        			  安装开机启动服务
+	-uninstall  				  卸载开机启动服务
 	`
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon bool
-	flagConf                                                 string
-	app                                                      *App
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon, isInstall, isUninstall bool
+	flagConf, flagName                                                               string
+	app                                                                              *App
 )
 
 //App is application major data
@@ -78,12 +82,29 @@ func parseCommandLine() {
 	f.BoolVar(&flagStop, "stop", false, "")
 	f.BoolVar(&flagReload, "reload", false, "")
 	f.BoolVar(&flagDaemon, "daemon", false, "")
+	f.BoolVar(&isUninstall, "uninstall", false, "")
+	f.BoolVar(&isInstall, "install", false, "")
+	f.StringVar(&flagName, "name", "", "")
 	f.StringVar(&flagConf, "conf", "", "")
 	f.Parse(os.Args[1:])
 	if len(os.Args) == 1 {
 		flagStart = true
 	}
-	if flagDevelop || flagStop || flagReload || flagDaemon {
+	if flagName != "" {
+		isInstall = true
+	}
+	if !isInstall {
+		for _, k := range os.Args[1:] {
+			if strings.HasPrefix(k, "-install") {
+				isInstall = true
+				break
+			}
+		}
+	}
+	if isInstall {
+		flagDaemon = false
+	}
+	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall {
 		flagStart = false
 	}
 	parseConf(f)
@@ -261,6 +282,14 @@ func Command() bool {
 		r = false
 	} else if flagDaemon {
 		daemon()
+	} else if isInstall {
+		err = errors.New("install service")
+		install()
+		r = false
+	} else if isUninstall {
+		err = errors.New("uninstall service")
+		uninstall()
+		r = false
 	}
 	if err != nil {
 		fmt.Printf(err.Error())
@@ -349,6 +378,14 @@ func AppDir() string {
 	return exPath
 }
 
+//AppName  app name
+func AppName() string {
+	fn := path.Base(os.Args[0])
+	fileSuffix := path.Ext(fn)              //获取文件后缀
+	fn = strings.TrimSuffix(fn, fileSuffix) //获取文件名
+	return fn
+}
+
 //parseConf parse config path
 func parseConf(f *flag.FlagSet) string {
 	exPath := filepath.Dir(os.Args[0])
@@ -382,21 +419,57 @@ func daemon() {
 	go signalListen()
 }
 
+func install() {
+	if flagName == "" {
+		flagName = AppName()
+	}
+	var dependencies = []string{"-start", "-conf=" + flagConf}
+
+	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
+	if err != nil {
+		fmt.Println("install failed," + err.Error())
+		return
+	}
+	status, err := service.Install(dependencies...)
+	if err != nil {
+		fmt.Println("install failed," + err.Error())
+		return
+	}
+	fmt.Println("install info:" + status)
+}
+
+func uninstall() {
+	if flagName == "" {
+		flagName = AppName()
+	}
+	var dependencies = []string{"-start", "-conf=" + flagConf}
+	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
+	if err != nil {
+		fmt.Println("uninstall failed," + err.Error())
+		return
+	}
+	status, err := service.Remove()
+	if err != nil {
+		fmt.Println("uninstall failed," + err.Error())
+		return
+	}
+	fmt.Println("uninstall info:" + status)
+}
+
 func signalListen() {
 	c := make(chan os.Signal)
 	defer close(c)
 	signal.Notify(c)
 	for {
 		s := <-c
-		logs.Info("signal=" + s.String())
 		if s == syscall.SIGINT {
+			logs.Info("signal=" + s.String())
 			signal.Stop(c)
-			logs.Info("signal=syscall.SIGINT")
 			err := Shutdown(nil)
 			if err != nil {
 				logs.Info("shutdown-error=" + err.Error())
 			} else {
-				logs.Info("shutdown-ok=")
+				logs.Info("shutdown-success")
 			}
 			break
 		}
