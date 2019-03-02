@@ -27,20 +27,20 @@ var (
 	gromNumericPlaceHolderRegexp = regexp.MustCompile(`\$\d+`)
 )
 
-//LogConf 日志配置
+//LogConf log config
 type LogConf struct {
 	OutPath string `json:"outPath"`
 	Level   string `json:"level"`
 	Debug   bool   `json:"debug"`
 }
 
-//XLogger 日志
+//XLogger log
 type XLogger struct {
 	zap.Logger
 	logConf *LogConf
 }
 
-//GormLogger Gorm日志对象
+//GormLogger Gorm log
 type GormLogger struct {
 }
 

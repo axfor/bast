@@ -40,10 +40,10 @@ var (
 	-install        			  安装开机启动服务
 	-uninstall  				  卸载开机启动服务
 	`
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon, isInstall bool
-	isUninstall, isForce                                                bool
-	flagConf, flagName                                                  string
-	app                                                                 *App
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon bool
+	isInstall, isUninstall, isForce, flagService             bool
+	flagConf, flagName, flagAppKey                           string
+	app                                                      *App
 )
 
 //App is application major data
@@ -60,6 +60,7 @@ type App struct {
 
 //init application
 func init() {
+	os.Chdir(AppDir())
 	parseCommandLine()
 	app = &App{Server: &http.Server{}, Router: httprouter.New()}
 	doHandle("OPTIONS", "/*filepath", nil)
@@ -86,8 +87,10 @@ func parseCommandLine() {
 	f.BoolVar(&isUninstall, "uninstall", false, "")
 	f.BoolVar(&isForce, "force", false, "")
 	f.BoolVar(&isInstall, "install", false, "")
+	f.BoolVar(&flagService, "service", false, "")
 	f.StringVar(&flagName, "name", "", "")
 	f.StringVar(&flagConf, "conf", "", "")
+	f.StringVar(&flagAppKey, "appkey", "", "")
 	f.Parse(os.Args[1:])
 	if len(os.Args) == 1 {
 		flagStart = true
@@ -109,7 +112,7 @@ func parseCommandLine() {
 	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall {
 		flagStart = false
 	}
-	parseConf(f)
+	confParse(f)
 }
 
 //BeforeHandle is before then request handler
@@ -274,6 +277,10 @@ func Command() bool {
 		start()
 		err = errors.New("start child process")
 		r = false
+	} else if flagService {
+		service()
+		err = errors.New("service child process")
+		r = false
 	} else if flagStop {
 		stop()
 		err = errors.New("stop child process")
@@ -300,21 +307,78 @@ func Command() bool {
 }
 
 func start() {
-	path := Conf()
-	fmt.Println("start=" + path)
-	cmd := exec.Command(os.Args[0], "-daemon", "-conf="+path)
+	path := ConfPath()
+	fmt.Println("start=" + path + ",master pid=" + strconv.Itoa(os.Getpid()))
+	cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+flagAppKey, "-conf="+path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Dir = AppDir()
 	cmd.Start()
 	if err := logPid(cmd.Process.Pid); err != nil {
+		logs.Err("start error log pid,", err)
 		fmt.Printf(err.Error())
 		cmd.Process.Kill()
 	}
 	if err := logMgr(); err != nil {
+		logs.Err("start error log mgr,", err)
 		fmt.Printf(err.Error())
 		cmd.Process.Kill()
 	}
 	os.Exit(0)
+}
+
+func service() {
+	if flagName == "" {
+		flagName = AppName()
+	}
+
+	service, err := sdaemon.New(flagName, flagName+" service")
+	if err != nil {
+		fmt.Println("install failed," + err.Error())
+		return
+	}
+	status, err := service.Run(&daemonExecutable{})
+	if err != nil {
+		fmt.Println("install failed," + err.Error())
+		return
+	}
+	fmt.Println("install info:" + status)
+	// os.Exit(0)
+}
+
+type daemonExecutable struct {
+}
+
+func (e *daemonExecutable) Start() {
+
+}
+
+func (e *daemonExecutable) Stop() {
+
+}
+
+func (e *daemonExecutable) Run() {
+	doService()
+}
+
+func doService() {
+	path := ConfPath()
+	logs.Info("service=" + path + ",master pid=" + strconv.Itoa(os.Getpid()))
+	cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+flagAppKey, "-conf="+path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Dir = AppDir()
+	cmd.Start()
+	if err := logPid(cmd.Process.Pid); err != nil {
+		logs.Err("start error log pid,", err)
+		fmt.Printf(err.Error())
+		cmd.Process.Kill()
+	}
+	if err := logMgr(); err != nil {
+		logs.Err("start error log mgr,", err)
+		fmt.Printf(err.Error())
+		cmd.Process.Kill()
+	}
 }
 
 func reload() {
@@ -369,14 +433,9 @@ func mgrPath() string {
 	return path
 }
 
-//Conf config path
-func Conf() string {
-	return flagConf
-}
-
 //AppDir app path
 func AppDir() string {
-	exPath := filepath.Dir(Conf())
+	exPath := filepath.Dir(os.Args[0])
 	return exPath
 }
 
@@ -386,21 +445,6 @@ func AppName() string {
 	fileSuffix := path.Ext(fn)              //获取文件后缀
 	fn = strings.TrimSuffix(fn, fileSuffix) //获取文件名
 	return fn
-}
-
-//parseConf parse config path
-func parseConf(f *flag.FlagSet) string {
-	exPath := filepath.Dir(os.Args[0])
-	fs := f.Lookup("conf")
-	if fs != nil {
-		flagConf = fs.Value.String()
-	}
-	// flag.StringVar(&conf, "conf", "", "")
-	if flagConf == "" {
-		cf := exPath + "/config.conf"
-		flagConf = cf
-	}
-	return flagConf
 }
 
 func sendSignal(sig os.Signal, path ...string) error {
@@ -425,14 +469,14 @@ func install() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
+	var agrs = []string{"-service", "-force", "-conf=" + flagConf}
 
-	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
+	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
 		fmt.Println("install failed," + err.Error())
 		return
 	}
-	status, err := service.Install(dependencies...)
+	status, err := service.Install(agrs...)
 	if err != nil {
 		fmt.Println("install failed," + err.Error())
 		return
@@ -444,8 +488,8 @@ func uninstall() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
-	service, err := sdaemon.New(flagName, flagName+" service", dependencies...)
+	// var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
+	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
 		fmt.Println("uninstall failed," + err.Error())
 		return
@@ -493,7 +537,14 @@ func logPid(pid int) error {
 }
 
 func logMgr() error {
-	cf := Conf()
+	cf := ConfPath()
+	var err error
+	// data, err := ioutil.ReadFile(cf)
+	// if err != nil {
+	// 	cf = err.Error()
+	// } else {
+	// 	cf = string(data)
+	// }
 	mgrPath := os.Args[0] + ".mgr"
 	mls := mgrList()
 	if mls != nil {
@@ -504,7 +555,6 @@ func logMgr() error {
 		}
 	}
 	var f *os.File
-	var err error
 	if isForce {
 		f, err = os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	} else {
@@ -596,7 +646,7 @@ func pidPath(path ...string) string {
 		pidPath = path[0]
 	}
 	if pidPath == "" {
-		pidPath = Conf() + ".pid"
+		pidPath = ConfPath() + ".pid"
 	} else {
 		pidPath += ".pid"
 	}
