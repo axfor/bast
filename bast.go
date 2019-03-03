@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,32 +39,40 @@ var (
 	-stop                         平滑停止
 	-reload                       平滑升级程序(可以与conf同时使用)
 	-conf=your path/config.conf   配置文件路径  
-	-install        			  安装开机启动服务
-	-uninstall  				  卸载开机启动服务
+	-install                      安装开机启动服务
+	-uninstall                    卸载开机启动服务
 	`
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon bool
-	isInstall, isUninstall, isForce, flagService             bool
-	flagConf, flagName, flagAppKey                           string
-	app                                                      *App
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon        bool
+	isInstall, isUninstall, isForce, flagService, isMaster, isClear bool
+	flagConf, flagName, flagAppKey, flagPipe                        string
+	flagPPid                                                        int
+	app                                                             *App
 )
 
 //App is application major data
 type App struct {
-	pool   sync.Pool
-	Router *httprouter.Router
-	Addr   string
-	Server *http.Server
-	Before BeforeHandle
-	After  AfterHandle
-	Debug  bool
-	Daemon bool
+	pool                                 sync.Pool
+	Router                               *httprouter.Router
+	Addr, pipeName                       string
+	Server                               *http.Server
+	Before                               BeforeHandle
+	After                                AfterHandle
+	Debug, Daemon, isCallCommand, runing bool
+	cmd                                  []work
+}
+
+type work struct {
+	key       string
+	cmd       *exec.Cmd
+	runing    bool
+	exitCount int
 }
 
 //init application
 func init() {
 	os.Chdir(AppDir())
+	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true}
 	parseCommandLine()
-	app = &App{Server: &http.Server{}, Router: httprouter.New()}
 	doHandle("OPTIONS", "/*filepath", nil)
 	app.pool.New = func() interface{} {
 		return &Context{}
@@ -88,9 +98,12 @@ func parseCommandLine() {
 	f.BoolVar(&isForce, "force", false, "")
 	f.BoolVar(&isInstall, "install", false, "")
 	f.BoolVar(&flagService, "service", false, "")
+	f.BoolVar(&isMaster, "master", false, "")
 	f.StringVar(&flagName, "name", "", "")
 	f.StringVar(&flagConf, "conf", "", "")
 	f.StringVar(&flagAppKey, "appkey", "", "")
+	f.StringVar(&flagPipe, "pipe", "", "")
+	f.IntVar(&flagPPid, "pid", 0, "")
 	f.Parse(os.Args[1:])
 	if len(os.Args) == 1 {
 		flagStart = true
@@ -109,8 +122,11 @@ func parseCommandLine() {
 	if isInstall {
 		flagDaemon = false
 	}
-	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall {
+	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
 		flagStart = false
+	}
+	if flagService {
+		isMaster = flagService
 	}
 	confParse(f)
 }
@@ -241,7 +257,7 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 
 //Run app
 func Run(addr string) {
-	if !Command() {
+	if !app.isCallCommand && !Command() {
 		return
 	}
 	defer clear()
@@ -256,27 +272,46 @@ func Debug(debug bool) {
 //doRun real run app
 func doRun(addr string) {
 	app.Addr = addr
-	logs.Info("app-runing-addr=" + app.Addr)
-	fmt.Println("app start")
-	err := app.ListenAndServe()
-	if err != nil {
-		fmt.Println("app start error=" + err.Error())
-		logs.Info("app-listenAndServe-error=" + err.Error()) //+ ",pid=" + strconv.Itoa(os.Getpid())
+	err := tryRun()
+	if err == nil {
+		logs.Info("addr=" + app.Addr)
+		fmt.Println("start")
+		err = app.ListenAndServe()
+		if err != nil {
+			fmt.Println("listenAndServe error=" + err.Error())
+			logs.Info("listenAndServe error=" + err.Error())
+			os.Exit(222)
+		}
+		fmt.Println("finish")
+		logs.Info("finish")
+	} else {
+		logs.Info("listen error=" + err.Error())
+		os.Exit(222)
 	}
-	fmt.Println("app finish")
-	logs.Info("app-finish")
+}
+
+func tryRun() error {
+	l, err := net.Listen("tcp", app.Addr)
+	if err != nil {
+		return err
+	}
+	l.Close()
+	l = nil
+	return nil
 }
 
 //Command Commandline args
 func Command() bool {
+	if app.isCallCommand {
+		return false
+	}
+	app.isCallCommand = true
 	// args := os.Args[1:]
 	// lg := len(args)
 	r := true
 	var err error
 	if flagStart {
-		start()
-		err = errors.New("start child process")
-		r = false
+		r, err = start()
 	} else if flagService {
 		service()
 		err = errors.New("service child process")
@@ -301,48 +336,143 @@ func Command() bool {
 		r = false
 	}
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err.Error())
 	}
 	return r
 }
 
-func start() {
+func start() (bool, error) {
+	if isMaster {
+		doStart()
+		checkWorkProcess()
+		return false, nil
+	}
 	path := ConfPath()
-	fmt.Println("start=" + path + ",master pid=" + strconv.Itoa(os.Getpid()))
-	cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+flagAppKey, "-conf="+path)
+	cmd := exec.Command(os.Args[0], "-master", "-start", "-conf="+path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = AppDir()
 	cmd.Start()
-	if err := logPid(cmd.Process.Pid); err != nil {
-		logs.Err("start error log pid,", err)
-		fmt.Printf(err.Error())
-		cmd.Process.Kill()
-	}
-	if err := logMgr(); err != nil {
-		logs.Err("start error log mgr,", err)
-		fmt.Printf(err.Error())
-		cmd.Process.Kill()
-	}
 	os.Exit(0)
+	return false, nil
 }
 
 func service() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-
 	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
-		fmt.Println("install failed," + err.Error())
+		logs.Info("service failed," + err.Error())
 		return
 	}
 	status, err := service.Run(&daemonExecutable{})
 	if err != nil {
-		fmt.Println("install failed," + err.Error())
+		logs.Info("service failed," + err.Error())
 		return
 	}
-	fmt.Println("install info:" + status)
+	logs.Info("service info:" + status)
+
+}
+
+func doService() {
+	doStart()
+	go checkWorkProcess()
+}
+
+func doStart() error {
+	appConfs := Confs()
+	path := ConfPath()
+	pid := strconv.Itoa(os.Getpid())
+	app.pipeName = pid
+	if flagService {
+		logs.Info("service=" + path + ",master pid=" + pid)
+	} else {
+		fmt.Println("start=" + path + ",master pid=" + pid)
+	}
+	app.cmd = []work{}
+	for _, c := range appConfs {
+		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-pid="+pid, "-appkey="+flagAppKey, "-conf="+path)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Dir = AppDir()
+		cmd.Start()
+		app.cmd = append(app.cmd, work{key: c.Key, cmd: cmd, runing: true})
+	}
+	if err := logPid(); err != nil {
+		logs.Err("start error log pid,", err)
+		if !flagService {
+			fmt.Println(err.Error())
+		}
+	}
+	return nil
+}
+
+func startWork(index int) *exec.Cmd {
+	w := app.cmd[index]
+	c := ConfWithKey(w.key)
+	if c != nil {
+		path := ConfPath()
+		pid := strconv.Itoa(os.Getpid())
+		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-pid="+pid, "-appkey="+flagAppKey, "-conf="+path)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Dir = AppDir()
+		cmd.Start()
+		if app.cmd == nil {
+			app.cmd = nil
+		}
+		app.cmd[index] = work{key: c.Key, cmd: cmd, runing: true}
+		logPid()
+		return cmd
+	}
+	return nil
+}
+
+//checkWorkProcess check work process stat
+func checkWorkProcess() {
+	c := make(chan struct{})
+	lg := len(app.cmd)
+	l := 0
+	for i := 0; i < lg; i++ {
+		w := app.cmd[i]
+		if w.runing {
+			go func(wc work) {
+				w.cmd.Wait()
+				c <- struct{}{}
+			}(w)
+			l++
+		}
+	}
+	for i := 0; i < l; i++ {
+		<-c
+		w := app.cmd[i]
+		exitCode := ""
+		if w.cmd.ProcessState != nil {
+			exitCode = strconv.Itoa(w.cmd.ProcessState.ExitCode())
+		}
+		if flagService {
+			logs.Error("has work process exited,exit code=" + exitCode)
+		} else {
+			fmt.Println("has work process exited,exit code=" + exitCode)
+		}
+		w.runing = false
+		if app.runing {
+			//exitCode != "222"
+			//has work process killed
+			//restart work process
+			// if cmp := startWork(i); cmp != nil {
+			// 	go func() {
+			// 		cmp.Wait()
+			// 		c <- struct{}{}
+			// 	}()
+			// 	i--
+			// }
+		} else {
+			break
+		}
+	}
+	clear()
 	// os.Exit(0)
 }
 
@@ -354,47 +484,38 @@ func (e *daemonExecutable) Start() {
 }
 
 func (e *daemonExecutable) Stop() {
-
+	app.runing = false
+	serviceStop()
 }
 
 func (e *daemonExecutable) Run() {
 	doService()
 }
 
-func doService() {
-	path := ConfPath()
-	logs.Info("service=" + path + ",master pid=" + strconv.Itoa(os.Getpid()))
-	cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+flagAppKey, "-conf="+path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = AppDir()
-	cmd.Start()
-	if err := logPid(cmd.Process.Pid); err != nil {
-		logs.Err("start error log pid,", err)
-		fmt.Printf(err.Error())
-		cmd.Process.Kill()
-	}
-	if err := logMgr(); err != nil {
-		logs.Err("start error log mgr,", err)
-		fmt.Printf(err.Error())
-		cmd.Process.Kill()
-	}
-}
-
 func reload() {
-	path := mgrPath()
-	fmt.Println("reload=" + path)
-	sendSignal(syscall.SIGINT, path)
+	pids := getWorkPids()
+	for _, pid := range pids {
+		sendSignal(syscall.SIGINT, pid)
+	}
 	time.Sleep(30 * time.Millisecond)
-	flagConf = path
 	start()
 }
 
+func serviceStop() {
+	pids := getWorkPids()
+	for _, pid := range pids {
+		sendSignal(syscall.SIGINT, pid)
+	}
+	// time.Sleep(10 * time.Millisecond)
+	clear()
+}
+
 func stop() {
-	path := mgrPath()
-	fmt.Println("stop=" + path)
-	sendSignal(syscall.SIGINT, path)
-	// fmt.Println("stop=" + path)
+	pids := getWorkPids()
+	for _, pid := range pids {
+		sendSignal(syscall.SIGINT, pid)
+	}
+	time.Sleep(30 * time.Millisecond)
 	os.Exit(0)
 }
 
@@ -442,20 +563,24 @@ func AppDir() string {
 //AppName  app name
 func AppName() string {
 	fn := path.Base(os.Args[0])
-	fileSuffix := path.Ext(fn)              //获取文件后缀
-	fn = strings.TrimSuffix(fn, fileSuffix) //获取文件名
+	fileSuffix := path.Ext(fn)
+	fn = strings.TrimSuffix(fn, fileSuffix)
 	return fn
 }
 
-func sendSignal(sig os.Signal, path ...string) error {
-	pid := getPid(path...)
-	pro, err := os.FindProcess(pid) //通过pid获取子进程
+func sendSignal(sig os.Signal, pid int) error {
+	pro, err := os.FindProcess(pid)
 	if err != nil {
 		return err
 	}
-	err = pro.Signal(sig) //给子进程发送信号使之结束
-	if err != nil {
-		return err
+	if runtime.GOOS == "windows" {
+		// pro.Signal(os.Interrupt)
+		pro.Kill()
+	} else {
+		err = pro.Signal(sig)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -476,30 +601,29 @@ func install() {
 		fmt.Println("install failed," + err.Error())
 		return
 	}
-	status, err := service.Install(agrs...)
+	_, err = service.Install(agrs...)
 	if err != nil {
 		fmt.Println("install failed," + err.Error())
 		return
 	}
-	fmt.Println("install info:" + status)
+	fmt.Println("install success")
 }
 
 func uninstall() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	// var dependencies = []string{"-start", "-force", "-conf=" + flagConf}
 	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
 		fmt.Println("uninstall failed," + err.Error())
 		return
 	}
-	status, err := service.Remove()
+	_, err = service.Remove()
 	if err != nil {
 		fmt.Println("uninstall failed," + err.Error())
 		return
 	}
-	fmt.Println("uninstall info:" + status)
+	fmt.Println("uninstall success")
 }
 
 func signalListen() {
@@ -508,7 +632,7 @@ func signalListen() {
 	signal.Notify(c)
 	for {
 		s := <-c
-		if s == syscall.SIGINT {
+		if s == syscall.SIGINT || (runtime.GOOS == "windows" && s == os.Interrupt) {
 			logs.Info("signal=" + s.String())
 			signal.Stop(c)
 			err := Shutdown(nil)
@@ -522,15 +646,24 @@ func signalListen() {
 	}
 }
 
-func logPid(pid int) error {
-	pidPath := pidPath()
-	f, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE, 0666)
+func logPid() error {
+	pidPath := os.Args[0] + ".pid"
+	f, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return errors.New("创建pid文件失败")
+		return errors.New("cannot be created pid file")
 	}
 	defer f.Close()
-	if _, err := f.Write([]byte(strconv.Itoa(pid))); err != nil {
-		return errors.New("写如pid文件失败")
+	pids := strconv.Itoa(os.Getpid()) + "|" + app.pipeName + ":"
+	for index, p := range app.cmd {
+		if p.runing {
+			if index > 0 {
+				pids += ","
+			}
+			pids += strconv.Itoa(p.cmd.Process.Pid)
+		}
+	}
+	if _, err := f.Write([]byte(pids)); err != nil {
+		return errors.New("cannot be write pid file")
 	}
 	f.Sync()
 	return nil
@@ -539,12 +672,6 @@ func logPid(pid int) error {
 func logMgr() error {
 	cf := ConfPath()
 	var err error
-	// data, err := ioutil.ReadFile(cf)
-	// if err != nil {
-	// 	cf = err.Error()
-	// } else {
-	// 	cf = string(data)
-	// }
 	mgrPath := os.Args[0] + ".mgr"
 	mls := mgrList()
 	if mls != nil {
@@ -618,25 +745,34 @@ func mgrList() []string {
 }
 
 func removePid() error {
-	pidPath := pidPath()
+	pidPath := os.Args[0] + ".pid"
 	return os.Remove(pidPath)
 }
 
-//getPid pid
-func getPid(path ...string) int {
-	ppath := pidPath(path...)
-	f, _ := os.Open(ppath)
+//getWorkPids work pids
+func getWorkPids() []int {
+	pidPath := os.Args[0] + ".pid"
+	f, _ := os.Open(pidPath)
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
-		return 0
+		return nil
 	}
-	p := string(data)
-	id, err := strconv.Atoi(p)
-	if err != nil {
-		return 0
+	c := string(data)
+	cs := strings.Split(c, ":")
+	c = cs[1]
+	cs = strings.Split(c, ",")
+	pids := []int{}
+	for _, v := range cs {
+		vv, err := strconv.Atoi(v)
+		if err == nil {
+			pids = append(pids, vv)
+		}
 	}
-	return id
+	if len(pids) > 0 {
+		return pids
+	}
+	return nil
 }
 
 //pidPath pid filename path
@@ -683,6 +819,10 @@ func GUID() string {
 
 //clear res
 func clear() {
+	if isClear {
+		return
+	}
+	isClear = true
 	logs.ClearLogger()
 	ids.IDClear()
 	removePid()
