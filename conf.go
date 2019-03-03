@@ -20,8 +20,9 @@ type ConfHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
-	frist *AppConf
-	Confs map[string]*AppConf
+	frist    *AppConf
+	rawConfs []AppConf
+	Confs    map[string]*AppConf
 }
 
 //AppConf  app config item
@@ -75,6 +76,7 @@ func ConfInit(appConf []AppConf) {
 	}
 	if confObj == nil {
 		confObj = &AppConfMgr{}
+		confObj.rawConfs = appConf
 		confObj.Confs = make(map[string]*AppConf)
 		for i := 0; i < lg; i++ {
 			c := &appConf[i]
@@ -111,6 +113,27 @@ func Conf() *AppConf {
 		if c != nil && ok {
 			return c
 		}
+	}
+	return nil
+}
+
+//ConfWithKey returns the key app config
+func ConfWithKey(key string) *AppConf {
+	appConf := ConfMgr()
+	if appConf != nil && appConf.Confs != nil {
+		c, ok := appConf.Confs[key]
+		if c != nil && ok {
+			return c
+		}
+	}
+	return nil
+}
+
+//Confs returns the all app config
+func Confs() []AppConf {
+	appConf := ConfMgr()
+	if appConf != nil && appConf.Confs != nil {
+		return appConf.rawConfs
 	}
 	return nil
 }
