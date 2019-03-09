@@ -106,7 +106,7 @@ func parseCommandLine() {
 	f.IntVar(&flagPPid, "pid", 0, "")
 	f.Parse(os.Args[1:])
 	if len(os.Args) == 1 {
-		flagStart = true
+		//flagStart = true
 	}
 	if flagName != "" {
 		isInstall = true
@@ -800,6 +800,7 @@ func Shutdown(ctx context.Context) error {
 		// 	//
 		// }
 	}
+	app.Server.SetKeepAlivesEnabled(false)
 	return app.Server.Shutdown(ctx)
 }
 

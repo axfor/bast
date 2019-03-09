@@ -12,6 +12,7 @@ func Benchmark_ID(t *testing.B) {
 			id := ID()
 			if id <= 0 {
 				t.Error(errors.New("error"))
+				break
 			}
 		}
 	})

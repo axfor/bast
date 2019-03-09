@@ -665,6 +665,20 @@ func (c *Context) URL() string {
 	return strings.Join([]string{c.BaseURL(), c.Request.RequestURI}, "")
 }
 
+//DefaultFileURL returns full file url
+//param:
+//	url is relative url
+func (c *Context) DefaultFileURL(url string) string {
+	if url != "" {
+		baseURL := c.Request.Header.Get("BaseUrl")
+		if baseURL != "" {
+			return baseURL + "f/" + url
+		}
+		return c.baseURL() + "/f/" + url
+	}
+	return ""
+}
+
 //BaseURL 获取请求的基URL
 //param:
 //	url 相对地址
