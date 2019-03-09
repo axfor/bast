@@ -6,10 +6,17 @@ package ids
 
 import "github.com/aixiaoxiang/bast/snowflake"
 
+var currentIDNode int64
+
 //ID cenerate id
 func ID() int64 {
-	n, _ := snowflake.NewNode(0)
+	n, _ := snowflake.NewNode(currentIDNode)
 	return n.Generate().Int64()
+}
+
+//SetCurrentIDNode set  current id node
+func SetCurrentIDNode(idNode int) {
+	currentIDNode = int64(idNode)
 }
 
 //IDWithNode  cenerate id

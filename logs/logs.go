@@ -29,9 +29,12 @@ var (
 
 //LogConf log config
 type LogConf struct {
-	OutPath string `json:"outPath"`
-	Level   string `json:"level"`
-	Debug   bool   `json:"debug"`
+	OutPath    string `json:"outPath"`
+	Level      string `json:"level"`
+	MaxSize    int    `json:"maxSize"`
+	MaxBackups int    `json:"maxBackups"`
+	MaxAge     int    `json:"maxAge"`
+	Debug      bool   `json:"debug"`
 }
 
 //XLogger log
@@ -67,6 +70,25 @@ func (*GormLogger) Print(v ...interface{}) {
 //LogInit 初始化日志库
 func LogInit(conf *LogConf) *XLogger {
 	if logger == nil {
+		if conf == nil {
+			conf = &LogConf{
+				OutPath:    "./logs.log",
+				Level:      "error",
+				MaxSize:    10,
+				MaxBackups: 5,
+				MaxAge:     28,
+				Debug:      false,
+			}
+		}
+		if conf.MaxSize <= 0 {
+			conf.MaxSize = 10
+		}
+		if conf.MaxBackups <= 0 {
+			conf.MaxSize = 5
+		}
+		if conf.MaxAge <= 0 {
+			conf.MaxAge = 28
+		}
 		l := logLevel(conf.Level)
 		var w zapcore.WriteSyncer
 		var core zapcore.Core
@@ -78,9 +100,9 @@ func LogInit(conf *LogConf) *XLogger {
 			}
 			w = zapcore.AddSync(&lumberjack.Logger{
 				Filename:   conf.OutPath,
-				MaxSize:    100, // megabytes
-				MaxBackups: 3,
-				MaxAge:     28, // days
+				MaxSize:    conf.MaxSize, // megabytes
+				MaxBackups: conf.MaxBackups,
+				MaxAge:     conf.MaxAge, // days
 			})
 			core = zapcore.NewCore(
 				zapcore.NewJSONEncoder(encoderConfig),

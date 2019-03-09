@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
 )
 
@@ -33,6 +34,7 @@ type AppConf struct {
 	FileDir string        `json:"fileDir"`
 	Debug   bool          `json:"debug"`
 	BaseURL string        `json:"baseUrl"`
+	IDNode  int           `json:"idNode"`
 	Log     *logs.LogConf `json:"log"`
 	Conf    interface{}   `json:"conf"`
 	Extend  string        `json:"extend"`
@@ -93,6 +95,10 @@ func ConfInit(appConf []AppConf) {
 		}
 		if confObj.frist == nil {
 			confObj.frist = &appConf[0]
+		}
+		//set default current id node
+		if confObj.frist != nil {
+			ids.SetCurrentIDNode(confObj.frist.IDNode)
 		}
 	}
 }
