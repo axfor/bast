@@ -73,10 +73,15 @@ func init() {
 	os.Chdir(AppDir())
 	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true}
 	parseCommandLine()
-	doHandle("OPTIONS", "/*filepath", nil)
 	app.pool.New = func() interface{} {
 		return &Context{}
 	}
+	//init config
+	if ConfOK() {
+		logs.LogInit(LogConf())
+	}
+	//register http OPTIONS router
+	doHandle("OPTIONS", "/*filepath", nil)
 }
 
 //parseCommandLine parse commandLine
@@ -175,7 +180,7 @@ func FileServer(pattern string, root string) {
 	app.Router.Handler("GET", pattern+"*filepath", NoLookDirHandler(http.StripPrefix(pattern, http.FileServer(http.Dir(root)))))
 }
 
-//NoLookDirHandler 不启用目录浏览
+//NoLookDirHandler disable directory look
 func NoLookDirHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") {
@@ -255,13 +260,32 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 	})
 }
 
-//Run app
+//Run use addr to start app
 func Run(addr string) {
 	if !app.isCallCommand && !Command() {
 		return
 	}
 	defer clear()
 	doRun(addr)
+}
+
+//Serve use config to start app
+func Serve() bool {
+	c := Conf()
+	if !app.isCallCommand && !Command() || c == nil {
+		return false
+	}
+	defer clear()
+	Debug(c.Debug)
+	Run(c.Addr)
+	return true
+}
+
+// TryServe try to check the configuration can be turned on
+// 1: is control commandline
+// 2: config is ok
+func TryServe() bool {
+	return Command() && ConfOK()
 }
 
 //Debug set app debug status

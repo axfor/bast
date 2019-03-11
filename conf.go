@@ -21,23 +21,25 @@ type ConfHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
-	frist    *AppConf
-	rawConfs []AppConf
-	Confs    map[string]*AppConf
+	frist              *AppConf
+	rawConfs           []AppConf
+	callBackConfHandle bool
+	Confs              map[string]*AppConf
 }
 
 //AppConf  app config item
 type AppConf struct {
-	Key     string        `json:"key"`
-	Name    string        `json:"name"`
-	Addr    string        `json:"addr"`
-	FileDir string        `json:"fileDir"`
-	Debug   bool          `json:"debug"`
-	BaseURL string        `json:"baseUrl"`
-	IDNode  int           `json:"idNode"`
-	Log     *logs.LogConf `json:"log"`
-	Conf    interface{}   `json:"conf"`
-	Extend  string        `json:"extend"`
+	Key                string        `json:"key"`
+	Name               string        `json:"name"`
+	Addr               string        `json:"addr"`
+	FileDir            string        `json:"fileDir"`
+	Debug              bool          `json:"debug"`
+	BaseURL            string        `json:"baseUrl"`
+	IDNode             int           `json:"idNode"`
+	Log                *logs.LogConf `json:"log"`
+	Conf               interface{}   `json:"conf"`
+	Extend             string        `json:"extend"`
+	CallBackConfHandle bool          `json:"-"`
 }
 
 //ConfItem default db config
@@ -87,6 +89,7 @@ func ConfInit(appConf []AppConf) {
 				if err != nil {
 					continue
 				}
+				c.CallBackConfHandle = true
 			}
 			if c.Key == flagAppKey && confObj.frist == nil {
 				confObj.frist = c
@@ -99,6 +102,9 @@ func ConfInit(appConf []AppConf) {
 		//set default current id node
 		if confObj.frist != nil {
 			ids.SetCurrentIDNode(confObj.frist.IDNode)
+		}
+		if confHandle != nil {
+			confObj.callBackConfHandle = true
 		}
 	}
 }
@@ -184,4 +190,16 @@ func confParse(f *flag.FlagSet) string {
 //RegistConfHandle handler  conf
 func RegistConfHandle(f ConfHandle) {
 	confHandle = f
+	if confObj == nil || confObj.callBackConfHandle {
+		return
+	}
+	cf := confObj.rawConfs
+	if cf == nil {
+		return
+	}
+	lg := len(cf)
+	if lg > 0 {
+		confObj = nil
+		ConfInit(cf)
+	}
 }
