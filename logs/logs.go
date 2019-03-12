@@ -383,7 +383,7 @@ var gromLogFormatter = func(values ...interface{}) (messages []zap.Field, levels
 
 		messages = []zap.Field{}
 		messages = append(messages, zap.String("source", source))
-		messages = append(messages, zap.String("currentTime", currentTime))
+		messages = append(messages, zap.String("time", currentTime))
 
 		if level == "sql" {
 			levels = "sql"

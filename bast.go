@@ -416,7 +416,7 @@ func doStart() error {
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
-		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-pid="+pid, "-appkey="+flagAppKey, "-conf="+path)
+		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
@@ -437,8 +437,8 @@ func startWork(index int) *exec.Cmd {
 	c := ConfWithKey(w.key)
 	if c != nil {
 		path := ConfPath()
-		pid := strconv.Itoa(os.Getpid())
-		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-pid="+pid, "-appkey="+flagAppKey, "-conf="+path)
+		// pid := strconv.Itoa(os.Getpid())
+		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
