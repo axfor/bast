@@ -3,6 +3,7 @@ package bast
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,12 +13,16 @@ import (
 )
 
 var (
-	confObj    *AppConfMgr
-	confHandle ConfHandle
+	confObj          *AppConfMgr
+	confHandle       ConfHandle
+	confFinishHandle ConfFinishHandle
 )
 
 //ConfHandle handler  conf
 type ConfHandle func(appConf *AppConf) error
+
+//ConfFinishHandle finished handler conf
+type ConfFinishHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
@@ -65,6 +70,7 @@ func ConfMgr() *AppConfMgr {
 		err = json.Unmarshal(data, &appConf)
 		if err != nil {
 			logs.Err("conf mgr init error", err)
+			fmt.Println("conf mgr init error:" + err.Error())
 			return nil
 		}
 		ConfInit(appConf)
@@ -84,6 +90,11 @@ func ConfInit(appConf []AppConf) {
 		confObj.Confs = make(map[string]*AppConf)
 		for i := 0; i < lg; i++ {
 			c := &appConf[i]
+			if c.FileDir != "" {
+				if c.FileDir[len(c.FileDir)-1] != '/' {
+					c.FileDir += "/"
+				}
+			}
 			if confHandle != nil {
 				err := confHandle(c)
 				if err != nil {
@@ -106,6 +117,9 @@ func ConfInit(appConf []AppConf) {
 		if confHandle != nil {
 			confObj.callBackConfHandle = true
 		}
+	}
+	if confFinishHandle != nil && confObj != nil {
+		confFinishHandle(confObj.frist)
 	}
 }
 
@@ -188,8 +202,9 @@ func confParse(f *flag.FlagSet) string {
 }
 
 //RegistConfHandle handler  conf
-func RegistConfHandle(f ConfHandle) {
-	confHandle = f
+func RegistConfHandle(handle ConfHandle, finish ConfFinishHandle) {
+	confHandle = handle
+	confFinishHandle = finish
 	if confObj == nil || confObj.callBackConfHandle {
 		return
 	}
