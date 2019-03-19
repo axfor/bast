@@ -6,7 +6,7 @@ package ids
 
 import "github.com/aixiaoxiang/bast/snowflake"
 
-var currentIDNode int64
+var currentIDNode uint8
 
 //ID cenerate id
 func ID() int64 {
@@ -15,18 +15,18 @@ func ID() int64 {
 }
 
 //SetCurrentIDNode set  current id node
-func SetCurrentIDNode(idNode int) {
-	currentIDNode = int64(idNode)
+func SetCurrentIDNode(idNode uint8) {
+	currentIDNode = idNode
 }
 
 //IDWithNode  cenerate id
-func IDWithNode(node int64) int64 {
+func IDWithNode(node uint8) int64 {
 	n, _ := snowflake.NewNode(node)
 	return n.Generate().Int64()
 }
 
 //IDStr  cenerate id
-func IDStr(node ...int64) string {
+func IDStr(node ...uint8) string {
 	if node != nil {
 		n, _ := snowflake.NewNode(node[0])
 		return n.Generate().String()

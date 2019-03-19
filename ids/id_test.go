@@ -2,7 +2,6 @@
 package ids
 
 import (
-	"errors"
 	"testing"
 )
 
@@ -11,7 +10,7 @@ func Benchmark_ID(t *testing.B) {
 		for pb.Next() {
 			id := ID()
 			if id <= 0 {
-				t.Error(errors.New("error"))
+				t.Errorf("error=%d", id)
 				break
 			}
 		}

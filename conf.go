@@ -40,7 +40,7 @@ type AppConf struct {
 	FileDir            string        `json:"fileDir"`
 	Debug              bool          `json:"debug"`
 	BaseURL            string        `json:"baseUrl"`
-	IDNode             int           `json:"idNode"`
+	IDNode             uint8         `json:"idNode"`
 	Log                *logs.LogConf `json:"log"`
 	Conf               interface{}   `json:"conf"`
 	Extend             string        `json:"extend"`
@@ -202,9 +202,11 @@ func confParse(f *flag.FlagSet) string {
 }
 
 //RegistConfHandle handler  conf
-func RegistConfHandle(handle ConfHandle, finish ConfFinishHandle) {
+func RegistConfHandle(handle ConfHandle, finish ...ConfFinishHandle) {
 	confHandle = handle
-	confFinishHandle = finish
+	if finish != nil {
+		confFinishHandle = finish[0]
+	}
 	if confObj == nil || confObj.callBackConfHandle {
 		return
 	}

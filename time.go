@@ -74,6 +74,12 @@ func Nows() *Time {
 	return &tt
 }
 
+//NowsNil returns the nil *bast.time.
+func NowsNil() *Time {
+	var t Time
+	return &t
+}
+
 //NowTime returns the current local *time.
 func NowTime() *Time {
 	tt := Time{Time: time.Now()}

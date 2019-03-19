@@ -670,11 +670,14 @@ func (c *Context) URL() string {
 //	url is relative url
 func (c *Context) DefaultFileURL(url string) string {
 	if url != "" {
+		if url[0] != 'f' {
+			url = "f/" + url
+		}
 		baseURL := c.Request.Header.Get("BaseUrl")
 		if baseURL != "" {
-			return baseURL + "f/" + url
+			return baseURL + url
 		}
-		return c.baseURL() + "/f/" + url
+		return c.baseURL() + "/" + url
 	}
 	return ""
 }

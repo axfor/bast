@@ -64,7 +64,7 @@ var gNode *Node
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
 // IDs
-func NewNode(node int64) (*Node, error) {
+func NewNode(node uint8) (*Node, error) {
 	if gNode == nil {
 		gmux.Lock()
 		defer gmux.Unlock()
@@ -78,15 +78,13 @@ func NewNode(node int64) (*Node, error) {
 		timeShift = NodeBits + StepBits
 		nodeShift = StepBits
 
-		if node < 0 || node > nodeMax {
+		if node < 0 || int64(node) > nodeMax {
 			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 		}
 
 		gNode = &Node{
-			// time: 0,
-			node: node,
+			node: int64(node),
 			ni:   &nodeItem{},
-			// step: 0,
 		}
 
 	}
@@ -99,9 +97,9 @@ func (n *Node) Generate() ID {
 	newItem := &nodeItem{time: n.ni.time, step: n.ni.step}
 	ok := false
 	for {
-		nowTime = time.Now().UnixNano() / 1000000
 		newItem.time = n.ni.time
 		newItem.step = n.ni.step
+		nowTime = time.Now().UnixNano() / 1000000
 		if newItem.time == nowTime {
 			newItem.step = (newItem.step + 1) & stepMask
 			if newItem.step == 0 {
@@ -118,7 +116,8 @@ func (n *Node) Generate() ID {
 		ok = atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)), uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
 		if ok {
 			preNi.temp = nil
-			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | (n.ni.step)))
+			preNi = nil
+			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | newItem.step))
 		}
 	}
 }
