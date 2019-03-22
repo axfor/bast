@@ -113,11 +113,12 @@ func (n *Node) Generate() ID {
 		newItem.time = nowTime
 		newItem.temp = newItem
 		preNi := n.ni
+		stop := newItem.step
 		ok = atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)), uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
 		if ok {
 			preNi.temp = nil
 			preNi = nil
-			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | newItem.step))
+			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | stop))
 		}
 	}
 }
