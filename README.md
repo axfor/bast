@@ -168,7 +168,7 @@ bast.Run(":9999")
 # Distributed system unique ID    
 
 > [snowflake-golang](https://github.com/bwmarrin/snowflake)  or [snowflake-twitter](https://github.com/twitter/snowflake)   
-base snowflake-golang, 4x+ performance optimization。 5000000 -> 20000000
+base snowflake-golang, 2x ~ 4x+ performance optimization。 non-parallel 5000000 -> 20000000 and parallel  2x+ 
 
 > use
 
@@ -186,9 +186,10 @@ physics cpu ``` 4 ```
 
     go test   -bench=. -cpu=12 -benchmem 
     goos: darwin
-    goarch: amd64
-    Benchmark_ID-12         20000000                93.2 ns/op            32 B/op          1 allocs/op
+    goarch: amd64 
+    Benchmark_ID-12                 20000000               112 ns/op              16 B/op          1 allocs/op
+    Benchmark_Parallel_ID-12        10000000               199 ns/op              16 B/op          1 allocs/op
     PASS
-    ok      _/xxx/bast/ids 1.970s
+    ok      _/xxx/bast/ids 4.688s
 
 ```

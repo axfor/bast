@@ -32,6 +32,7 @@ const (
 	SerInvalidParamError    = -50000 // invalid param  code
 	SerInvalidUserAuthorize = -60000 // invalid user authorize  code
 	SerExist                = -70000 // exist code
+	SerNotExist             = -80000 // not exist code
 )
 
 //Context is app Context

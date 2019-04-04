@@ -11,7 +11,7 @@ var currentIDNode uint8
 //ID cenerate id
 func ID() int64 {
 	n, _ := snowflake.NewNode(currentIDNode)
-	return n.Generate().Int64()
+	return int64(n.Generate())
 }
 
 //SetCurrentIDNode set  current id node

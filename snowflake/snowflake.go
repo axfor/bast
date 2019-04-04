@@ -45,14 +45,13 @@ func (j JSONSyntaxError) Error() string {
 // A Node struct holds the basic information needed for a snowflake generator
 // node
 type Node struct {
-	node int64
-	ni   *nodeItem
+	node int
+	ni   unsafe.Pointer
 }
 
 type nodeItem struct {
 	time int64
 	step int64
-	temp *nodeItem
 }
 
 // An ID is a custom type used for a snowflake ID.  This is used so we can
@@ -81,10 +80,10 @@ func NewNode(node uint8) (*Node, error) {
 		if node < 0 || int64(node) > nodeMax {
 			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 		}
-
+		n := nodeItem{}
 		gNode = &Node{
-			node: int64(node),
-			ni:   &nodeItem{},
+			node: int(node),
+			ni:   unsafe.Pointer(&n),
 		}
 
 	}
@@ -93,32 +92,32 @@ func NewNode(node uint8) (*Node, error) {
 
 // Generate creates and returns a unique snowflake ID
 func (n *Node) Generate() ID {
-	var nowTime int64
-	newItem := &nodeItem{time: n.ni.time, step: n.ni.step}
+	var now, stop int64
 	ok := false
+	newItem := &nodeItem{}
 	for {
-		newItem.time = n.ni.time
-		newItem.step = n.ni.step
-		nowTime = time.Now().UnixNano() / 1000000
-		if newItem.time == nowTime {
+		pv := atomic.LoadPointer(&n.ni)
+		ni := (*nodeItem)(pv)
+		newItem.time = ni.time
+		newItem.step = ni.step
+		now = time.Now().UnixNano() / 1000000
+		if newItem.time == now {
 			newItem.step = (newItem.step + 1) & stepMask
 			if newItem.step == 0 {
-				for nowTime <= n.ni.time {
-					nowTime = time.Now().UnixNano() / 1000000
+				for now <= ni.time {
+					now = time.Now().UnixNano() / 1000000
 				}
 			}
 		} else {
 			newItem.step = 0
 		}
-		newItem.time = nowTime
-		newItem.temp = newItem
-		preNi := n.ni
-		stop := newItem.step
-		ok = atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)), uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
+		newItem.time = now
+		stop = newItem.step
+		// ok := atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)),
+		// uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
+		ok = atomic.CompareAndSwapPointer(&n.ni, pv, unsafe.Pointer(newItem))
 		if ok {
-			preNi.temp = nil
-			preNi = nil
-			return ID(((nowTime-Epoch)<<timeShift | (n.node << nodeShift) | stop))
+			return ID(((now-Epoch)<<timeShift | (int64(n.node) << nodeShift) | stop))
 		}
 	}
 }
@@ -188,9 +187,9 @@ func (f *ID) UnmarshalJSON(b []byte) error {
 //Clear gNode
 func Clear() {
 	if gNode != nil {
-		if gNode.ni != nil {
-			gNode.ni.temp = nil
-		}
+		// if gNode.ni != nil {
+		// 	gNode.ni.temp = nil
+		// }
 		gNode = nil
 	}
 }
