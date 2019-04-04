@@ -47,6 +47,11 @@ var (
 	flagConf, flagName, flagAppKey, flagPipe                        string
 	flagPPid                                                        int
 	app                                                             *App
+	t, f                                                            = true, false
+	//T *bool
+	T = &t
+	//F *bool
+	F = &f
 )
 
 //App is application major data
