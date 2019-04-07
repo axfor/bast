@@ -2,10 +2,48 @@
 package ids
 
 import (
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
 
+func Test_ID(t *testing.T) {
+	numProcs := 1000 * runtime.GOMAXPROCS(0)
+	start := time.Now().UnixNano() / 1000000
+	rn := 20000000
+	nn := rn
+	rn = rn / numProcs
+	cds := make(chan int64, nn)
+	ds := make(map[int64]struct{}, nn)
+	var wg sync.WaitGroup
+	wg.Add(numProcs)
+	for index := 0; index < numProcs; index++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < rn; j++ {
+				id := ID()
+				if id <= start {
+					t.Errorf("error=%d", id)
+					break
+				}
+				cds <- id
+			}
+		}()
+	}
+	wg.Wait()
+	for index := 0; index < nn; index++ {
+		id := <-cds
+		_, ok := ds[id]
+		if ok {
+			t.Errorf("exist=%d,%d", id, len(ds))
+			break
+		}
+		ds[id] = struct{}{}
+	}
+	// t.Fatalf("finish-e=%d,%d", len(ds), numProcs)
+
+}
 func Benchmark_ID(b *testing.B) {
 	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
