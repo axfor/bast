@@ -23,16 +23,19 @@ import (
 
 //const code
 const (
-	SerError                = 0      // error code
-	SerOK                   = 1      // ok code
-	SerDBError              = -10000 // db error code
-	SerNoDataError          = -20000 // no data error code
-	SerSignOutError         = -30000 // user sign out error code
-	SerUserNotExistError    = -40000 // user not exist code
-	SerInvalidParamError    = -50000 // invalid param  code
-	SerInvalidUserAuthorize = -60000 // invalid user authorize  code
-	SerExist                = -70000 // exist code
-	SerNotExist             = -80000 // not exist code
+	SerError                = 0       // error code
+	SerOK                   = 1       // ok code
+	SerDBError              = -10000  // db error code
+	SerNoDataError          = -20000  // no data error code
+	SerSignOutError         = -30000  // user sign out error code
+	SerUserNotExistError    = -40000  // user not exist code
+	SerInvalidParamError    = -50000  // invalid param  code
+	SerInvalidUserAuthorize = -60000  // invalid user authorize  code
+	SerExist                = -70000  // exist code
+	SerNotExist             = -80000  // not exist code
+	SerTry                  = -99999  // please try code
+	SerMustFailed           = -111111 // must failed code
+	SerFailed               = -222222 // failed code
 )
 
 //Context is app Context
