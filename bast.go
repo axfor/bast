@@ -167,15 +167,15 @@ func (app *App) ListenAndServe() error {
 // Post registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Post(pattern string, f func(ctx *Context)) {
-	doHandle("POST", pattern, f)
+func Post(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("POST", pattern, f, authorization...)
 }
 
 // Get registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Get(pattern string, f func(ctx *Context)) {
-	doHandle("GET", pattern, f)
+func Get(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("GET", pattern, f, authorization...)
 }
 
 // FileServer registers the handler function for the given pattern
@@ -208,7 +208,11 @@ func NoLookDirHandler(h http.Handler) http.Handler {
 // doHandle registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func doHandle(method, pattern string, f func(ctx *Context)) {
+func doHandle(method, pattern string, f func(ctx *Context), authorization ...bool) {
+	auth := false
+	if authorization != nil {
+		auth = authorization[0]
+	}
 	//app.Router.HandlerFunc(method,pattern)
 	app.Router.Handle(method, pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		logs.Info(r.Method + ":" + r.RequestURI + "->start")
@@ -237,6 +241,7 @@ func doHandle(method, pattern string, f func(ctx *Context)) {
 				ctx.ResponseWriter = w
 				ctx.Out = w
 				ctx.Params = ps
+				ctx.Authorization = auth
 				defer func() {
 					if err := recover(); err != nil {
 						errMsg := fmt.Sprintf("%s", err)

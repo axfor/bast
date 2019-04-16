@@ -36,6 +36,7 @@ const (
 	SerTry                  = -99999  // please try code
 	SerMustFailed           = -111111 // must failed code
 	SerFailed               = -222222 // failed code
+	SerAuthorizationFailed  = -888888 // authorization failed code
 )
 
 //Context is app Context
@@ -54,6 +55,10 @@ type Context struct {
 	Params httprouter.Params
 	//isParseForm Parse tag
 	isParseForm bool
+	//Authorization is need authorization
+	Authorization bool
+	//IsAuthorization is authorization finish?
+	IsAuthorization bool
 }
 
 //Msgs 响应消息基本结构
@@ -754,6 +759,8 @@ func (c *Context) Reset() {
 	c.Out = nil
 	c.Params = nil
 	c.isParseForm = false
+	c.Authorization = false
+	c.IsAuthorization = false
 }
 
 /******log method **********/
