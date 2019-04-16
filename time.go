@@ -17,11 +17,12 @@ type Time struct {
 }
 
 //MarshalJSON JSON MarshalJSON
-func (t *Time) MarshalJSON() ([]byte, error) {
+func (t Time) MarshalJSON() ([]byte, error) {
 	stamp := "\"\""
-	if t != nil && !t.IsZero() {
+	if !t.IsZero() {
 		stamp = fmt.Sprintf("\"%s\"", t.Time.Format("2006-01-02 15:04:05"))
 	}
+
 	return []byte(stamp), nil
 }
 
@@ -192,9 +193,9 @@ func DatesByTime(t time.Time) *Date {
 }
 
 //MarshalJSON JSON MarshalJSON
-func (t *Date) MarshalJSON() ([]byte, error) {
+func (t Date) MarshalJSON() ([]byte, error) {
 	stamp := "\"\""
-	if t != nil && !t.IsZero() {
+	if !t.IsZero() {
 		stamp = fmt.Sprintf("\"%s\"", t.Time.Format("2006-01-02"))
 	}
 	return []byte(stamp), nil
