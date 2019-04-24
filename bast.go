@@ -3,12 +3,10 @@
 package bast
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -32,22 +30,23 @@ import (
 )
 
 var (
-	usageline = `帮助:
-	-h | -help                    显示帮助
-	-develop                      以后开发模式启动(开发过程中配置)
-	-start                        以后台启动(可以与conf同时使用)
-	-stop                         平滑停止
-	-reload                       平滑升级程序(可以与conf同时使用)
-	-conf=your path/config.conf   配置文件路径  
-	-install                      安装开机启动服务
-	-uninstall                    卸载开机启动服务
+	usageline = `help:
+	-h | -help                    show help
+	-develop                      run in develop(develop environment)
+	-start                        run in background
+	-stop                         graceful for stop
+	-reload                       graceful for reload
+	-migration                    migration or initial system
+	-conf=your path/config.conf   config path(default is ./config.conf)
+	-install                      install to service
+	-uninstall                    uninstall for service
 	`
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon        bool
-	isInstall, isUninstall, isForce, flagService, isMaster, isClear bool
-	flagConf, flagName, flagAppKey, flagPipe                        string
-	flagPPid                                                        int
-	app                                                             *App
-	t, f                                                            = true, false
+	flagDevelop, flagStart, flagStop, flagReload, flagDaemon                     bool
+	isInstall, isUninstall, isForce, flagService, isMaster, isClear, isMigration bool
+	flagConf, flagName, flagAppKey, flagPipe                                     string
+	flagPPid                                                                     int
+	app                                                                          *App
+	t, f                                                                         = true, false
 	//T *bool
 	T = &t
 	//F *bool
@@ -62,6 +61,7 @@ type App struct {
 	Server                               *http.Server
 	Before                               BeforeHandle
 	After                                AfterHandle
+	Migration                            MigrationHandle
 	Debug, Daemon, isCallCommand, runing bool
 	cmd                                  []work
 }
@@ -109,11 +109,13 @@ func parseCommandLine() {
 	f.BoolVar(&isInstall, "install", false, "")
 	f.BoolVar(&flagService, "service", false, "")
 	f.BoolVar(&isMaster, "master", false, "")
+	f.BoolVar(&isMigration, "migration", false, "")
 	f.StringVar(&flagName, "name", "", "")
 	f.StringVar(&flagConf, "conf", "", "")
 	f.StringVar(&flagAppKey, "appkey", "", "")
 	f.StringVar(&flagPipe, "pipe", "", "")
 	f.IntVar(&flagPPid, "pid", 0, "")
+
 	f.Parse(os.Args[1:])
 	if len(os.Args) == 1 {
 		//flagStart = true
@@ -147,14 +149,22 @@ type BeforeHandle func(ctx *Context) error
 //AfterHandle is after then request handler
 type AfterHandle func(ctx *Context) error
 
-//Before 请求前处理程序
+//MigrationHandle is migration handler
+type MigrationHandle func() error
+
+//Before the request
 func Before(f BeforeHandle) {
 	app.Before = f
 }
 
-//After 请求前处理程序
+//After the request
 func After(f AfterHandle) {
 	app.After = f
+}
+
+//Migration set migration handler
+func Migration(f MigrationHandle) {
+	app.Migration = f
 }
 
 // ListenAndServe see net/http ListenAndServe
@@ -236,9 +246,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				ctx := app.pool.Get().(*Context)
 				ctx.Reset()
 				defer app.pool.Put(ctx)
-				ctx.Request = r
 				ctx.In = r
-				ctx.ResponseWriter = w
 				ctx.Out = w
 				ctx.Params = ps
 				ctx.Authorization = auth
@@ -263,7 +271,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				logs.Info(r.Method + ":" + r.RequestURI + "->end")
 			}
 		} else {
-			logs.Info(r.Method + ":" + r.RequestURI + "->end=notAllowed")
+			logs.Info(r.Method + ":" + r.RequestURI + "->end=Not allowed")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			fmt.Fprint(w, http.StatusText(http.StatusMethodNotAllowed))
 		}
@@ -340,10 +348,17 @@ func Command() bool {
 		return false
 	}
 	app.isCallCommand = true
-	// args := os.Args[1:]
-	// lg := len(args)
 	r := true
 	var err error
+	if isMigration {
+		if app.Migration != nil {
+			err := app.Migration()
+			if err != nil {
+				fmt.Println("migration error,detail:" + err.Error())
+				return r
+			}
+		}
+	}
 	if flagStart {
 		r, err = start()
 	} else if flagService {
@@ -553,41 +568,6 @@ func stop() {
 	os.Exit(0)
 }
 
-func mgrPath() string {
-	path := ""
-	pos := 0
-	mls := mgrList()
-	if mls != nil {
-		lg := len(mls)
-		if lg > 0 {
-			if lg > 1 {
-				fmt.Print("位置列表：\n")
-				for i := 0; i < lg; i++ {
-					fmt.Printf("    %d：", i+1)
-					fmt.Println(mls[i])
-				}
-				fmt.Print("请输入位置序号：")
-				for {
-					_, err := fmt.Scanf("%d", &pos)
-					if err != nil || pos <= 0 || pos > lg {
-						fmt.Print("请输入正确位置序号：")
-						continue
-					}
-					pos--
-					break
-				}
-				path = mls[pos]
-				mls = append(mls[:pos], mls[pos+1:]...)
-			} else {
-				path = mls[0]
-				mls = nil
-			}
-		}
-	}
-	syncMgr(mls)
-	return path
-}
-
 //AppDir app path
 func AppDir() string {
 	exPath := filepath.Dir(os.Args[0])
@@ -608,7 +588,7 @@ func sendSignal(sig os.Signal, pid int) error {
 		return err
 	}
 	if runtime.GOOS == "windows" {
-		// pro.Signal(os.Interrupt)
+		//TO DO  use pipe
 		pro.Kill()
 	} else {
 		err = pro.Signal(sig)
@@ -701,81 +681,6 @@ func logPid() error {
 	}
 	f.Sync()
 	return nil
-}
-
-func logMgr() error {
-	cf := ConfPath()
-	var err error
-	mgrPath := os.Args[0] + ".mgr"
-	mls := mgrList()
-	if mls != nil {
-		for _, v := range mls {
-			if v == cf {
-				return nil
-			}
-		}
-	}
-	var f *os.File
-	if isForce {
-		f, err = os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	} else {
-		f, err = os.OpenFile(mgrPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	}
-	if err != nil {
-		return errors.New("创建mgrFile文件失败")
-	}
-	defer f.Close()
-	if _, err := f.Write([]byte(cf + "\n")); err != nil {
-		return errors.New("写如mgrFile文件失败")
-	}
-	f.Sync()
-	return nil
-}
-
-func syncMgr(appList []string) error {
-	mgrPath := os.Args[0] + ".mgr"
-	cf := ""
-	if appList != nil {
-		for _, v := range appList {
-			cf += v + "\n"
-		}
-	}
-	// fmt.Println(mgrPath + "=" + cf)
-	f, err := os.OpenFile(mgrPath, os.O_WRONLY|os.O_TRUNC, 0666)
-	if err != nil {
-		return errors.New("同步mgrFile文件失败")
-	}
-	defer f.Close()
-	if _, err := f.WriteString(cf); err != nil {
-		return errors.New("同步mgrFile文件失败")
-	}
-	f.Sync()
-	return nil
-}
-
-func mgrList() []string {
-	if isForce {
-		return nil
-	}
-	mgrPath := os.Args[0] + ".mgr"
-	f, err := os.OpenFile(mgrPath, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil
-	}
-	buf := bufio.NewReader(f)
-	ls := []string{}
-	for {
-		line, err := buf.ReadString('\n')
-		line = strings.TrimSpace(line)
-		if line != "" {
-			ls = append(ls, line)
-		}
-		if err != nil {
-			if err == io.EOF {
-				return ls
-			}
-		}
-	}
 }
 
 func removePid() error {

@@ -142,6 +142,18 @@ bast.Run(":9999")
     ./aibast -uninstall
 
 ```
+ 
+
+#### -migration 
+ 
+` migration or initial system `
+
+``` bash
+
+    ./aibast -migration
+
+```
+
 
 
 ### Such as

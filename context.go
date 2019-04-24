@@ -41,15 +41,11 @@ const (
 
 //Context is app Context
 type Context struct {
-	//Request A Request represents an HTTP request received by a server
+	//In A Request represents an HTTP request received by a server
 	// or to be sent by a client.
-	Request *http.Request
-	//In is Request alias
 	In *http.Request
-	//ResponseWriter A ResponseWriter interface is used by an HTTP handler to
+	//Out A ResponseWriter interface is used by an HTTP handler to
 	// construct an HTTP response.
-	ResponseWriter http.ResponseWriter
-	//Out is ResponseWriter alias
 	Out http.ResponseWriter
 	//Params httprouter Params,/:name/:age
 	Params httprouter.Params
@@ -61,19 +57,19 @@ type Context struct {
 	IsAuthorization bool
 }
 
-//Msgs 响应消息基本结构
+//Msgs is response message
 type Msgs struct {
 	Code int    `gorm:"-" json:"code"`
 	Msg  string `gorm:"-" json:"msg"`
 }
 
-//Data 响应数据基本结构
+//Data is response data
 type Data struct {
 	Msgs `gorm:"-"`
 	Data interface{} `gorm:"-"  json:"data"`
 }
 
-//DataPage  响应分页数据基本结构
+//DataPage is Pagination data
 type DataPage struct {
 	Msgs
 	Data  interface{} `gorm:"-"  json:"data"`
@@ -83,22 +79,30 @@ type DataPage struct {
 
 /******Output method **********/
 
-//JSON 输出JSON格式对象
+//JSON  output JSON Data to client
+//v data
 func (c *Context) JSON(v interface{}) {
 	c.JSONWithCodeMsg(v, SerOK, "")
 }
 
-//JSONWithCode 输出JSON格式对象
+//JSONWithCode output JSON Data to client
+//v data
+//code is message code
 func (c *Context) JSONWithCode(v interface{}, code int) {
 	c.JSONWithCodeMsg(v, code, "")
 }
 
-//JSONWithMsg 输出JSON格式对象
+//JSONWithMsg output JSON Data to client
+//v data
+//msg is string message
 func (c *Context) JSONWithMsg(v interface{}, msg string) {
 	c.JSONWithCodeMsg(v, SerOK, msg)
 }
 
-//JSONWithCodeMsg 输出JSON格式对象
+//JSONWithCodeMsg output JSON Data to client
+//v data
+//code is message code
+//msg is string message
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 	_, isData := v.(*Data)
 	if !isData {
@@ -120,17 +124,17 @@ func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 	}
 }
 
-//JSONWithPage 输出分页的JSON格式对象
+//JSONWithPage output Pagination JSON Data to client
 func (c *Context) JSONWithPage(v interface{}, page, total int) {
 	c.JSONWithPageAndCodeMsg(v, page, total, SerOK, "")
 }
 
-//JSONWithPageAndCode 输出分页的JSON格式对象
+//JSONWithPageAndCode output Pagination JSON Data to client
 func (c *Context) JSONWithPageAndCode(v interface{}, page, total, code int, msg string) {
 	c.JSONWithPageAndCodeMsg(v, page, total, code, msg)
 }
 
-//JSONWithPageAndCodeMsg 输出分页的JSON格式对象
+//JSONWithPageAndCodeMsg output Pagination JSON Data to client
 func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, msg string) {
 	d := &DataPage{}
 	d.Data = v
@@ -143,7 +147,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 	d = nil
 }
 
-//JSONResult 通用型输出JSON格式对象
+//JSONResult output Data to client
 func (c *Context) JSONResult(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -151,15 +155,13 @@ func (c *Context) JSONResult(v interface{}) {
 		c.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	c.ResponseWriter.Header().Set("Content-Type", "application/json")
-	c.ResponseWriter.Write(data)
-	// fmt.Fprintln(c.ResponseWriter, data)
+	c.Out.Header().Set("Content-Type", "application/json")
+	c.Out.Write(data)
 	data = nil
 }
 
-//Success 输出成功的JSON格式对象
-//param:
-//	msg is success 消息
+//Success output success result to client
+//	msg is success message
 func (c *Context) Success(msg string) {
 	d := &Msgs{}
 	d.Code = SerOK
@@ -232,14 +234,14 @@ func (c *Context) NoData(msg ...string) {
 //param:
 //	data 数据
 func (c *Context) Say(data []byte) {
-	c.ResponseWriter.Write(data)
+	c.Out.Write(data)
 }
 
 //SayStr 输出字符串信息
 //param:
 //	str 消息
 func (c *Context) SayStr(str string) {
-	c.ResponseWriter.Write([]byte(str))
+	c.Out.Write([]byte(str))
 }
 
 //SendFile 发送文件
@@ -256,9 +258,9 @@ func (c *Context) SendFile(fileName string, rawFileName ...string) {
 	raw := fileName
 	if rawFileName != nil {
 		raw = rawFileName[0]
-		c.ResponseWriter.Header().Set("Content-Disposition", "attachment; filename="+raw)
+		c.Out.Header().Set("Content-Disposition", "attachment; filename="+raw)
 	}
-	fs.ServeHTTP(c.ResponseWriter, r)
+	fs.ServeHTTP(c.Out, r)
 	r = nil
 	fs = nil
 }
@@ -286,15 +288,15 @@ func (c *Context) StrToJSON(str string, obj interface{}) error {
 //param:
 //	statusCode 状态代码
 func (c *Context) StatusCode(statusCode int) {
-	c.ResponseWriter.WriteHeader(statusCode)
-	c.ResponseWriter.Write([]byte(http.StatusText(statusCode)))
+	c.Out.WriteHeader(statusCode)
+	c.Out.Write([]byte(http.StatusText(statusCode)))
 }
 
 //******get resuest data method **********/
 
 //GetRawStr 获取请求体并转化为字符串
 func (c *Context) GetRawStr() string {
-	body, err := ioutil.ReadAll(c.Request.Body)
+	body, err := ioutil.ReadAll(c.In.Body)
 	if err != nil {
 		return ""
 	}
@@ -463,25 +465,25 @@ func (c *Context) GetBoolWithDefault(key string, defaults bool) bool {
 //	key 键值
 func (c *Context) GetStrings(key string) []string {
 	c.ParseForm()
-	return c.Request.Form[key]
+	return c.In.Form[key]
 }
 
 //Form 获取请求参数(含表单与URL)
 func (c *Context) Form() url.Values {
 	c.ParseForm()
-	return c.Request.Form
+	return c.In.Form
 }
 
 //PostForm 获取表单请求参数
 func (c *Context) PostForm() url.Values {
 	c.ParseForm()
-	return c.Request.PostForm
+	return c.In.PostForm
 }
 
 //Query 获取请求URL参数
 func (c *Context) Query() url.Values {
 	c.ParseForm()
-	return c.Request.URL.Query()
+	return c.In.URL.Query()
 }
 
 //GetInt 获取请求信息里面指定参数值并转化位int
@@ -573,7 +575,7 @@ func (c *Context) Pages() (page int, total int, pageRow int) {
 //param:
 //	obj 外部对象
 func (c *Context) JSONObj(obj interface{}) error {
-	return c.JSONDecode(c.Request.Body, obj)
+	return c.JSONDecode(c.In.Body, obj)
 }
 
 //GetJSON 将当前请求流JSON格式转化为对象
@@ -610,7 +612,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 //param:
 //	obj 外部对象
 func (c *Context) XMLObj(obj interface{}) error {
-	return c.XMLDecode(c.Request.Body, obj)
+	return c.XMLDecode(c.In.Body, obj)
 }
 
 //GetXML 将当前请求流XML格式转化为对象
@@ -644,7 +646,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
 
 //MapObj 将请求流转化为字典对象
 func (c *Context) MapObj() map[string]interface{} {
-	body, _ := ioutil.ReadAll(c.Request.Body)
+	body, _ := ioutil.ReadAll(c.In.Body)
 	result := make(map[string]interface{})
 	err := json.Unmarshal([]byte(body), &result)
 	if err == nil {
@@ -657,7 +659,7 @@ func (c *Context) MapObj() map[string]interface{} {
 func (c *Context) ParseForm() {
 	//没解析则解析
 	if !c.isParseForm {
-		c.Request.ParseForm()
+		c.In.ParseForm()
 		c.isParseForm = true
 	}
 }
@@ -666,12 +668,12 @@ func (c *Context) ParseForm() {
 //param:
 //	maxMemory 最大内存大小
 func (c *Context) ParseMultipartForm(maxMemory int64) error {
-	return c.Request.ParseMultipartForm(maxMemory)
+	return c.In.ParseMultipartForm(maxMemory)
 }
 
 //URL 获取请求的完整URL
 func (c *Context) URL() string {
-	return strings.Join([]string{c.BaseURL(), c.Request.RequestURI}, "")
+	return strings.Join([]string{c.BaseURL(), c.In.RequestURI}, "")
 }
 
 //DefaultFileURL returns full file url
@@ -682,7 +684,7 @@ func (c *Context) DefaultFileURL(url string) string {
 		if url[0] != 'f' {
 			url = "f/" + url
 		}
-		baseURL := c.Request.Header.Get("BaseUrl")
+		baseURL := c.In.Header.Get("BaseUrl")
 		if baseURL != "" {
 			return baseURL + url
 		}
@@ -695,7 +697,7 @@ func (c *Context) DefaultFileURL(url string) string {
 //param:
 //	url 相对地址
 func (c *Context) BaseURL(url ...string) string {
-	baseURL := c.Request.Header.Get("BaseUrl")
+	baseURL := c.In.Header.Get("BaseUrl")
 	if baseURL != "" {
 		return baseURL + strings.Join(url, "")
 	}
@@ -705,15 +707,15 @@ func (c *Context) BaseURL(url ...string) string {
 //baseURL 获取请求的基URL-内部使用
 func (c *Context) baseURL() string {
 	scheme := "http://"
-	if c.Request.TLS != nil {
+	if c.In.TLS != nil {
 		scheme = "https://"
 	}
-	return strings.Join([]string{scheme, c.Request.Host}, "")
+	return strings.Join([]string{scheme, c.In.Host}, "")
 }
 
 //Redirect 重定向
 func (c *Context) Redirect(url string) {
-	http.Redirect(c.ResponseWriter, c.Request, url, http.StatusFound)
+	http.Redirect(c.Out, c.In, url, http.StatusFound)
 }
 
 //ClientIP return request client ip
@@ -726,20 +728,20 @@ func (c *Context) ClientIP() string {
 		}
 		return realIP
 	}
-	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+	if ip, _, err := net.SplitHostPort(c.In.RemoteAddr); err == nil {
 		return ip
 	}
-	return c.Request.RemoteAddr
+	return c.In.RemoteAddr
 }
 
 // Proxys return request proxys
 // if request header has X-Real-IP, return it
 // if request header has X-Forwarded-For, return it
 func (c *Context) Proxys() []string {
-	if v := c.Request.Header.Get("X-Real-IP"); v != "" {
+	if v := c.In.Header.Get("X-Real-IP"); v != "" {
 		return strings.Split(v, ",")
 	}
-	if v := c.Request.Header.Get("X-Forwarded-For"); v != "" {
+	if v := c.In.Header.Get("X-Forwarded-For"); v != "" {
 		return strings.Split(v, ",")
 	}
 	return []string{}
@@ -747,15 +749,13 @@ func (c *Context) Proxys() []string {
 
 //TemporaryRedirect 重定向(307重定向，可以避免POST重定向后数据丢失)
 func (c *Context) TemporaryRedirect(url string) {
-	http.Redirect(c.ResponseWriter, c.Request, url, http.StatusTemporaryRedirect)
+	http.Redirect(c.Out, c.In, url, http.StatusTemporaryRedirect)
 }
 
 //Reset 重置请求与响应对象
 func (c *Context) Reset() {
 	c.isParseForm = false
-	c.Request = nil
 	c.In = nil
-	c.ResponseWriter = nil
 	c.Out = nil
 	c.Params = nil
 	c.isParseForm = false

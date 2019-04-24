@@ -39,12 +39,11 @@ func FileUploadHandle(dir string) func(ctx *Context) {
 
 //FileUpload 客户端上传多个文件,并带有请求参数
 func FileUpload(ctx *Context, dir string) {
-	//ctx.OutJSON(realFiles, SerOK, "上传成功")
 	realFiles, err := FileHandleUpload(ctx, dir, false)
 	if err != nil {
 		ctx.JSONWithCode(err.Error(), SerError)
 	} else {
-		ctx.JSONWithCodeMsg(realFiles, SerOK, "上传成功")
+		ctx.JSONWithCodeMsg(realFiles, SerOK, "upload sucess")
 	}
 }
 
@@ -54,14 +53,14 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 	err := ctx.ParseMultipartForm(32 << 40) //最大内存为64M
 	if err != nil {
 		ctx.I("/files/upload-fileHandleUpload->parseMultipartForm-err=" + err.Error())
-		return nil, errors.New("上传格式不对")
+		return nil, errors.New("Invalid file forma")
 	}
-	mp := ctx.Request.MultipartForm
+	mp := ctx.In.MultipartForm
 	if mp == nil {
-		return nil, errors.New("上传格式不对")
+		return nil, errors.New("Invalid file forma")
 	}
 	if mp.File == nil || len(mp.File) == 0 {
-		return nil, errors.New("没有上传文件")
+		return nil, errors.New("Not to upload files")
 	}
 	//m5 := md5.New()
 	var realFiles []FileInfo
@@ -81,7 +80,7 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 			}
 			file, err := f.Open()
 			if err != nil {
-				return nil, errors.New("上传失败")
+				return nil, errors.New("upload error")
 			}
 			defer file.Close()
 			//fn += m5FileName
@@ -101,19 +100,17 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 			if !exist {
 				err := os.Mkdir(dir, os.ModePerm)
 				if err != nil {
-					return nil, errors.New("文件夹不存在")
+					return nil, errors.New("Directory does not exist")
 				}
 			}
 			writer, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0666)
 			if err != nil {
-				//ctx.OutJSON("服务无法创建文件", SerError)
-				return nil, errors.New("服务无法创建文件")
+				return nil, errors.New("Failed to create file")
 			}
 			defer writer.Close()
 			io.Copy(writer, file)
 		}
 	}
-	//ctx.OutJSON(realFiles, SerOK, "上传成功")
 	return realFiles, nil
 }
 

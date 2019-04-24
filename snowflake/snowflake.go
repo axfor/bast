@@ -5,7 +5,6 @@ package snowflake
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -33,19 +32,10 @@ var (
 	nodeShift       = uint8(StepBits)
 )
 
-// A JSONSyntaxError is returned from UnmarshalJSON if an invalid ID is provided.
-type JSONSyntaxError struct{ original []byte }
-
-func (j JSONSyntaxError) Error() string {
-	return fmt.Sprintf("invalid snowflake ID %q", string(j.original))
-}
-
-// Create a map for decoding Base58.  This speeds up the process tremendously.
-
 // A Node struct holds the basic information needed for a snowflake generator
 // node
 type Node struct {
-	node int
+	node int64
 	ni   unsafe.Pointer
 }
 
@@ -62,7 +52,6 @@ var gmux sync.Mutex
 var gNode *Node
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
-// IDs
 func NewNode(node uint8) (*Node, error) {
 	if gNode == nil {
 		gmux.Lock()
@@ -82,16 +71,20 @@ func NewNode(node uint8) (*Node, error) {
 		}
 		n := nodeItem{}
 		gNode = &Node{
-			node: int(node),
+			node: int64(node),
 			ni:   unsafe.Pointer(&n),
 		}
-
 	}
 	return gNode, nil
 }
 
 // Generate creates and returns a unique snowflake ID
 func (n *Node) Generate() ID {
+	return ID(n.GenerateWithInt64())
+}
+
+// GenerateWithInt64 creates and returns a unique snowflake ID
+func (n *Node) GenerateWithInt64() int64 {
 	var now, stop int64
 	ok := false
 	newItem := &nodeItem{}
@@ -113,11 +106,9 @@ func (n *Node) Generate() ID {
 		}
 		newItem.time = now
 		stop = newItem.step
-		// ok := atomic.CompareAndSwapUintptr((*uintptr)(unsafe.Pointer(&n.ni)),
-		// uintptr(unsafe.Pointer(n.ni)), uintptr(unsafe.Pointer(newItem)))
 		ok = atomic.CompareAndSwapPointer(&n.ni, pv, unsafe.Pointer(newItem))
 		if ok {
-			return ID(((now-Epoch)<<timeShift | (int64(n.node) << nodeShift) | stop))
+			return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
 		}
 	}
 }
@@ -160,36 +151,9 @@ func (f ID) Step() int64 {
 	return int64(f) & stepMask
 }
 
-// MarshalJSON returns a json byte array string of the snowflake ID.
-func (f ID) MarshalJSON() ([]byte, error) {
-	buff := make([]byte, 0, 22)
-	buff = append(buff, '"')
-	buff = strconv.AppendInt(buff, int64(f), 10)
-	buff = append(buff, '"')
-	return buff, nil
-}
-
-// UnmarshalJSON converts a json byte array of a snowflake ID into an ID type.
-func (f *ID) UnmarshalJSON(b []byte) error {
-	if len(b) < 3 || b[0] != '"' || b[len(b)-1] != '"' {
-		return JSONSyntaxError{b}
-	}
-
-	i, err := strconv.ParseInt(string(b[1:len(b)-1]), 10, 64)
-	if err != nil {
-		return err
-	}
-
-	*f = ID(i)
-	return nil
-}
-
 //Clear gNode
 func Clear() {
 	if gNode != nil {
-		// if gNode.ni != nil {
-		// 	gNode.ni.temp = nil
-		// }
 		gNode = nil
 	}
 }

@@ -11,7 +11,7 @@ var currentIDNode uint8
 //ID cenerate id
 func ID() int64 {
 	n, _ := snowflake.NewNode(currentIDNode)
-	return int64(n.Generate())
+	return n.GenerateWithInt64()
 }
 
 //SetCurrentIDNode set  current id node
@@ -22,7 +22,7 @@ func SetCurrentIDNode(idNode uint8) {
 //IDWithNode  cenerate id
 func IDWithNode(node uint8) int64 {
 	n, _ := snowflake.NewNode(node)
-	return n.Generate().Int64()
+	return n.GenerateWithInt64()
 }
 
 //IDStr  cenerate id
@@ -31,7 +31,7 @@ func IDStr(node ...uint8) string {
 		n, _ := snowflake.NewNode(node[0])
 		return n.Generate().String()
 	}
-	n, _ := snowflake.NewNode(0)
+	n, _ := snowflake.NewNode(currentIDNode)
 	return n.Generate().String()
 }
 
