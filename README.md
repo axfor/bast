@@ -78,13 +78,13 @@ bast.Run(":9999")
 
 # CommandLine
 
-### If Your program name is ``` aibast ```
+### If Your program name is ``` Aibast ```
 
 #### -h | -help
 
 ``` bash
 
-    ./aibast -h
+    ./Aibast -h
 
 ```
 
@@ -92,7 +92,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -start
+    ./Aibast -start
 
 ```
 
@@ -100,7 +100,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -stop
+    ./Aibast -stop
 
 ```
 
@@ -110,7 +110,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -reload
+    ./Aibast -reload
 
 ```
 
@@ -118,7 +118,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -conf=your path/config.conf 
+    ./Aibast -conf=your path/config.conf 
 
 ```
 
@@ -130,7 +130,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -install
+    ./Aibast -install
 
 ```
 
@@ -139,7 +139,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -uninstall
+    ./Aibast -uninstall
 
 ```
  
@@ -150,7 +150,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./aibast -migration
+    ./Aibast -migration
 
 ```
 
@@ -163,7 +163,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./aibast -start -conf=./config.conf 
+    ./Aibast -start -conf=./config.conf 
 
 ```
 
@@ -173,7 +173,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./aibast -install
+    ./Aibast -install
 
 ```
 
