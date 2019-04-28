@@ -180,9 +180,7 @@ bast.Run(":9999")
 # Distributed system unique ID    
 
 > [snowflake-golang](https://github.com/bwmarrin/snowflake)  or [snowflake-twitter](https://github.com/twitter/snowflake)   
-base snowflake-golang, 2x ~ 4x+ performance optimization。 
-  1、non-parallel 5000000 -> 20000000 
-  2、parallel  2x+ 5000000 -> 10000000 
+ 
 
 > use  
 

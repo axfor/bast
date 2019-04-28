@@ -24,19 +24,20 @@ var (
 	// Remember, you have a total 22 bits to share between Node/Step
 	StepBits uint8 = 14
 
-	nodeMax   int64 = -1 ^ (-1 << NodeBits)
-	nodeMask        = int64(nodeMax << StepBits)
-	stepMask  int64 = -1 ^ (-1 << StepBits)
-	timeShift       = uint8(NodeBits + StepBits)
-	nodeShift       = uint8(StepBits)
+	nodeMax   = int64(-1 ^ (-1 << NodeBits))
+	nodeMask  = int64(nodeMax << StepBits)
+	stepMask  = int64(-1 ^ (-1 << StepBits))
+	timeShift = uint8(NodeBits + StepBits)
+	nodeShift = uint8(StepBits)
 )
 
 // A Node struct holds the basic information needed for a snowflake generator
 // node
 type Node struct {
-	node  int64
-	ni    unsafe.Pointer
-	epoch time.Time
+	nodeVal int64
+	node    int64
+	ni      unsafe.Pointer
+	epoch   time.Time
 }
 
 type nodeItem struct {
@@ -49,6 +50,7 @@ type nodeItem struct {
 type ID int64
 
 var gmux sync.Mutex
+
 var gNode *Node
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
@@ -59,13 +61,6 @@ func NewNode(node uint8) (*Node, error) {
 		if gNode != nil {
 			return gNode, nil
 		}
-		// re-calc in case custom NodeBits or StepBits were set
-		nodeMax = -1 ^ (-1 << NodeBits)
-		nodeMask = nodeMax << StepBits
-		stepMask = -1 ^ (-1 << StepBits)
-		timeShift = NodeBits + StepBits
-		nodeShift = StepBits
-
 		if node < 0 || int64(node) > nodeMax {
 			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 		}
@@ -77,6 +72,7 @@ func NewNode(node uint8) (*Node, error) {
 			// add time.Duration to curTime to make sure we use the monotonic clock if available
 			epoch: curTime.Add(time.Unix(Epoch/1000, (Epoch%1000)*1000000).Sub(curTime)),
 		}
+		gNode.nodeVal = gNode.node << nodeShift
 	}
 	return gNode, nil
 }
@@ -91,17 +87,19 @@ func (n *Node) GenerateWithInt64() int64 {
 	var now, stop int64
 	ok := false
 	newItem := &nodeItem{}
+	var ni *nodeItem
+	var p unsafe.Pointer
 	for {
-		pv := atomic.LoadPointer(&n.ni)
-		ni := (*nodeItem)(pv)
-		newItem.time = ni.time
-		newItem.step = ni.step
+		p = atomic.LoadPointer(&n.ni)
+		ni = (*nodeItem)(p)
+		// newItem.time = ni.time
+		// newItem.step = ni.step
 		//non-monotonic clock
 		//now = time.Now().UnixNano() / 1000000
 		//monotonic clock
 		now = time.Since(n.epoch).Nanoseconds() / 1000000
-		if newItem.time == now {
-			newItem.step = (newItem.step + 1) & stepMask
+		if ni.time == now {
+			newItem.step = (ni.step + 1) & stepMask
 			if newItem.step == 0 {
 				for now <= ni.time {
 					//non-monotonic clock
@@ -116,12 +114,12 @@ func (n *Node) GenerateWithInt64() int64 {
 		}
 		newItem.time = now
 		stop = newItem.step
-		ok = atomic.CompareAndSwapPointer(&n.ni, pv, unsafe.Pointer(newItem))
+		ok = atomic.CompareAndSwapPointer(&n.ni, p, unsafe.Pointer(newItem))
 		if ok {
 			//non-monotonic clock
-			// return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
+			//return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
 			//monotonic clock
-			return int64((now<<timeShift | (n.node << nodeShift) | stop))
+			return int64(now<<timeShift | n.nodeVal | stop)
 		}
 	}
 }

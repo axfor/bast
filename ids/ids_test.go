@@ -55,14 +55,10 @@ func Benchmark_ID(b *testing.B) {
 
 func Benchmark_Parallel_ID(t *testing.B) {
 	t.ReportAllocs()
-	t.ResetTimer()
+	// t.ResetTimer()
 	t.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			id := ID()
-			if id <= 0 {
-				t.Errorf("error=%d", id)
-				break
-			}
+			ID()
 		}
 	})
 }
