@@ -193,17 +193,17 @@ base snowflake-golang, 2x ~ 4x+ performance optimization。
 
 ```
 
-> benchmark test ``` go test   -bench=. -cpu=12 -benchmem ```   
+> benchmark test ``` go test  -bench=. -benchmem  ./ids```   
 physics cpu ``` 4 ```
 
 ``` bash
 
-    go test   -bench=. -cpu=12 -benchmem 
+    go test   -bench=. -benchmem  ./ids
     goos: darwin
     goarch: amd64 
-    Benchmark_ID-12              20000000    112 ns/op      16 B/op     1 allocs/op
-    Benchmark_Parallel_ID-12     10000000    199 ns/op      16 B/op     1 allocs/op
+    Benchmark_ID-4              20000000    72.1 ns/op       16 B/op     1 allocs/op
+    Benchmark_Parallel_ID-4     10000000    150 ns/op        16 B/op     1 allocs/op
     PASS
-    ok      _/xxx/bast/ids 4.688s
+    ok      github.com/aixiaoxiang/bast/ids 10.126s
 
 ```

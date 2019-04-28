@@ -3,7 +3,6 @@
 package snowflake
 
 import (
-	"encoding/binary"
 	"errors"
 	"strconv"
 	"sync"
@@ -35,8 +34,9 @@ var (
 // A Node struct holds the basic information needed for a snowflake generator
 // node
 type Node struct {
-	node int64
-	ni   unsafe.Pointer
+	node  int64
+	ni    unsafe.Pointer
+	epoch time.Time
 }
 
 type nodeItem struct {
@@ -70,9 +70,12 @@ func NewNode(node uint8) (*Node, error) {
 			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 		}
 		n := nodeItem{}
+		var curTime = time.Now()
 		gNode = &Node{
 			node: int64(node),
 			ni:   unsafe.Pointer(&n),
+			// add time.Duration to curTime to make sure we use the monotonic clock if available
+			epoch: curTime.Add(time.Unix(Epoch/1000, (Epoch%1000)*1000000).Sub(curTime)),
 		}
 	}
 	return gNode, nil
@@ -93,12 +96,19 @@ func (n *Node) GenerateWithInt64() int64 {
 		ni := (*nodeItem)(pv)
 		newItem.time = ni.time
 		newItem.step = ni.step
-		now = time.Now().UnixNano() / 1000000
+		//non-monotonic clock
+		//now = time.Now().UnixNano() / 1000000
+		//monotonic clock
+		now = time.Since(n.epoch).Nanoseconds() / 1000000
 		if newItem.time == now {
 			newItem.step = (newItem.step + 1) & stepMask
 			if newItem.step == 0 {
 				for now <= ni.time {
-					now = time.Now().UnixNano() / 1000000
+					//non-monotonic clock
+					// now = time.Now().UnixNano() / 1000000
+					//monotonic clock
+					now = time.Since(n.epoch).Nanoseconds() / 1000000
+
 				}
 			}
 		} else {
@@ -108,7 +118,10 @@ func (n *Node) GenerateWithInt64() int64 {
 		stop = newItem.step
 		ok = atomic.CompareAndSwapPointer(&n.ni, pv, unsafe.Pointer(newItem))
 		if ok {
-			return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
+			//non-monotonic clock
+			// return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
+			//monotonic clock
+			return int64((now<<timeShift | (n.node << nodeShift) | stop))
 		}
 	}
 }
@@ -121,19 +134,6 @@ func (f ID) Int64() int64 {
 // String returns a string of the snowflake ID
 func (f ID) String() string {
 	return strconv.FormatInt(int64(f), 10)
-}
-
-// Bytes returns a byte slice of the snowflake ID
-func (f ID) Bytes() []byte {
-	return []byte(f.String())
-}
-
-// IntBytes returns an array of bytes of the snowflake ID, encoded as a
-// big endian integer.
-func (f ID) IntBytes() [8]byte {
-	var b [8]byte
-	binary.BigEndian.PutUint64(b[:], uint64(f))
-	return b
 }
 
 // Time returns an int64 unix timestamp of the snowflake ID time
