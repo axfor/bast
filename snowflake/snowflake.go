@@ -50,7 +50,6 @@ type nodeItem struct {
 type ID int64
 
 var gmux sync.Mutex
-
 var gNode *Node
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
@@ -117,7 +116,7 @@ func (n *Node) GenerateWithInt64() int64 {
 		ok = atomic.CompareAndSwapPointer(&n.ni, p, unsafe.Pointer(newItem))
 		if ok {
 			//non-monotonic clock
-			//return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
+			// return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
 			//monotonic clock
 			return int64(now<<timeShift | n.nodeVal | stop)
 		}

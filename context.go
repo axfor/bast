@@ -77,8 +77,6 @@ type DataPage struct {
 	Total int         `gorm:"-"  json:"total"`
 }
 
-/******Output method **********/
-
 //JSON  output JSON Data to client
 //v data
 func (c *Context) JSON(v interface{}) {
@@ -170,17 +168,17 @@ func (c *Context) Success(msg string) {
 	d = nil
 }
 
-//Failed 输出错误的JSON格式对象
+//Failed  output failed result to client
 //param:
-//	msg is fail 消息
-//	err error 消息
+//	msg is fail message
+//	err error
 func (c *Context) Failed(msg string, err ...error) {
 	c.FailResult(msg, SerError, err...)
 }
 
-//SignOutError 输出用户登出信息
+//SignOutError output user signout to client
 //param:
-//	msg is fail 消息
+//	msg message
 func (c *Context) SignOutError(msg string) {
 	c.FailResult(msg, SerSignOutError)
 }
@@ -595,7 +593,6 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 		return err
 	}
 	err = json.Unmarshal(body, obj)
-	// logs.Debug("JSONDecode=" + string(body))
 	if err != nil {
 		if app.Debug {
 			logs.Debug("JSONDecode-Err=" + err.Error() + ",detail=" + string(body))
@@ -791,21 +788,19 @@ func (c *Context) Err(msg string, err error) {
 	logs.E(msg)
 }
 
-/******ID method **********/
-
-//ID 快捷ID生成
+//ID return a ID
 func (c *Context) ID() int64 {
 	return ids.ID()
 }
 
-/******GUID method **********/
-
-//GUID 快捷创建一个GUID
+//GUID return a GUID
 func (c *Context) GUID() string {
 	return guid.GUID()
 }
 
-//Exist 判断文件夹是否存在
+// Exist returns a boolean indicating whether the error is known to
+// report that a file or directory does not exist. It is satisfied by
+// ErrNotExist as well as some syscall errors.
 func (c *Context) Exist(path string) bool {
 	return PathExist(path)
 }

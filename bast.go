@@ -294,6 +294,7 @@ func Serve() bool {
 		return false
 	}
 	defer clear()
+
 	Debug(c.Debug)
 	Run(c.Addr)
 	return true
@@ -303,7 +304,11 @@ func Serve() bool {
 // 1: is control commandline
 // 2: config is ok
 func TryServe() bool {
-	return Command() && ConfOK()
+	ok := Command() && ConfOK()
+	// defer func() {
+	// 	fmt.Printf("finish=%v\r\n", ok)
+	// }()
+	return ok
 }
 
 //Debug set app debug status
@@ -317,18 +322,19 @@ func doRun(addr string) {
 	err := tryRun()
 	if err == nil {
 		logs.Info("addr=" + app.Addr)
-		fmt.Println("start")
+		// fmt.Println("start")
 		err = app.ListenAndServe()
 		if err != nil {
 			fmt.Println("listenAndServe error=" + err.Error())
 			logs.Info("listenAndServe error=" + err.Error())
-			os.Exit(222)
+			os.Exit(-1)
 		}
-		fmt.Println("finish")
+		// fmt.Println("finish")
 		logs.Info("finish")
 	} else {
+		// fmt.Println("listen error=" + err.Error())
 		logs.Info("listen error=" + err.Error())
-		os.Exit(222)
+		os.Exit(-1)
 	}
 }
 
@@ -355,7 +361,7 @@ func Command() bool {
 			err := app.Migration()
 			if err != nil {
 				fmt.Println("migration error,detail:" + err.Error())
-				return r
+				return false
 			}
 		}
 	}
@@ -363,29 +369,29 @@ func Command() bool {
 		r, err = start()
 	} else if flagService {
 		service()
-		err = errors.New("service child process")
+		// err = errors.New("service child process")
 		r = false
 	} else if flagStop {
 		stop()
-		err = errors.New("stop child process")
+		// err = errors.New("stop child process")
 		r = false
 	} else if flagReload {
 		reload()
-		err = errors.New("inside child process for reload")
+		// err = errors.New("inside child process for reload")
 		r = false
 	} else if flagDaemon {
 		daemon()
 	} else if isInstall {
-		err = errors.New("install service")
+		// err = errors.New("install service")
 		install()
 		r = false
 	} else if isUninstall {
-		err = errors.New("uninstall service")
+		// err = errors.New("uninstall service")
 		uninstall()
 		r = false
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		// fmt.Println(err.Error())
 	}
 	return r
 }
@@ -402,7 +408,8 @@ func start() (bool, error) {
 	cmd.Stderr = os.Stderr
 	cmd.Dir = AppDir()
 	cmd.Start()
-	os.Exit(0)
+	time.Sleep(200 * time.Microsecond)
+	// os.Exit(0)
 	return false, nil
 }
 
@@ -437,13 +444,13 @@ func doStart() error {
 	if flagService {
 		logs.Info("service=" + path + ",master pid=" + pid)
 	} else {
-		fmt.Println("start=" + path + ",master pid=" + pid)
+		// fmt.Println("start=" + path + ",master pid=" + pid)
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
 		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		// cmd.Stdout = os.Stdout
+		// cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
 		cmd.Start()
 		app.cmd = append(app.cmd, work{key: c.Key, cmd: cmd, runing: true})
@@ -493,7 +500,7 @@ func checkWorkProcess() {
 			l++
 		}
 	}
-	for i := 0; i < l; i++ {
+	for i := 0; i < lg; i++ {
 		<-c
 		w := app.cmd[i]
 		exitCode := ""
@@ -507,19 +514,14 @@ func checkWorkProcess() {
 		}
 		w.runing = false
 		if app.runing {
-			//exitCode != "222"
-			//has work process killed
-			//restart work process
-			// if cmp := startWork(i); cmp != nil {
-			// 	go func() {
-			// 		cmp.Wait()
-			// 		c <- struct{}{}
-			// 	}()
-			// 	i--
-			// }
 		} else {
 			break
 		}
+	}
+	if flagService {
+		logs.Error("exited check work process")
+	} else {
+		fmt.Println("exited check work process")
 	}
 	clear()
 	// os.Exit(0)
@@ -546,7 +548,7 @@ func reload() {
 	for _, pid := range pids {
 		sendSignal(syscall.SIGINT, pid)
 	}
-	time.Sleep(30 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	start()
 }
 
@@ -564,7 +566,7 @@ func stop() {
 	for _, pid := range pids {
 		sendSignal(syscall.SIGINT, pid)
 	}
-	time.Sleep(30 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	os.Exit(0)
 }
 
@@ -699,6 +701,9 @@ func getWorkPids() []int {
 	}
 	c := string(data)
 	cs := strings.Split(c, ":")
+	if len(cs) < 2 {
+		return nil
+	}
 	c = cs[1]
 	cs = strings.Split(c, ",")
 	pids := []int{}
