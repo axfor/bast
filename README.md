@@ -78,6 +78,8 @@ bast.Run(":9999")
 
 # CommandLine
 
+` Like nginx commandline `
+
 ### If Your program name is ``` Aibast ```
 
 #### -h | -help
@@ -90,13 +92,17 @@ bast.Run(":9999")
 
 #### -start   
 
+` Run in background  `
+
 ``` bash
 
     ./Aibast -start
 
 ```
 
-#### -stop
+#### -stop 
+
+` stop program `
 
 ``` bash
 
@@ -106,7 +112,7 @@ bast.Run(":9999")
 
 #### -reload    
 
-> ``` graceful restart  ```
+`graceful restart. stop and start`
 
 ``` bash
 
@@ -115,6 +121,8 @@ bast.Run(":9999")
 ```
 
 #### -conf 
+
+` seting config files.(default is ./config.conf)`
 
 ``` bash
 
@@ -125,7 +133,7 @@ bast.Run(":9999")
 
 #### -install 
 
-> ``` daemon ```
+`installed as service.(daemon) `
 
 
 ``` bash
@@ -137,6 +145,9 @@ bast.Run(":9999")
 
 #### -uninstall 
 
+`uninstall a service.(daemon) `
+
+
 ``` bash
 
     ./Aibast -uninstall
@@ -146,19 +157,17 @@ bast.Run(":9999")
 
 #### -migration 
  
-` migration or initial system `
+` migration or initial system(handle sql script ...) `
 
 ``` bash
 
     ./Aibast -migration
 
 ```
-
-
-
+ 
 ### Such as
 
-> ``` run program ```
+>` run program (run in background) `
 
 
 ``` bash  
@@ -168,12 +177,46 @@ bast.Run(":9999")
 ```
 
 
-> ``` deploy program ```
+> ` deploy program (startup) `
 
 
 ``` bash  
 
     ./Aibast -install
+
+```
+
+# config template
+
+` support multiple instances`
+
+``` json
+[
+    {//a instance
+        "key":"xxx-conf",
+        "name":"xx",
+        "addr":":9999",
+        "fileDir":"./file/",//(default is ./file/)
+        "debug":false,
+        "baseUrl":"",
+        "log":{
+            "outPath":"./logs/logs.log", //(default is ./logs/logs.log)
+            "level":"debug",
+            "debug":false
+        },
+        "conf":{//user config(non bast framework)
+            "key":"app",
+            "name":"xxx",
+            "dbTitle":"xxx",
+            "dbName":"xxxx",
+            "dbUser":"xxx",
+            "dbPwd":"xxx",
+            "dbServer":"localhost"
+            //..more field..//
+        }
+    }
+    //..more instances..//
+]
 
 ```
 
