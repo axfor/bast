@@ -327,7 +327,7 @@ func doRun(addr string) {
 		if err != nil {
 			fmt.Println("listenAndServe error=" + err.Error())
 			logs.Info("listenAndServe error=" + err.Error())
-			os.Exit(-1)
+			os.Exit(0)
 		}
 		// fmt.Println("finish")
 		logs.Info("finish")
@@ -339,6 +339,19 @@ func doRun(addr string) {
 }
 
 func tryRun() error {
+	var err error
+	for i := 0; i < 10; i++ {
+		err = doTryRun()
+		if err != nil {
+			time.Sleep(2 * time.Microsecond)
+			continue
+		}
+		break
+	}
+	return err
+}
+
+func doTryRun() error {
 	l, err := net.Listen("tcp", app.Addr)
 	if err != nil {
 		return err
@@ -404,11 +417,11 @@ func start() (bool, error) {
 	}
 	path := ConfPath()
 	cmd := exec.Command(os.Args[0], "-master", "-start", "-conf="+path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 	cmd.Dir = AppDir()
 	cmd.Start()
-	time.Sleep(200 * time.Microsecond)
+	// time.Sleep(200 * time.Microsecond)
 	// os.Exit(0)
 	return false, nil
 }
@@ -548,7 +561,7 @@ func reload() {
 	for _, pid := range pids {
 		sendSignal(syscall.SIGINT, pid)
 	}
-	time.Sleep(200 * time.Millisecond)
+	// time.Sleep(200 * time.Millisecond)
 	start()
 }
 
