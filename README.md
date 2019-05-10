@@ -188,7 +188,8 @@ bast.Run(":9999")
 
 # config template
 
-` support multiple instances`
+` support multiple instances` 
+ 
 
 ``` json
 [
@@ -202,6 +203,9 @@ bast.Run(":9999")
         "log":{
             "outPath":"./logs/logs.log", //(default is ./logs/logs.log)
             "level":"debug",
+            "maxSize":10,
+            "maxBackups":3,
+            "maxAge":28,
             "debug":false
         },
         "conf":{//user config(non bast framework)

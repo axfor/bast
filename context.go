@@ -183,23 +183,23 @@ func (c *Context) SignOutError(msg string) {
 	c.FailResult(msg, SerSignOutError)
 }
 
-//DBError 输出数据库错误信息
+//DBError  output dataBase error to client
 //param:
 //	err db.error
 func (c *Context) DBError(err error) {
-	msg := "操作数据库错误"
+	msg := "DataBase error"
 	if err != nil {
-		msg = "操作数据库错误,详情：" + err.Error()
+		msg = "DataBase error,detail：" + err.Error()
 	} else {
-		msg = "操作数据库错误"
+		msg = "DataBase error"
 	}
 	c.FailResult(msg, SerDBError)
 }
 
-//FailResult 输出通用的错误的消息
+//FailResult output fail result to client
 //param:
-//	msg 失败/错误消息
-//	errCode 失败/错误代码
+//	msg failed message
+//	errCode ailed message code
 //  err  error
 func (c *Context) FailResult(msg string, errCode int, err ...error) {
 	d := &Msgs{}
@@ -209,43 +209,43 @@ func (c *Context) FailResult(msg string, errCode int, err ...error) {
 	d.Code = errCode
 	d.Msg = msg
 	if err != nil && err[0] != nil {
-		d.Msg += ",详情 ：" + err[0].Error()
+		d.Msg += ", [" + err[0].Error() + "]"
 	}
 	c.JSON(d)
 	d = nil
 }
 
-//NoData 输出无数据消息
+//NoData output no data result to client
 //param:
-//	err 消息
+//	err message
 func (c *Context) NoData(msg ...string) {
-	msgs := "抱歉！暂无数据"
+	msgs := "Sorry！No Data"
 	if msg == nil {
-		msgs = "抱歉！暂无数据"
+		msgs = "Sorry！No Data"
 	} else {
 		msgs = msg[0]
 	}
 	c.FailResult(msgs, SerNoDataError)
 }
 
-//Say 输出字节流数据
+//Say output raw bytes to client
 //param:
-//	data 数据
+//	data raw bytes
 func (c *Context) Say(data []byte) {
 	c.Out.Write(data)
 }
 
-//SayStr 输出字符串信息
+//SayStr output string to client
 //param:
-//	str 消息
+//	str string
 func (c *Context) SayStr(str string) {
 	c.Out.Write([]byte(str))
 }
 
-//SendFile 发送文件
+//SendFile send file to client
 //param:
-//	fileName 文件全路径
-//  rawFileName 文件原始名称,用于下载文件时的别名
+//	fileName is file name
+//  rawFileName is raw file name
 func (c *Context) SendFile(fileName string, rawFileName ...string) {
 	dir := filepath.Dir(fileName)
 	fileName = filepath.Base(fileName)
@@ -263,9 +263,9 @@ func (c *Context) SendFile(fileName string, rawFileName ...string) {
 	fs = nil
 }
 
-//JSONToStr JSON对象转化为字符串
+//JSONToStr JSON to string
 //param:
-//	obj 对象
+//	obj is object
 func (c *Context) JSONToStr(obj interface{}) (string, error) {
 	data, err := json.Marshal(obj)
 	if err != nil {
@@ -274,25 +274,23 @@ func (c *Context) JSONToStr(obj interface{}) (string, error) {
 	return string(data), err
 }
 
-//StrToJSON 将字符串转化为JSON对象
+//StrToJSON string to JSON
 //param:
-//	str json字符串
-//  obj 外部对象
+//	str json string
+//  obj is object
 func (c *Context) StrToJSON(str string, obj interface{}) error {
 	return c.JSONDecode(strings.NewReader(str), obj)
 }
 
-//StatusCode 设置状态码
+//StatusCode set current request statusCode
 //param:
-//	statusCode 状态代码
+//	statusCode HTTP status code. such as: 200x,300x and so on
 func (c *Context) StatusCode(statusCode int) {
 	c.Out.WriteHeader(statusCode)
 	c.Out.Write([]byte(http.StatusText(statusCode)))
 }
 
-//******get resuest data method **********/
-
-//GetRawStr 获取请求体并转化为字符串
+//GetRawStr getter raw string value from current request(request body)
 func (c *Context) GetRawStr() string {
 	body, err := ioutil.ReadAll(c.In.Body)
 	if err != nil {
@@ -301,9 +299,9 @@ func (c *Context) GetRawStr() string {
 	return string(body)
 }
 
-//GetString 获取请求信息里面指定参数值
+//GetString  gets a string value from the key from  the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetString(key string) string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -312,17 +310,17 @@ func (c *Context) GetString(key string) string {
 	return ""
 }
 
-//GetTrimString 获取请求信息里面指定参数值并移除空格
+//GetTrimString  Use the key to get a non-space string value from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetTrimString(key string) string {
 	return strings.TrimSpace(c.GetString(key))
 }
 
-//GetStringSlice 获取请求信息里面指定参数值并以指定的字符分割成字符串数组
+//GetStringSlice Use the key to get all string value from the current request
 //param:
-//	key 键值
-//  sep 分割字符串
+//	key is key name
+//  sep spilt char
 func (c *Context) GetStringSlice(key, sep string) *[]string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -332,10 +330,10 @@ func (c *Context) GetStringSlice(key, sep string) *[]string {
 	return nil
 }
 
-//GetIntSlice 获取请求信息里面指定参数值并以指定的字符分割成整数数组
+//GetIntSlice Use the key to get all int value from the current request
 //param:
-//	key 键值
-//  sep 分割字符串
+//	key is key name
+//  sep spilt char
 func (c *Context) GetIntSlice(key, sep string) *[]int64 {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -350,11 +348,11 @@ func (c *Context) GetIntSlice(key, sep string) *[]int64 {
 	return nil
 }
 
-//GetIntSliceAndRemovePrefix 获取请求信息里面指定参数值并以指定的字符分割成整数数组，并尝试移除前缀字符
+//GetIntSliceAndRemovePrefix Use the key to get all int value from the current request and remove prefix of each
 //param:
-//	key 	键值
-//  sep 	分割字符串
-//  prefix 	待移除的前缀字符
+//	key is key name
+//  sep spilt char
+//  prefix	remove prefix string
 func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) (*[]int64, bool) {
 	d := c.GetStrings(key)
 	has := false
@@ -380,17 +378,17 @@ func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) (*[]int64,
 	return nil, false
 }
 
-//GetParam 获取请求里面的路由参数值
-//说明：xx/:name/:name2 里面的:name与:name2就是路由参数占位符
+//GetParam  Use the key to get all int value from the current request url
+//note：xx/:name/:name2
 //param:
-//	key 键值
+//	key key name
 func (c *Context) GetParam(key string) string {
 	return c.Params.ByName(key)
 }
 
-//GetLeftLikeString 获取请求信息里面指定参数值并生成左匹配sql条件
+//GetLeftLikeString get a sql(left like 'xx%') string value from the key from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetLeftLikeString(key string) string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -402,9 +400,9 @@ func (c *Context) GetLeftLikeString(key string) string {
 	return ""
 }
 
-//GetRightLikeString 获取请求信息里面指定参数值并生成右匹配sql条件
+//GetRightLikeString get a sql(right like '%xx') string value from the key from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetRightLikeString(key string) string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -416,9 +414,9 @@ func (c *Context) GetRightLikeString(key string) string {
 	return ""
 }
 
-//GetLikeString 获取请求信息里面指定参数值并生成左右匹配sql条件
+//GetLikeString  get a sql(like '%xx%') string value from the key from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetLikeString(key string) string {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -430,9 +428,9 @@ func (c *Context) GetLikeString(key string) string {
 	return ""
 }
 
-//GetBool 获取请求信息里面指定参数值并转化位bool
+//GetBool get a bool value from the key from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetBool(key string) bool {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
@@ -444,10 +442,11 @@ func (c *Context) GetBool(key string) bool {
 	return false
 }
 
-//GetBoolWithDefault 获取请求信息里面指定参数值并转化位bool
+//GetBoolWithDefault get a bool value from the key from the current request
 //param:
-//	key 键值
-func (c *Context) GetBoolWithDefault(key string, defaults bool) bool {
+//	key is key name
+//  def is default value
+func (c *Context) GetBoolWithDefault(key string, def bool) bool {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
 		ok, err := strconv.ParseBool(d[0])
@@ -455,39 +454,39 @@ func (c *Context) GetBoolWithDefault(key string, defaults bool) bool {
 			return ok
 		}
 	}
-	return defaults
+	return def
 }
 
-//GetStrings 获取请求信息里面指定参数值的字符
+//GetStrings gets strings from the key from the current request
 //param:
-//	key 键值
+//	key is key name
 func (c *Context) GetStrings(key string) []string {
 	c.ParseForm()
 	return c.In.Form[key]
 }
 
-//Form 获取请求参数(含表单与URL)
+//Form gets all form params from the current(uri not included)
 func (c *Context) Form() url.Values {
 	c.ParseForm()
 	return c.In.Form
 }
 
-//PostForm 获取表单请求参数
+//PostForm gets all form params from the current(uri and form)
 func (c *Context) PostForm() url.Values {
 	c.ParseForm()
 	return c.In.PostForm
 }
 
-//Query 获取请求URL参数
+//Query gets all query params from the current request url
 func (c *Context) Query() url.Values {
 	c.ParseForm()
 	return c.In.URL.Query()
 }
 
-//GetInt 获取请求信息里面指定参数值并转化位int
+//GetInt gets a int value from the key from the current request
 //param:
-//	key 键值
-//	def 默认值
+//	key is key name
+//	def default value
 func (c *Context) GetInt(key string, def ...int) (int, error) {
 	d := c.GetString(key)
 	v, err := strconv.Atoi(d)
@@ -501,10 +500,10 @@ func (c *Context) GetInt(key string, def ...int) (int, error) {
 	return v, err
 }
 
-//GetIntVal 获取请求信息里面指定参数值并转化位int（不含错误信息）
+//GetIntVal gets a int value from the key from the current request（errors not included）
 //param:
-//	key 键值
-//	def 默认值
+//	key is key name
+//	def default value
 func (c *Context) GetIntVal(key string, def ...int) int {
 	d := c.GetString(key)
 	v, err := strconv.Atoi(d)
@@ -518,10 +517,10 @@ func (c *Context) GetIntVal(key string, def ...int) int {
 	return v
 }
 
-//GetInt64 获取请求信息里面指定参数值并转化位int64
+//GetInt64 gets a int64 value from the key from the current request url
 //param:
-//	key 键值
-//	def 默认值
+//	key is key name
+//	def default value
 func (c *Context) GetInt64(key string, def ...int64) (int64, error) {
 	d := c.GetString(key)
 	v, err := strconv.ParseInt(d, 10, 64)
@@ -535,10 +534,10 @@ func (c *Context) GetInt64(key string, def ...int64) (int64, error) {
 	return v, err
 }
 
-//GetFloat 获取请求信息里面指定参数值并转化位float64
+//GetFloat gets a float value from the key from the current request uri
 //param:
-//	key 键值
-//	def 默认值
+//	key is key name
+//	def default value
 func (c *Context) GetFloat(key string, def ...float64) (float64, error) {
 	d := c.GetString(key)
 	v, err := strconv.ParseFloat(d, 64)
@@ -552,11 +551,11 @@ func (c *Context) GetFloat(key string, def ...float64) (float64, error) {
 	return v, err
 }
 
-//Pages 获取请求信息里面的分页相关参数
+//Pages get pages param from the current request
 //param:
-//	page 	当前页
-//	total 	总行数
-//  pageRow 每页行数
+//	page 	current page index
+//	total 	all data total count(cache total count for first service return)
+//  pageRow page maximum size(default is 100 row)
 func (c *Context) Pages() (page int, total int, pageRow int) {
 	page, _ = c.GetInt("page")
 	total, _ = c.GetInt("total")
@@ -569,24 +568,24 @@ func (c *Context) Pages() (page int, total int, pageRow int) {
 	return page, total, pageRow
 }
 
-//JSONObj 将当前请求流JSON格式转化为对象
+//JSONObj gets data from the current request body(JSON fromat) and convert it to a objecet
 //param:
-//	obj 外部对象
+//	obj target object
 func (c *Context) JSONObj(obj interface{}) error {
 	return c.JSONDecode(c.In.Body, obj)
 }
 
-//GetJSON 将当前请求流JSON格式转化为对象
+//GetJSON gets data from the current request body(JSON fromat) and convert it to a objecet
 //param:
-//	obj 外部对象
+//	obj target object
 func (c *Context) GetJSON(obj interface{}) error {
 	return c.JSONObj(obj)
 }
 
-//JSONDecode 将请求流转化为对象
+//JSONDecode gets data from the r reader(JSON fromat) and convert it to a objecet
 //param:
-//	r reader 阅读流
-//	obj 外部对象
+//	r is a reader
+//	obj target object
 func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	body, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -605,24 +604,24 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	return err
 }
 
-//XMLObj 将当前请求流XML格式转化为对象
+//XMLObj gets data from the current request(xml format) and convert it to a object
 //param:
-//	obj 外部对象
+//	obj target object
 func (c *Context) XMLObj(obj interface{}) error {
 	return c.XMLDecode(c.In.Body, obj)
 }
 
-//GetXML 将当前请求流XML格式转化为对象
+//GetXML gets data from the current request body(xml format)  and  convert it to a object
 //param:
-//	obj 外部对象
+//	obj target object
 func (c *Context) GetXML(obj interface{}) error {
 	return c.XMLObj(obj)
 }
 
-//XMLDecode 将请求流XML格式转化为对象
+//XMLDecode  gets data from the r reader(xml format) and convert it to a object
 //param:
-//	r reader 阅读流
-//	obj 外部对象
+//	r is a reader
+//	obj target object
 func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
 	body, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -641,7 +640,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
 	return err
 }
 
-//MapObj 将请求流转化为字典对象
+//MapObj gets current request body and convert it to a map
 func (c *Context) MapObj() map[string]interface{} {
 	body, _ := ioutil.ReadAll(c.In.Body)
 	result := make(map[string]interface{})
@@ -652,30 +651,49 @@ func (c *Context) MapObj() map[string]interface{} {
 	return nil
 }
 
-//ParseForm 解析请求表单信息
+// ParseForm populates r.Form and r.PostForm.
+//
+// For all requests, ParseForm parses the raw query from the URL and updates
+// r.Form.
+//
+// For POST, PUT, and PATCH requests, it also parses the request body as a form
+// and puts the results into both r.PostForm and r.Form. Request body parameters
+// take precedence over URL query string values in r.Form.
+//
+// For other HTTP methods, or when the Content-Type is not
+// application/x-www-form-urlencoded, the request Body is not read, and
+// r.PostForm is initialized to a non-nil, empty value.
+//
+// If the request Body's size has not already been limited by MaxBytesReader,
+// the size is capped at 10MB.
+//
+// ParseMultipartForm calls ParseForm automatically.
+// ParseForm is idempotent.
 func (c *Context) ParseForm() {
-	//没解析则解析
 	if !c.isParseForm {
 		c.In.ParseForm()
 		c.isParseForm = true
 	}
 }
 
-//ParseMultipartForm 解析请求多表单信息
-//param:
-//	maxMemory 最大内存大小
+// ParseMultipartForm parses a request body as multipart/form-data.
+// The whole request body is parsed and up to a total of maxMemory bytes of
+// its file parts are stored in memory, with the remainder stored on
+// disk in temporary files.
+// ParseMultipartForm calls ParseForm if necessary.
+// After one call to ParseMultipartForm, subsequent calls have no effect.
 func (c *Context) ParseMultipartForm(maxMemory int64) error {
 	return c.In.ParseMultipartForm(maxMemory)
 }
 
-//URL 获取请求的完整URL
+//URL get eequest url
 func (c *Context) URL() string {
 	return strings.Join([]string{c.BaseURL(), c.In.RequestURI}, "")
 }
 
 //DefaultFileURL returns full file url
 //param:
-//	url is relative url
+//	url is relative path
 func (c *Context) DefaultFileURL(url string) string {
 	if url != "" {
 		if url[0] != 'f' {
@@ -690,9 +708,9 @@ func (c *Context) DefaultFileURL(url string) string {
 	return ""
 }
 
-//BaseURL 获取请求的基URL
+//BaseURL gets root url(scheme+host) from current request
 //param:
-//	url 相对地址
+//	url relative path
 func (c *Context) BaseURL(url ...string) string {
 	baseURL := c.In.Header.Get("BaseUrl")
 	if baseURL != "" {
@@ -701,18 +719,13 @@ func (c *Context) BaseURL(url ...string) string {
 	return c.baseURL() + "/" + strings.Join(url, "")
 }
 
-//baseURL 获取请求的基URL-内部使用
+//baseURL gets root url(scheme+host) from current request
 func (c *Context) baseURL() string {
 	scheme := "http://"
 	if c.In.TLS != nil {
 		scheme = "https://"
 	}
 	return strings.Join([]string{scheme, c.In.Host}, "")
-}
-
-//Redirect 重定向
-func (c *Context) Redirect(url string) {
-	http.Redirect(c.Out, c.In, url, http.StatusFound)
 }
 
 //ClientIP return request client ip
@@ -744,12 +757,17 @@ func (c *Context) Proxys() []string {
 	return []string{}
 }
 
-//TemporaryRedirect 重定向(307重定向，可以避免POST重定向后数据丢失)
+//Redirect redirect
+func (c *Context) Redirect(url string) {
+	http.Redirect(c.Out, c.In, url, http.StatusFound)
+}
+
+//TemporaryRedirect redirect(note: 307 redirect，Can avoid data loss after POST redirection)
 func (c *Context) TemporaryRedirect(url string) {
 	http.Redirect(c.Out, c.In, url, http.StatusTemporaryRedirect)
 }
 
-//Reset 重置请求与响应对象
+//Reset current context to pool
 func (c *Context) Reset() {
 	c.isParseForm = false
 	c.In = nil
@@ -760,24 +778,22 @@ func (c *Context) Reset() {
 	c.IsAuthorization = false
 }
 
-/******log method **********/
-
-//I info日志记录
+//I  log info
 func (c *Context) I(msg string, fields ...zap.Field) {
 	logs.I(msg, fields...)
 }
 
-//D debug日志记录
+//D log debug
 func (c *Context) D(msg string, fields ...zap.Field) {
 	logs.D(msg, fields...)
 }
 
-//E Error日志记录
+//E log error
 func (c *Context) E(msg string, fields ...zap.Field) {
 	logs.E(msg, fields...)
 }
 
-//Err Error日志记录
+//Err log error
 func (c *Context) Err(msg string, err error) {
 	if msg == "" {
 		msg = "发生错误"

@@ -174,6 +174,13 @@ func (app *App) ListenAndServe() error {
 	return app.Server.ListenAndServe()
 }
 
+// Get registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func Get(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("GET", pattern, f, authorization...)
+}
+
 // Post registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
@@ -181,11 +188,11 @@ func Post(pattern string, f func(ctx *Context), authorization ...bool) {
 	doHandle("POST", pattern, f, authorization...)
 }
 
-// Get registers the handler function for the given pattern
+// Put registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Get(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("GET", pattern, f, authorization...)
+func Put(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("PUT", pattern, f, authorization...)
 }
 
 // FileServer registers the handler function for the given pattern

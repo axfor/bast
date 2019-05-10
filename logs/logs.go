@@ -43,11 +43,11 @@ type XLogger struct {
 	logConf *LogConf
 }
 
-//GormLogger Gorm log
+//GormLogger Gorm loger
 type GormLogger struct {
 }
 
-//Print Gorm日志打印
+//Print Gorm log
 func (*GormLogger) Print(v ...interface{}) {
 	if logger.logConf.Debug {
 		msg := gromLogFormatterDebug(v...)
@@ -67,7 +67,7 @@ func (*GormLogger) Print(v ...interface{}) {
 	}
 }
 
-//LogInit 初始化日志库
+//LogInit init log
 func LogInit(conf *LogConf) *XLogger {
 	if logger == nil {
 		if conf == nil {
@@ -143,62 +143,62 @@ func LogInit(conf *LogConf) *XLogger {
 	return logger
 }
 
-//Info info日志记录
+//Info info log
 func Info(msg string, fields ...zap.Field) {
 	InfoWithCaller(msg, "", fields...)
 }
 
-//I info日志记录
+//I info log
 func I(msg string, fields ...zap.Field) {
 	InfoWithCaller(msg, "", fields...)
 }
 
-//InfoWithCaller info日志记录
+//InfoWithCaller info log
 func InfoWithCaller(msg string, caller string, fields ...zap.Field) {
 	if logger != nil {
 		logger.Info(msg, LogCaller(caller, 0, fields...)...)
 	}
 }
 
-//Debug debug日志记录
+//Debug debug log
 func Debug(msg string, fields ...zap.Field) {
 	DebugWithCaller(msg, "", fields...)
 }
 
-//D debug日志记录
+//D debug log
 func D(msg string, fields ...zap.Field) {
 	DebugWithCaller(msg, "", fields...)
 }
 
-//DebugWithCaller debug日志记录
+//DebugWithCaller debug log
 func DebugWithCaller(msg string, caller string, fields ...zap.Field) {
 	if logger != nil {
 		logger.Debug(msg, LogCaller(caller, 0, fields...)...)
 	}
 }
 
-//Error error日志记录
+//Error error log
 func Error(msg string, fields ...zap.Field) {
 	ErrorWithCaller(msg, "", fields...)
 }
 
-//E error日志记录
+//E error log
 func E(msg string, fields ...zap.Field) {
 	ErrorWithCaller(msg, "", fields...)
 }
 
-//Err Error日志记录
+//Err Error log
 func Err(msg string, err error) {
 	if msg == "" {
-		msg = "发生错误"
+		msg = "error"
 	}
 	if err != nil {
-		msg += "，详情：" + err.Error()
+		msg += "," + err.Error()
 	}
 	ErrorWithCaller(msg, "")
 }
 
-//ErrorWithCaller error日志记录
+//ErrorWithCaller error log
 func ErrorWithCaller(msg string, caller string, fields ...zap.Field) {
 	if logger != nil {
 		fields = LogCaller(caller, 0, fields...)
@@ -209,17 +209,17 @@ func ErrorWithCaller(msg string, caller string, fields ...zap.Field) {
 	}
 }
 
-//Logger 原始日志对象
+//Logger rew logger object
 func Logger() *XLogger {
 	return logger
 }
 
-//LoggerGorm Gorm日志对象
+//LoggerGorm Gorm logger object
 func LoggerGorm() *GormLogger {
 	return &GormLogger{}
 }
 
-//Sync 同步
+//Sync sync log
 func Sync() {
 	if logger != nil {
 		logger.Sync()
@@ -246,7 +246,7 @@ func logLevel(text string) zapcore.Level {
 	return zapcore.ErrorLevel
 }
 
-//LogCaller 获取调用链
+//LogCaller callers
 func LogCaller(caller string, skip int, fields ...zap.Field) []zap.Field {
 	if caller == "" {
 		if skip <= 0 {
@@ -269,7 +269,7 @@ func LogCaller(caller string, skip int, fields ...zap.Field) []zap.Field {
 	return fields[:]
 }
 
-//Caller 获取调用链
+//Caller caller
 func Caller(skip int) string {
 	if skip <= 0 {
 		skip = 3
@@ -288,7 +288,7 @@ func Caller(skip int) string {
 * grom
 *********************************/
 
-//grom logFormatter
+//grom logFormatter of debug
 var gromLogFormatterDebug = func(values ...interface{}) (messages []interface{}) {
 	if len(values) > 1 {
 		var (
@@ -368,7 +368,7 @@ var gromLogFormatterDebug = func(values ...interface{}) (messages []interface{})
 	return
 }
 
-//grom logFormatter
+//grom logFormatter of production
 var gromLogFormatter = func(values ...interface{}) (messages []zap.Field, levels string) {
 	if len(values) > 1 {
 		var (
@@ -464,7 +464,7 @@ func isPrintable(s string) bool {
 	return true
 }
 
-//ClearLogger 清空日志
+//ClearLogger clear logs
 func ClearLogger() {
 	logger = nil
 	gromDebugLogger = nil
