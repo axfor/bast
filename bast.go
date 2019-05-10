@@ -85,8 +85,12 @@ func init() {
 	if ConfOK() {
 		logs.LogInit(LogConf())
 	}
-	//register http OPTIONS router
+	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
+	//register not found handler of router
+	app.Router.NotFound = NotFoundHandler{}
+	//register not allowed handler of router
+	app.Router.MethodNotAllowed = MethodNotAllowedHandler{}
 }
 
 //parseCommandLine parse commandLine
@@ -220,6 +224,26 @@ func NoLookDirHandler(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+//NotFoundHandler not found
+type NotFoundHandler struct {
+}
+
+//ServeHTTP not found handler
+func (NotFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "404 page not found", http.StatusNotFound)
+	logs.Info(r.Method + ":" + r.RequestURI + "->404 page not found")
+}
+
+//MethodNotAllowedHandler method Not Allowed
+type MethodNotAllowedHandler struct {
+}
+
+//ServeHTTP method Not Allowed handler
+func (MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	logs.Info(r.Method + ":" + r.RequestURI + "->Method Not Allowed")
 }
 
 // doHandle registers the handler function for the given pattern

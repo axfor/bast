@@ -796,10 +796,10 @@ func (c *Context) E(msg string, fields ...zap.Field) {
 //Err log error
 func (c *Context) Err(msg string, err error) {
 	if msg == "" {
-		msg = "发生错误"
+		msg = "error"
 	}
 	if err != nil {
-		msg += "，详情：" + err.Error()
+		msg += "," + err.Error()
 	}
 	logs.E(msg)
 }
