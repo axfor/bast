@@ -299,7 +299,7 @@ func (c *Context) GetRawStr() string {
 	return string(body)
 }
 
-//GetString  gets a string value from the key from  the current request
+//GetString  gets a string value from  the current request  based on the key
 //param:
 //	key is key name
 func (c *Context) GetString(key string) string {
@@ -386,7 +386,7 @@ func (c *Context) GetParam(key string) string {
 	return c.Params.ByName(key)
 }
 
-//GetLeftLikeString get a sql(left like 'xx%') string value from the key from the current request
+//GetLeftLikeString get a sql(left like 'xx%') string value from the current request  based on the key
 //param:
 //	key is key name
 func (c *Context) GetLeftLikeString(key string) string {
@@ -400,7 +400,7 @@ func (c *Context) GetLeftLikeString(key string) string {
 	return ""
 }
 
-//GetRightLikeString get a sql(right like '%xx') string value from the key from the current request
+//GetRightLikeString get a sql(right like '%xx') string value from the current request  based on the key
 //param:
 //	key is key name
 func (c *Context) GetRightLikeString(key string) string {
@@ -414,7 +414,7 @@ func (c *Context) GetRightLikeString(key string) string {
 	return ""
 }
 
-//GetLikeString  get a sql(like '%xx%') string value from the key from the current request
+//GetLikeString  get a sql(like '%xx%') string value from the current request  based on the key
 //param:
 //	key is key name
 func (c *Context) GetLikeString(key string) string {
@@ -428,7 +428,7 @@ func (c *Context) GetLikeString(key string) string {
 	return ""
 }
 
-//GetBool get a bool value from the key from the current request
+//GetBool get a bool value  from the current request  based on the key
 //param:
 //	key is key name
 func (c *Context) GetBool(key string) bool {
@@ -442,7 +442,7 @@ func (c *Context) GetBool(key string) bool {
 	return false
 }
 
-//GetBoolWithDefault get a bool value from the key from the current request
+//GetBoolWithDefault get a bool value from the current request  based on the key
 //param:
 //	key is key name
 //  def is default value
@@ -457,12 +457,21 @@ func (c *Context) GetBoolWithDefault(key string, def bool) bool {
 	return def
 }
 
-//GetStrings gets strings from the key from the current request
+//GetStrings gets strings from the current request based on the key
 //param:
 //	key is key name
 func (c *Context) GetStrings(key string) []string {
 	c.ParseForm()
 	return c.In.Form[key]
+}
+
+//HasParam has a param from the current request based on the key(May not have a value)
+//param:
+//	key is key name
+func (c *Context) HasParam(key string) bool {
+	c.ParseForm()
+	_, ok := c.In.Form[key]
+	return ok
 }
 
 //Form gets all form params from the current(uri not included)
@@ -483,7 +492,7 @@ func (c *Context) Query() url.Values {
 	return c.In.URL.Query()
 }
 
-//GetInt gets a int value from the key from the current request
+//GetInt gets a int value from the current request  based on the key
 //param:
 //	key is key name
 //	def default value
@@ -500,7 +509,7 @@ func (c *Context) GetInt(key string, def ...int) (int, error) {
 	return v, err
 }
 
-//GetIntVal gets a int value from the key from the current request（errors not included）
+//GetIntVal gets a int value  from the current request  based on the key（errors not included）
 //param:
 //	key is key name
 //	def default value
@@ -517,7 +526,7 @@ func (c *Context) GetIntVal(key string, def ...int) int {
 	return v
 }
 
-//GetInt64 gets a int64 value from the key from the current request url
+//GetInt64 gets a int64 value  from the current request url  based on the key
 //param:
 //	key is key name
 //	def default value
@@ -534,7 +543,7 @@ func (c *Context) GetInt64(key string, def ...int64) (int64, error) {
 	return v, err
 }
 
-//GetFloat gets a float value from the key from the current request uri
+//GetFloat gets a float value  from the current request uri  based on the key
 //param:
 //	key is key name
 //	def default value
@@ -591,6 +600,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	if err != nil {
 		return err
 	}
+	// logs.Debug("JSONDecode=" + string(body))
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		if app.Debug {
