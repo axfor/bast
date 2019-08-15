@@ -125,9 +125,11 @@ func byteToTime(b []byte, layout string) (Time, error) {
 		if l > 0 {
 			if l <= 10 {
 				if layout == "" {
-					layout = "2006-01-02"
+					layout = "2006-01-02 15:04:05"
 				}
+				s += " 00:00:00"
 				v, err = time.ParseInLocation(layout, s, loc)
+
 			} else {
 				if layout == "" {
 					layout = "2006-01-02 15:04:05"
@@ -151,18 +153,37 @@ func (t *Time) String() string {
 
 //Format return format string time
 //layout support yyyy、MM、dd、hh、HH、mm、ss
-func (t *Time) Format(layout string) string {
+func (t Time) Format(layout string) string {
 	if layout == "" {
 		layout = "2006-01-02"
 	} else {
 		layout = strings.Replace(layout, "yyyy", "2006", 1)
 		layout = strings.Replace(layout, "MM", "01", 1)
-		layout = strings.Replace(layout, "dd", "01", 1)
-		layout = strings.Replace(layout, "hh", "01", 1)
-		layout = strings.Replace(layout, "mm", "01", 1)
-		layout = strings.Replace(layout, "ss", "01", 1)
+		layout = strings.Replace(layout, "dd", "02", 1)
+		layout = strings.Replace(layout, "hh", "15", 1)
+		layout = strings.Replace(layout, "mm", "04", 1)
+		layout = strings.Replace(layout, "ss", "05", 1)
 	}
 	return t.Time.Format(layout)
+}
+
+// After reports whether the time instant t is after u.
+func (t Time) After(u Time) bool {
+	return t.Time.After(u.Time)
+}
+
+// Before reports whether the time instant t is before u.
+func (t Time) Before(u Time) bool {
+	return t.Time.Before(u.Time)
+}
+
+// Equal reports whether t and u represent the same time instant.
+// Two times can be equal even if they are in different locations.
+// For example, 6:00 +0200 CEST and 4:00 UTC are Equal.
+// See the documentation on the Time type for the pitfalls of using == with
+// Time values; most code should use Equal instead.
+func (t Time) Equal(u Time) bool {
+	return t.Time.Equal(u.Time)
 }
 
 //Date yyyy-MM-dd format date
@@ -190,6 +211,49 @@ func DateByTime(t time.Time) Date {
 func DatesByTime(t time.Time) *Date {
 	tt := DateByTime(t)
 	return &tt
+}
+
+//DateWithString  string to Date
+func DateWithString(t string, layout ...string) (Date, error) {
+	l := ""
+	if layout != nil {
+		l = layout[0]
+	}
+	tt, err := strToTime(t, l)
+	return Date(tt), err
+}
+
+//DatesWithString  string to *Date
+func DatesWithString(t string, layout ...string) (*Date, error) {
+	l := ""
+	if layout != nil {
+		l = layout[0]
+	}
+	tt, err := strToTime(t, l)
+	if err == nil {
+		d := Date(tt)
+		return &d, nil
+	}
+	return nil, err
+}
+
+// After reports whether the time instant t is after u.
+func (t Date) After(u Date) bool {
+	return t.Time.After(u.Time)
+}
+
+// Before reports whether the time instant t is before u.
+func (t Date) Before(u Date) bool {
+	return t.Time.Before(u.Time)
+}
+
+// Equal reports whether t and u represent the same time instant.
+// Two times can be equal even if they are in different locations.
+// For example, 6:00 +0200 CEST and 4:00 UTC are Equal.
+// See the documentation on the Time type for the pitfalls of using == with
+// Time values; most code should use Equal instead.
+func (t Date) Equal(u Date) bool {
+	return t.Time.Equal(u.Time)
 }
 
 //MarshalJSON JSON MarshalJSON
@@ -234,4 +298,25 @@ func (t *Date) Scan(v interface{}) error {
 //String
 func (t *Date) String() string {
 	return t.Time.Format("2006-01-02")
+}
+
+//TimeRangeWithYearMonth returns the time(year,month) of the specified mininum and maxnum time
+func TimeRangeWithYearMonth(year, month int) (start, end time.Time) {
+	loc, _ := time.LoadLocation("Local")
+	m := time.Month(month)
+	s := time.Date(year, m, 1, 0, 0, 0, 0, loc)
+	e := time.Date(year, m, MaxDay(month), 23, 59, 59, 0, loc)
+	return s, e
+}
+
+//MaxDay return the maxnum day of the month
+func MaxDay(month int) int {
+	switch month {
+	case 1, 3, 5, 7, 8, 10, 12:
+		return 31
+	case 2:
+		return 28
+	default:
+		return 30
+	}
 }

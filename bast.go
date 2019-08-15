@@ -22,9 +22,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aixiaoxiang/bast/conf"
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
+	"github.com/aixiaoxiang/bast/session"
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 )
@@ -82,8 +84,8 @@ func init() {
 		return &Context{}
 	}
 	//init config
-	if ConfOK() {
-		logs.LogInit(LogConf())
+	if conf.OK() {
+		logs.LogInit(conf.LogConf())
 	}
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
@@ -144,7 +146,7 @@ func parseCommandLine() {
 	if flagService {
 		isMaster = flagService
 	}
-	confParse(f)
+	conf.Parse(f)
 }
 
 //BeforeHandle is before then request handler
@@ -213,14 +215,11 @@ func NoLookDirHandler(h http.Handler) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		if strings.Index(r.URL.RawQuery, "download") >= 0 {
+		r.ParseForm()
+		fn, ok := r.Form["rawName"]
+		if ok && fn != nil && strings.TrimSpace(fn[0]) != "" {
 			w.Header().Add("Content-Type", "application/octet-stream")
-			r.ParseForm()
-			fn := r.Form["rawName"]
-			if fn != nil {
-				w.Header().Add("Content-Type", "application/octet-stream")
-				w.Header().Add("Content-Disposition", "attachment;filename=\""+fn[0]+"\"")
-			}
+			w.Header().Add("Content-Disposition", "attachment;filename=\""+fn[0]+"\"")
 		}
 		h.ServeHTTP(w, r)
 	})
@@ -289,6 +288,10 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 						fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
 					}
 				}()
+				s, err := session.Start(w, r)
+				if err == nil && s != nil {
+					ctx.Session = s
+				}
 				if app.Before != nil {
 					if app.Before(ctx) != nil {
 						logs.Info(r.Method + ":" + r.RequestURI + "->end")
@@ -309,6 +312,11 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 	})
 }
 
+//IsRuning return app is runing
+func IsRuning() bool {
+	return app.runing
+}
+
 //Run use addr to start app
 func Run(addr string) {
 	if !app.isCallCommand && !Command() {
@@ -320,7 +328,7 @@ func Run(addr string) {
 
 //Serve use config to start app
 func Serve() bool {
-	c := Conf()
+	c := conf.Conf()
 	if !app.isCallCommand && !Command() || c == nil {
 		return false
 	}
@@ -335,7 +343,19 @@ func Serve() bool {
 // 1: is control commandline
 // 2: config is ok
 func TryServe() bool {
-	ok := Command() && ConfOK()
+	ok := Command() && conf.OK()
+	if ok {
+		cs := conf.Confs()
+		for _, c := range cs {
+			if c.Addr != "" {
+				err := doTryRun(c.Addr)
+				if err != nil {
+					continue
+				}
+			}
+		}
+	}
+
 	// defer func() {
 	// 	fmt.Printf("finish=%v\r\n", ok)
 	// }()
@@ -372,7 +392,7 @@ func doRun(addr string) {
 func tryRun() error {
 	var err error
 	for i := 0; i < 10; i++ {
-		err = doTryRun()
+		err = doTryRun(app.Addr)
 		if err != nil {
 			time.Sleep(2 * time.Microsecond)
 			continue
@@ -382,8 +402,8 @@ func tryRun() error {
 	return err
 }
 
-func doTryRun() error {
-	l, err := net.Listen("tcp", app.Addr)
+func doTryRun(add string) error {
+	l, err := net.Listen("tcp", add)
 	if err != nil {
 		return err
 	}
@@ -446,7 +466,7 @@ func start() (bool, error) {
 		checkWorkProcess()
 		return false, nil
 	}
-	path := ConfPath()
+	path := conf.Path()
 	cmd := exec.Command(os.Args[0], "-master", "-start", "-conf="+path)
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
@@ -481,8 +501,8 @@ func doService() {
 }
 
 func doStart() error {
-	appConfs := Confs()
-	path := ConfPath()
+	appConfs := conf.Confs()
+	path := conf.Path()
 	pid := strconv.Itoa(os.Getpid())
 	app.pipeName = pid
 	if flagService {
@@ -510,18 +530,15 @@ func doStart() error {
 
 func startWork(index int) *exec.Cmd {
 	w := app.cmd[index]
-	c := ConfWithKey(w.key)
+	c := conf.Config(w.key)
 	if c != nil {
-		path := ConfPath()
+		path := conf.Path()
 		// pid := strconv.Itoa(os.Getpid())
 		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
 		cmd.Start()
-		if app.cmd == nil {
-			app.cmd = nil
-		}
 		app.cmd[index] = work{key: c.Key, cmd: cmd, runing: true}
 		logPid()
 		return cmd
@@ -535,9 +552,9 @@ func checkWorkProcess() {
 	lg := len(app.cmd)
 	l := 0
 	for i := 0; i < lg; i++ {
-		w := app.cmd[i]
+		w := &app.cmd[i]
 		if w.runing {
-			go func(wc work) {
+			go func(wc *work) {
 				w.cmd.Wait()
 				c <- struct{}{}
 			}(w)
@@ -546,7 +563,7 @@ func checkWorkProcess() {
 	}
 	for i := 0; i < lg; i++ {
 		<-c
-		w := app.cmd[i]
+		w := &app.cmd[i]
 		exitCode := ""
 		if w.cmd.ProcessState != nil {
 			exitCode = strconv.Itoa(w.cmd.ProcessState.ExitCode())
@@ -568,7 +585,6 @@ func checkWorkProcess() {
 		fmt.Println("exited check work process")
 	}
 	clear()
-	// os.Exit(0)
 }
 
 type daemonExecutable struct {
@@ -592,7 +608,6 @@ func reload() {
 	for _, pid := range pids {
 		sendSignal(syscall.SIGINT, pid)
 	}
-	// time.Sleep(200 * time.Millisecond)
 	start()
 }
 
@@ -601,7 +616,6 @@ func serviceStop() {
 	for _, pid := range pids {
 		sendSignal(syscall.SIGINT, pid)
 	}
-	// time.Sleep(10 * time.Millisecond)
 	clear()
 }
 
@@ -730,8 +744,36 @@ func logPid() error {
 }
 
 func removePid() error {
+	if isMaster {
+		mPid := getMasterPidWithFile()
+		if mPid == os.Getpid() {
+			pidPath := os.Args[0] + ".pid"
+			return os.Remove(pidPath)
+		}
+	}
+	return nil
+}
+
+//getMasterPidWithFile return master pid form pid log
+func getMasterPidWithFile() int {
 	pidPath := os.Args[0] + ".pid"
-	return os.Remove(pidPath)
+	f, _ := os.Open(pidPath)
+	defer f.Close()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return 0
+	}
+	c := string(data)
+	cs := strings.Split(c, "|")
+	if len(cs) < 2 {
+		return 0
+	}
+	c = cs[0]
+	v, err := strconv.Atoi(c)
+	if err != nil {
+		return 0
+	}
+	return v
 }
 
 //getWorkPids work pids
@@ -763,20 +805,16 @@ func getWorkPids() []int {
 	return nil
 }
 
-//pidPath pid filename path
-func pidPath(path ...string) string {
-	pidPath := ""
-	if path != nil {
-		pidPath = path[0]
-	}
-	if pidPath == "" {
-		pidPath = ConfPath() + ".pid"
-	} else {
-		pidPath += ".pid"
-	}
-	// fmt.Printf("%s\n", pidPath)
-	return pidPath
-}
+// //getWorkPids work pids
+// func getWorkPids() []int {
+// 	pids := []int{}
+// 	for _, p := range app.cmd {
+// 		if p.runing {
+// 			pids = append(pids, p.cmd.Process.Pid)
+// 		}
+// 	}
+// 	return pids
+// }
 
 //Shutdown app
 func Shutdown(ctx context.Context) error {
@@ -792,6 +830,23 @@ func Shutdown(ctx context.Context) error {
 	return app.Server.Shutdown(ctx)
 }
 
+//True return a * bool
+func True() *bool {
+	tv := true
+	return &tv
+}
+
+//False return a * bool
+func False() *bool {
+	fv := false
+	return &fv
+}
+
+//Str return a * string
+func Str(s string) *string {
+	return &s
+}
+
 /******ID method **********/
 
 //ID create Unique ID
@@ -800,6 +855,28 @@ func ID() int64 {
 }
 
 /******GUID method **********/
+
+/*conf*/
+
+//RegistConfHandle handler  conf
+func RegistConfHandle(handle conf.ConfingHandle, finish ...conf.FinishHandle) {
+	conf.RegistConfHandle(handle, finish...)
+}
+
+//Conf returns the current app config
+func Conf() *conf.AppConf {
+	return conf.Conf()
+}
+
+//UserConf  returns the current user config
+func UserConf() interface{} {
+	return conf.UserConf()
+}
+
+//FileDir if app config configuration fileDir return it，orherwise return app exec path
+func FileDir() string {
+	return conf.FileDir()
+}
 
 //GUID create GUID
 func GUID() string {

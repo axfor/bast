@@ -1,4 +1,6 @@
-package bast
+//Copyright 2018 The axx Authors. All rights reserved.
+
+package conf
 
 import (
 	"encoding/json"
@@ -13,16 +15,17 @@ import (
 )
 
 var (
-	confObj          *AppConfMgr
-	confHandle       ConfHandle
-	confFinishHandle ConfFinishHandle
+	flagConf, flagAppKey string
+	confObj              *AppConfMgr
+	confHandle           ConfingHandle
+	confFinishHandle     FinishHandle
 )
 
-//ConfHandle handler  conf
-type ConfHandle func(appConf *AppConf) error
+//ConfingHandle handler  conf
+type ConfingHandle func(appConf *AppConf) error
 
-//ConfFinishHandle finished handler conf
-type ConfFinishHandle func(appConf *AppConf) error
+//FinishHandle finished handler conf
+type FinishHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
@@ -44,11 +47,16 @@ type AppConf struct {
 	Log                *logs.LogConf `json:"log"`
 	Conf               interface{}   `json:"conf"`
 	Extend             string        `json:"extend"`
+	SessionEnable      bool          `json:"sessionEnable"`   //false
+	SessionLifeTime    int           `json:"sessionLifeTime"` //20 (min)
+	SessionName        string        `json:"sessionName"`     //_sid
+	SessionEngine      string        `json:"sessionEngine"`   //memory
+	SessionSource      string        `json:"sessionSource"`   //url|header|cookie
 	CallBackConfHandle bool          `json:"-"`
 }
 
-//ConfItem default db config
-type ConfItem struct {
+//Item default db config
+type Item struct {
 	Name      string `json:"name"`
 	Title     string `json:"dbTitle"`
 	User      string `json:"dbUser"`
@@ -59,10 +67,10 @@ type ConfItem struct {
 	Loc       string `json:"dbLoc"`
 }
 
-//ConfMgr  config
-func ConfMgr() *AppConfMgr {
+//Manager is manager all config objects
+func Manager() *AppConfMgr {
 	if confObj == nil {
-		data, err := ioutil.ReadFile(ConfPath())
+		data, err := ioutil.ReadFile(Path())
 		if err != nil {
 			return nil
 		}
@@ -73,13 +81,13 @@ func ConfMgr() *AppConfMgr {
 			fmt.Println("conf mgr init error:" + err.Error())
 			return nil
 		}
-		ConfInit(appConf)
+		Init(appConf)
 	}
 	return confObj
 }
 
-//ConfInit  config
-func ConfInit(appConf []AppConf) {
+//Init  config
+func Init(appConf []AppConf) {
 	lg := len(appConf)
 	if lg == 0 {
 		return
@@ -123,14 +131,14 @@ func ConfInit(appConf []AppConf) {
 	}
 }
 
-//ConfOK check conf
-func ConfOK() bool {
-	return ConfMgr() != nil
+//OK check conf
+func OK() bool {
+	return Manager() != nil
 }
 
 //Conf returns the current app config
 func Conf() *AppConf {
-	appConf := ConfMgr()
+	appConf := Manager()
 	if appConf != nil && appConf.Confs != nil {
 		if flagAppKey == "" {
 			return appConf.frist
@@ -143,9 +151,63 @@ func Conf() *AppConf {
 	return nil
 }
 
-//ConfWithKey returns the key app config
-func ConfWithKey(key string) *AppConf {
-	appConf := ConfMgr()
+//FileDir if app config configuration fileDir return it，orherwise return app exec path
+func FileDir() string {
+	c := Conf()
+	if c != nil && c.FileDir != "" {
+		return c.FileDir
+	}
+	return filepath.Dir(os.Args[0])
+}
+
+//SessionLifeTime if app config configuration sessionLifeTime return it，orherwise return 20min
+func SessionLifeTime() int {
+	c := Conf()
+	if c != nil && c.SessionLifeTime > 0 {
+		return c.SessionLifeTime
+	}
+	return 60 * 20
+}
+
+//SessionName if app config configuration sessionName return it，orherwise return '_sid'
+func SessionName() string {
+	c := Conf()
+	if c != nil && c.SessionName != "" {
+		return c.SessionName
+	}
+	return "_sid"
+}
+
+//SessionEngine if app config configuration sessionEngine return it，orherwise return 'memory'
+func SessionEngine() string {
+	c := Conf()
+	if c != nil && c.SessionEngine != "" {
+		return c.SessionEngine
+	}
+	return "memory"
+}
+
+//SessionEnable if app config configuration sessionEnable return it，orherwise return false
+func SessionEnable() bool {
+	c := Conf()
+	if c != nil {
+		return c.SessionEnable
+	}
+	return false
+}
+
+//SessionSource if app config configuration sessionSource return it，orherwise return 'cookie'
+func SessionSource() string {
+	c := Conf()
+	if c != nil && c.SessionSource != "" {
+		return c.SessionSource
+	}
+	return "cookie"
+}
+
+//Config returns the key app config
+func Config(key string) *AppConf {
+	appConf := Manager()
 	if appConf != nil && appConf.Confs != nil {
 		c, ok := appConf.Confs[key]
 		if c != nil && ok {
@@ -157,7 +219,7 @@ func ConfWithKey(key string) *AppConf {
 
 //Confs returns the all app config
 func Confs() []AppConf {
-	appConf := ConfMgr()
+	appConf := Manager()
 	if appConf != nil && appConf.Confs != nil {
 		return appConf.rawConfs
 	}
@@ -182,17 +244,21 @@ func LogConf() *logs.LogConf {
 	return nil
 }
 
-//ConfPath  returns the current config path
-func ConfPath() string {
+//Path  returns the current config path
+func Path() string {
 	return flagConf
 }
 
-//confParse parse config path
-func confParse(f *flag.FlagSet) string {
+//Parse parse config path
+func Parse(f *flag.FlagSet) string {
 	exPath := filepath.Dir(os.Args[0])
 	fs := f.Lookup("conf")
 	if fs != nil {
 		flagConf = fs.Value.String()
+	}
+	fs = f.Lookup("appkey")
+	if fs != nil {
+		flagAppKey = fs.Value.String()
 	}
 	if flagConf == "" {
 		cf := exPath + "/config.conf"
@@ -202,7 +268,7 @@ func confParse(f *flag.FlagSet) string {
 }
 
 //RegistConfHandle handler  conf
-func RegistConfHandle(handle ConfHandle, finish ...ConfFinishHandle) {
+func RegistConfHandle(handle ConfingHandle, finish ...FinishHandle) {
 	confHandle = handle
 	if finish != nil {
 		confFinishHandle = finish[0]
@@ -217,6 +283,6 @@ func RegistConfHandle(handle ConfHandle, finish ...ConfFinishHandle) {
 	lg := len(cf)
 	if lg > 0 {
 		confObj = nil
-		ConfInit(cf)
+		Init(cf)
 	}
 }

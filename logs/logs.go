@@ -35,6 +35,7 @@ type LogConf struct {
 	MaxBackups int    `json:"maxBackups"`
 	MaxAge     int    `json:"maxAge"`
 	Debug      bool   `json:"debug"`
+	Stdout     bool   `json:"-"`
 }
 
 //XLogger log
@@ -49,7 +50,7 @@ type GormLogger struct {
 
 //Print Gorm log
 func (*GormLogger) Print(v ...interface{}) {
-	if logger.logConf.Debug {
+	if logger.logConf.Stdout {
 		msg := gromLogFormatterDebug(v...)
 		if msg != nil {
 			gromDebugLogger.Println(msg...)
@@ -79,6 +80,10 @@ func LogInit(conf *LogConf) *XLogger {
 				MaxAge:     28,
 				Debug:      false,
 			}
+		} else {
+			if conf.OutPath == "" {
+				conf.Stdout = true
+			}
 		}
 		if conf.MaxSize <= 0 {
 			conf.MaxSize = 10
@@ -92,7 +97,7 @@ func LogInit(conf *LogConf) *XLogger {
 		l := logLevel(conf.Level)
 		var w zapcore.WriteSyncer
 		var core zapcore.Core
-		if !conf.Debug {
+		if !conf.Stdout {
 			encoderConfig := zap.NewProductionEncoderConfig()
 			//encoderConfig.LineEnding = zapcore.DefaultLineEnding
 			encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {

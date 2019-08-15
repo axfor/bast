@@ -5,6 +5,7 @@ package bast
 import (
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -17,6 +18,8 @@ import (
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
+	"github.com/aixiaoxiang/bast/session"
+
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
@@ -55,6 +58,8 @@ type Context struct {
 	Authorization bool
 	//IsAuthorization is authorization finish?
 	IsAuthorization bool
+	//Session is session
+	Session session.Store
 }
 
 //Msgs is response message
@@ -149,7 +154,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 func (c *Context) JSONResult(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		logs.Info("JSONResult-Err=" + err.Error())
+		logs.Info("JSONResult-Error=" + err.Error())
 		c.StatusCode(http.StatusInternalServerError)
 		return
 	}
@@ -168,12 +173,44 @@ func (c *Context) Success(msg string) {
 	d = nil
 }
 
+//Successf output success result and format to client
+func (c *Context) Successf(format string, a ...interface{}) {
+	if a != nil && len(a) > 0 {
+		format = fmt.Sprintf(format, a...)
+	}
+	d := &Msgs{}
+	d.Code = SerOK
+	d.Msg = format
+	c.JSON(d)
+	d = nil
+}
+
 //Failed  output failed result to client
 //param:
 //	msg is fail message
 //	err error
 func (c *Context) Failed(msg string, err ...error) {
 	c.FailResult(msg, SerError, err...)
+}
+
+//Failedf output failed result and format to client
+func (c *Context) Failedf(format string, a ...interface{}) {
+	var err error
+	if a != nil {
+		lg := len(a)
+		if lg > 0 {
+			if a[lg-1] != nil {
+				err, _ = a[lg-1].(error)
+			}
+			if err != nil {
+				a = a[0 : lg-1]
+			}
+			if len(a) > 0 {
+				format = fmt.Sprintf(format, a...)
+			}
+		}
+	}
+	c.FailResult(format, SerError, err)
 }
 
 //SignOutError output user signout to client
@@ -543,6 +580,23 @@ func (c *Context) GetInt64(key string, def ...int64) (int64, error) {
 	return v, err
 }
 
+//GetInt64Val gets a int64 value  from the current request  based on the key（errors not included）
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetInt64Val(key string, def ...int64) int64 {
+	d := c.GetString(key)
+	v, err := strconv.ParseInt(d, 10, 64)
+	if err != nil {
+		if def != nil && len(def) > 0 {
+			v = def[0]
+		} else {
+			v = 0
+		}
+	}
+	return v
+}
+
 //GetFloat gets a float value  from the current request uri  based on the key
 //param:
 //	key is key name
@@ -604,9 +658,9 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		if app.Debug {
-			logs.Debug("JSONDecode-Err=" + err.Error() + ",detail=" + string(body))
+			logs.Debug("JSONDecode-Error=" + err.Error() + ",detail=" + string(body))
 		} else {
-			logs.Debug("JSONDecode-Err=" + err.Error())
+			logs.Debug("JSONDecode-Error=" + err.Error())
 		}
 		body = nil
 		return err
@@ -694,6 +748,46 @@ func (c *Context) ParseForm() {
 // After one call to ParseMultipartForm, subsequent calls have no effect.
 func (c *Context) ParseMultipartForm(maxMemory int64) error {
 	return c.In.ParseMultipartForm(maxMemory)
+}
+
+//SessionRead get session value by key
+func (c *Context) SessionRead(key string) interface{} {
+	if c.Session != nil {
+		return c.Session.Get(key)
+	}
+	return nil
+}
+
+//SessionWrite set session value by key
+func (c *Context) SessionWrite(key string, value interface{}) error {
+	if c.Session != nil {
+		return c.Session.Set(key, value)
+	}
+	return nil
+}
+
+//SessionDelete delete session value by key
+func (c *Context) SessionDelete(key string) error {
+	if c.Session != nil {
+		return c.Session.Delete(key)
+	}
+	return nil
+}
+
+//SessionClear delete all session
+func (c *Context) SessionClear() error {
+	if c.Session != nil {
+		return c.Session.Clear()
+	}
+	return nil
+}
+
+//SessionID get sessionID
+func (c *Context) SessionID() string {
+	if c.Session != nil {
+		return c.Session.ID()
+	}
+	return ""
 }
 
 //URL get eequest url
@@ -786,6 +880,7 @@ func (c *Context) Reset() {
 	c.isParseForm = false
 	c.Authorization = false
 	c.IsAuthorization = false
+	c.Session = nil
 }
 
 //I  log info
