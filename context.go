@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -82,6 +84,13 @@ type DataPage struct {
 	Total int         `gorm:"-"  json:"total"`
 }
 
+//InfoPage is invalid Pagination data
+type InfoPage struct {
+	DataPage
+	Invalid bool `gorm:"-"  json:"invalid"`
+	Fix     bool `gorm:"-"  json:"fix"`
+}
+
 //JSON  output JSON Data to client
 //v data
 func (c *Context) JSON(v interface{}) {
@@ -139,13 +148,41 @@ func (c *Context) JSONWithPageAndCode(v interface{}, page, total, code int, msg 
 
 //JSONWithPageAndCodeMsg output Pagination JSON Data to client
 func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, msg string) {
-	d := &DataPage{}
+	d := &InfoPage{}
+	_, _total, pageRow := c.Page()
+	if _total == 0 {
+		last := int(math.Ceil(float64(total) / float64(pageRow)))
+		if page >= last {
+			page = last - 1
+			d.Fix = true
+		}
+	}
+	page++
+	if v != nil {
+		switch reflect.TypeOf(v).Kind() {
+		case reflect.Array:
+		case reflect.Map:
+		case reflect.Slice:
+			s := reflect.ValueOf(v)
+			if s.Len() == 0 {
+				d.Invalid = true
+			}
+			break
+		}
+	} else {
+		d.Invalid = true
+	}
+
 	d.Data = v
 	d.Page = page
 	d.Total = total
 	d.Code = code
 	d.Msg = msg
-	c.JSONResult(d)
+	if d.Invalid || d.Fix {
+		c.JSONResult(d)
+	} else {
+		c.JSONResult(d.DataPage)
+	}
 	d.Data = nil
 	d = nil
 }
@@ -614,21 +651,62 @@ func (c *Context) GetFloat(key string, def ...float64) (float64, error) {
 	return v, err
 }
 
-//Pages get pages param from the current request
+//Page get pages param from the current request
 //param:
-//	page 	current page index
+//	page 	current page index(start 1)
 //	total 	all data total count(cache total count for first service return)
 //  pageRow page maximum size(default is 100 row)
-func (c *Context) Pages() (page int, total int, pageRow int) {
+func (c *Context) Page() (page int, total int, pageRow int) {
 	page, _ = c.GetInt("page")
 	total, _ = c.GetInt("total")
 	pageRow, _ = c.GetInt("pageRow", 100)
+	if page > 0 {
+		page--
+	}
 	if pageRow > 100 {
 		pageRow = 100
 	} else if pageRow <= 0 {
 		pageRow = 100
 	}
 	return page, total, pageRow
+}
+
+//Pages get pages param from the current request and check last page
+//param:
+//	page 	 current page index(start 1)
+//	total 	 all data total count(cache total count for first service return)
+//  pageRow  page maximum size(default is 100 row)
+func (c *Context) Pages() (page, total, pageRow int) {
+	page, total, pageRow = c.Page()
+	if total > 0 {
+		last := int(math.Ceil(float64(total) / float64(pageRow)))
+		if page >= last {
+			total = 0
+		}
+	}
+	return page, total, pageRow
+}
+
+//Offset return page offset
+//param:
+//	total 	all data total count(cache total count for first service return)
+func (c *Context) Offset(total int) int {
+	page, _total, pageRow := c.Page()
+	if _total == 0 {
+		last := int(math.Ceil(float64(total) / float64(pageRow)))
+		if page >= last {
+			page = last - 1
+		}
+	}
+	// fixPage := c.HasParam("fixPage")
+	// if fixPage {
+	// 	last := int(math.Ceil(float64(total) / float64(pageRow)))
+	// 	if page >= last {
+	// 		page = last - 1
+	// 	}
+	// }
+	offset := page * pageRow
+	return offset
 }
 
 //JSONObj gets data from the current request body(JSON fromat) and convert it to a objecet
