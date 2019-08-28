@@ -70,6 +70,13 @@ type Msgs struct {
 	Msg  string `gorm:"-" json:"msg"`
 }
 
+//MsgDetail is response detail message
+type MsgDetail struct {
+	Code   int    `gorm:"-" json:"code"`
+	Msg    string `gorm:"-" json:"msg"`
+	Detail string `gorm:"-" json:"detail"`
+}
+
 //Data is response data
 type Data struct {
 	Msgs `gorm:"-"`
@@ -230,6 +237,19 @@ func (c *Context) Failed(msg string, err ...error) {
 	c.FailResult(msg, SerError, err...)
 }
 
+//Faileds  output failed detail result to client
+//param:
+//	msg is fail message
+//	detail is detail message
+func (c *Context) Faileds(msg string, detail string) {
+	d := &MsgDetail{}
+	d.Code = SerError
+	d.Msg = msg
+	d.Detail = detail
+	c.JSONWithCode(d, SerError)
+	d = nil
+}
+
 //Failedf output failed result and format to client
 func (c *Context) Failedf(format string, a ...interface{}) {
 	var err error
@@ -248,6 +268,26 @@ func (c *Context) Failedf(format string, a ...interface{}) {
 		}
 	}
 	c.FailResult(format, SerError, err)
+}
+
+//Result  output result to client
+//param:
+//	msg is fail message
+//	detail is detail message
+func (c *Context) Result(msg string, detail ...string) {
+	d := &MsgDetail{}
+	d.Code = SerOK
+	d.Msg = msg
+	if detail != nil {
+		for _, s := range detail {
+			if d.Detail != "" {
+				d.Detail += ","
+			}
+			d.Detail += s
+		}
+	}
+	c.JSONWithCode(d, SerError)
+	d = nil
 }
 
 //SignOutError output user signout to client
@@ -285,7 +325,7 @@ func (c *Context) FailResult(msg string, errCode int, err ...error) {
 	if err != nil && err[0] != nil {
 		d.Msg += ", [" + err[0].Error() + "]"
 	}
-	c.JSON(d)
+	c.JSONWithCode(d, errCode)
 	d = nil
 }
 
