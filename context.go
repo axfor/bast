@@ -123,14 +123,20 @@ func (c *Context) JSONWithMsg(v interface{}, msg string) {
 //code is message code
 //msg is string message
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
-	_, isData := v.(*Data)
-	if !isData {
-		_, isData = v.(*Msgs)
+	_, ok := v.(*Data)
+	if !ok {
+		_, ok = v.(*Msgs)
 	}
-	if !isData {
-		_, isData = v.(*DataPage)
+	if !ok {
+		_, ok = v.(*DataPage)
 	}
-	if !isData {
+	if !ok {
+		_, ok = v.(*MsgDetail)
+	}
+	if !ok {
+		_, ok = v.(*InfoPage)
+	}
+	if !ok {
 		d := &Data{}
 		d.Code = code
 		d.Msg = msg
