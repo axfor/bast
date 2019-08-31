@@ -441,11 +441,13 @@ func (c *Context) GetTrimString(key string) string {
 //param:
 //	key is key name
 //  sep spilt char
-func (c *Context) GetStringSlice(key, sep string) *[]string {
-	d := c.GetStrings(key)
-	if len(d) > 0 {
-		s := strings.Split(d[0], sep)
-		return &s
+func (c *Context) GetStringSlice(key, sep string) []string {
+	s := c.GetTrimString(key)
+	if len(s) > 0 {
+		ss := strings.Split(s, sep)
+		if len(ss) > 0 {
+			return ss
+		}
 	}
 	return nil
 }
@@ -454,16 +456,18 @@ func (c *Context) GetStringSlice(key, sep string) *[]string {
 //param:
 //	key is key name
 //  sep spilt char
-func (c *Context) GetIntSlice(key, sep string) *[]int64 {
-	d := c.GetStrings(key)
-	if len(d) > 0 {
-		s := strings.Split(d[0], sep)
-		lg := len(s)
+func (c *Context) GetIntSlice(key, sep string) []int64 {
+	s := c.GetTrimString(key)
+	if len(s) > 0 {
+		ss := strings.Split(s, sep)
+		lg := len(ss)
 		si := make([]int64, lg, lg)
 		for i := 0; i < lg; i++ {
-			si[i], _ = strconv.ParseInt(s[i], 10, 64)
+			si[i], _ = strconv.ParseInt(ss[i], 10, 64)
 		}
-		return &si
+		if len(si) > 0 {
+			return si
+		}
 	}
 	return nil
 }
@@ -473,26 +477,25 @@ func (c *Context) GetIntSlice(key, sep string) *[]int64 {
 //	key is key name
 //  sep spilt char
 //  prefix	remove prefix string
-func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) (*[]int64, bool) {
-	d := c.GetStrings(key)
+func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) ([]int64, bool) {
+	s := c.GetTrimString(key)
 	has := false
-	if len(d) > 0 {
-		ss := d[0]
+	if len(s) > 0 {
 		if prefix != "" {
-			has = strings.HasPrefix(ss, prefix)
-			ss = strings.TrimPrefix(d[0], prefix)
+			has = strings.HasPrefix(s, prefix)
+			s = strings.TrimPrefix(s, prefix)
 		}
-		s := strings.Split(ss, sep)
+		ss := strings.Split(s, sep)
 		lg := len(s)
 		si := make([]int64, 0, lg)
 		for i := 0; i < lg; i++ {
-			n, err := strconv.ParseInt(s[i], 10, 64)
+			n, err := strconv.ParseInt(ss[i], 10, 64)
 			if err == nil {
 				si = append(si, n)
 			}
 		}
 		if len(si) > 0 {
-			return &si, has
+			return si, has
 		}
 	}
 	return nil, false
