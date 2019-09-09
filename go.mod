@@ -1,10 +1,8 @@
 module github.com/aixiaoxiang/bast
 
-go 1.12
-
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/aixiaoxiang/daemon v0.0.0-20190302110205-f3f2834d8abd
+	github.com/aixiaoxiang/daemon v0.11.1
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/microsoft/go-winio v0.4.12
 	github.com/pkg/errors v0.8.1 // indirect
@@ -17,3 +15,5 @@ require (
 )
 
 replace golang.org/x/sys => github.com/golang/sys v0.0.0-20190302025703-b6889370fb10
+
+go 1.13
