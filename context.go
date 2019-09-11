@@ -486,7 +486,7 @@ func (c *Context) GetIntSliceAndRemovePrefix(key, sep, prefix string) ([]int64, 
 			s = strings.TrimPrefix(s, prefix)
 		}
 		ss := strings.Split(s, sep)
-		lg := len(s)
+		lg := len(ss)
 		si := make([]int64, 0, lg)
 		for i := 0; i < lg; i++ {
 			n, err := strconv.ParseInt(ss[i], 10, 64)
