@@ -22,7 +22,7 @@ type memory struct {
 //Set session set value by key
 func (m *memory) Set(key string, value interface{}) error {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 	m.data[key] = value
 	return nil
 }
@@ -30,7 +30,7 @@ func (m *memory) Set(key string, value interface{}) error {
 //set session value by key
 func (m *memory) Get(key string) interface{} {
 	m.lock.RLock()
-	defer m.lock.RLock()
+	defer m.lock.RUnlock()
 	if v, ok := m.data[key]; ok {
 		return v
 	}
@@ -40,7 +40,7 @@ func (m *memory) Get(key string) interface{} {
 //delete session value by key
 func (m *memory) Delete(key string) error {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 	delete(m.data, key)
 	return nil
 }
@@ -53,7 +53,7 @@ func (m *memory) ID() string {
 //clear all data
 func (m *memory) Clear() error {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 	m.data = nil
 	m.data = map[string]interface{}{}
 	return nil
