@@ -391,10 +391,14 @@ func doRun(addr string) {
 
 func tryRun() error {
 	var err error
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		err = doTryRun(app.Addr)
 		if err != nil {
-			time.Sleep(10 * time.Millisecond)
+			if i <= 50 {
+				time.Sleep(2 * time.Millisecond)
+			} else {
+				time.Sleep(10 * time.Millisecond)
+			}
 			continue
 		}
 		break

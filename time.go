@@ -213,6 +213,37 @@ func DatesByTime(t time.Time) *Date {
 	return &tt
 }
 
+//DateByBTime bast.Time to Date
+func DateByBTime(t Time) Date {
+	tt := Date(t)
+	return tt
+}
+
+//DatesByBTime *bast.Time to *Date
+func DatesByBTime(t Time) *Date {
+	tt := Date(t)
+	return &tt
+}
+
+//DateByBTimes *bast.Time to Date
+func DateByBTimes(t *Time) Date {
+	var tt Date
+	if t != nil {
+		tt = Date(*t)
+	}
+	return tt
+}
+
+//DatesByBTimes *bast.Time to *Date
+func DatesByBTimes(t *Time) *Date {
+	var tt Date
+	if t != nil {
+		tt = Date(*t)
+		return &tt
+	}
+	return nil
+}
+
 //DateWithString  string to Date
 func DateWithString(t string, layout ...string) (Date, error) {
 	l := ""
