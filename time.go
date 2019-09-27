@@ -108,6 +108,20 @@ func TimeWithString(t string, layout ...string) (Time, error) {
 	return strToTime(t, l)
 }
 
+//TimesWithString  string to *Time
+func TimesWithString(t string, layout ...string) (*Time, error) {
+	l := ""
+	if layout != nil {
+		l = layout[0]
+	}
+	tt, err := strToTime(t, l)
+	if err == nil {
+		t := Time(tt)
+		return &t, nil
+	}
+	return nil, err
+}
+
 //strToTime
 func strToTime(t string, layout string) (Time, error) {
 	return byteToTime([]byte(t), layout)
