@@ -48,11 +48,6 @@ var (
 	flagConf, flagName, flagAppKey, flagPipe                                     string
 	flagPPid                                                                     int
 	app                                                                          *App
-	t, f                                                                         = true, false
-	//T *bool
-	T = &t
-	//F *bool
-	F = &f
 )
 
 //App is application major data
@@ -74,6 +69,15 @@ type work struct {
 	runing    bool
 	exitCount int
 }
+
+//BeforeHandle is before then request handler
+type BeforeHandle func(ctx *Context) error
+
+//AfterHandle is after then request handler
+type AfterHandle func(ctx *Context) error
+
+//MigrationHandle is migration handler
+type MigrationHandle func() error
 
 //init application
 func init() {
@@ -149,15 +153,6 @@ func parseCommandLine() {
 	conf.Parse(f)
 }
 
-//BeforeHandle is before then request handler
-type BeforeHandle func(ctx *Context) error
-
-//AfterHandle is after then request handler
-type AfterHandle func(ctx *Context) error
-
-//MigrationHandle is migration handler
-type MigrationHandle func() error
-
 //Before the request
 func Before(f BeforeHandle) {
 	app.Before = f
@@ -199,6 +194,27 @@ func Post(pattern string, f func(ctx *Context), authorization ...bool) {
 // The documentation for ServeMux explains how patterns are matched.
 func Put(pattern string, f func(ctx *Context), authorization ...bool) {
 	doHandle("PUT", pattern, f, authorization...)
+}
+
+// Delete registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func Delete(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("DELETE", pattern, f, authorization...)
+}
+
+// Head registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func Head(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("HEAD", pattern, f, authorization...)
+}
+
+// Patch registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func Patch(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("PATCH", pattern, f, authorization...)
 }
 
 // FileServer registers the handler function for the given pattern
@@ -391,10 +407,14 @@ func doRun(addr string) {
 
 func tryRun() error {
 	var err error
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 500; i++ {
 		err = doTryRun(app.Addr)
 		if err != nil {
 			if i <= 50 {
+				time.Sleep(20 * time.Microsecond)
+			} else if i > 50 && i <= 100 {
+				time.Sleep(1 * time.Millisecond)
+			} else if i > 100 && i <= 250 {
 				time.Sleep(2 * time.Millisecond)
 			} else {
 				time.Sleep(10 * time.Millisecond)
@@ -472,8 +492,6 @@ func start() (bool, error) {
 	}
 	path := conf.Path()
 	cmd := exec.Command(os.Args[0], "-master", "-start", "-conf="+path)
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
 	cmd.Dir = AppDir()
 	cmd.Start()
 	// time.Sleep(200 * time.Millisecond)
@@ -496,7 +514,6 @@ func service() {
 		return
 	}
 	logs.Info("service info:" + status)
-
 }
 
 func doService() {
@@ -506,13 +523,15 @@ func doService() {
 
 func doStart() error {
 	appConfs := conf.Confs()
+	if appConfs == nil || len(appConfs) <= 0 {
+		logs.Info("not found conf")
+		return errors.New("not found conf")
+	}
 	path := conf.Path()
 	pid := strconv.Itoa(os.Getpid())
 	app.pipeName = pid
 	if flagService {
 		logs.Info("service=" + path + ",master pid=" + pid)
-	} else {
-		// fmt.Println("start=" + path + ",master pid=" + pid)
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
@@ -520,11 +539,15 @@ func doStart() error {
 		// cmd.Stdout = os.Stdout
 		// cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
-		cmd.Start()
+		err := cmd.Start()
+		if err != nil {
+			logs.Err("create child process filed,", err)
+			return err
+		}
 		app.cmd = append(app.cmd, work{key: c.Key, cmd: cmd, runing: true})
 	}
 	if err := logPid(); err != nil {
-		logs.Err("start error log pid,", err)
+		logs.Err("logging error log pid,", err)
 		if !flagService {
 			fmt.Println(err.Error())
 		}
@@ -539,13 +562,18 @@ func startWork(index int) *exec.Cmd {
 		path := conf.Path()
 		// pid := strconv.Itoa(os.Getpid())
 		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
+		// cmd.StdinPipe()
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
-		cmd.Start()
+		err := cmd.Start()
+		if err != nil {
+			return nil
+		}
 		app.cmd[index] = work{key: c.Key, cmd: cmd, runing: true}
 		logPid()
 		return cmd
+
 	}
 	return nil
 }
@@ -578,8 +606,7 @@ func checkWorkProcess() {
 			fmt.Println("has work process exited,exit code=" + exitCode)
 		}
 		w.runing = false
-		if app.runing {
-		} else {
+		if !app.runing {
 			break
 		}
 	}
@@ -782,6 +809,30 @@ func getMasterPidWithFile() int {
 
 //getWorkPids work pids
 func getWorkPids() []int {
+	pids := getWorkPidsFormMemory()
+	if pids == nil || len(pids) <= 0 {
+		pids = getWorkPidsFormFile()
+	}
+	return pids
+}
+
+//getWorkPidsFormMemory get work pids form the memory
+func getWorkPidsFormMemory() []int {
+	pids := []int{}
+	if app.cmd != nil {
+		lg := len(app.cmd)
+		for i := 0; i < lg; i++ {
+			o := app.cmd[i]
+			if o.cmd != nil && o.cmd.Process != nil && o.cmd.ProcessState != nil && o.cmd.ProcessState.Exited() && o.runing {
+				pids = append(pids, o.cmd.Process.Pid)
+			}
+		}
+	}
+	return pids
+}
+
+//getWorkPidsFormFile get work pids form the file
+func getWorkPidsFormFile() []int {
 	pidPath := os.Args[0] + ".pid"
 	f, _ := os.Open(pidPath)
 	defer f.Close()
@@ -808,17 +859,6 @@ func getWorkPids() []int {
 	}
 	return nil
 }
-
-// //getWorkPids work pids
-// func getWorkPids() []int {
-// 	pids := []int{}
-// 	for _, p := range app.cmd {
-// 		if p.runing {
-// 			pids = append(pids, p.cmd.Process.Pid)
-// 		}
-// 	}
-// 	return pids
-// }
 
 //Shutdown app
 func Shutdown(ctx context.Context) error {
@@ -851,20 +891,21 @@ func Str(s string) *string {
 	return &s
 }
 
-/******ID method **********/
-
 //ID create Unique ID
 func ID() int64 {
 	return ids.ID()
 }
 
-/******GUID method **********/
+//GUID create GUID
+func GUID() string {
+	return guid.GUID()
+}
 
 /*conf*/
 
-//RegistConfHandle handler  conf
-func RegistConfHandle(handle conf.ConfingHandle, finish ...conf.FinishHandle) {
-	conf.RegistConfHandle(handle, finish...)
+//RegistConf handler  conf
+func RegistConf(handle conf.ConfingHandle, finish ...conf.FinishHandle) {
+	conf.RegistConf(handle, finish...)
 }
 
 //Conf returns the current app config
@@ -880,11 +921,6 @@ func UserConf() interface{} {
 //FileDir if app config configuration fileDir return it，orherwise return app exec path
 func FileDir() string {
 	return conf.FileDir()
-}
-
-//GUID create GUID
-func GUID() string {
-	return guid.GUID()
 }
 
 //clear res

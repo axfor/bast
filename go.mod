@@ -3,6 +3,7 @@ module github.com/aixiaoxiang/bast
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/aixiaoxiang/daemon v0.11.1
+	github.com/google/uuid v1.1.1
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/microsoft/go-winio v0.4.12
 	github.com/pkg/errors v0.8.1 // indirect

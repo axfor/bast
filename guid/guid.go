@@ -2,9 +2,9 @@
 
 package guid
 
-import "github.com/aixiaoxiang/bast/objectid"
+import "github.com/google/uuid"
 
 //GUID create GUID
 func GUID() string {
-	return objectid.New().Hex()
+	return uuid.New().String()
 }

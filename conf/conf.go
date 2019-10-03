@@ -267,8 +267,8 @@ func Parse(f *flag.FlagSet) string {
 	return flagConf
 }
 
-//RegistConfHandle handler  conf
-func RegistConfHandle(handle ConfingHandle, finish ...FinishHandle) {
+//RegistConf regist handler conf
+func RegistConf(handle ConfingHandle, finish ...FinishHandle) {
 	confHandle = handle
 	if finish != nil {
 		confFinishHandle = finish[0]
