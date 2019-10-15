@@ -99,6 +99,36 @@ func TimesByTime(t time.Time) *Time {
 	return &tt
 }
 
+//TimeByDate Date to Time
+func TimeByDate(d Date) Time {
+	t := Time(d)
+	return t
+}
+
+//TimeByDates *Date to Time
+func TimeByDates(d *Date) Time {
+	var t Time
+	if d != nil {
+		t = Time(*d)
+	}
+	return t
+}
+
+//TimesByDate Date to *Time
+func TimesByDate(d Date) *Time {
+	tt := Time(d)
+	return &tt
+}
+
+//TimesByDates *Date to *Time
+func TimesByDates(d *Date) *Time {
+	if d != nil {
+		t := Time(*d)
+		return &t
+	}
+	return nil
+}
+
 //TimeWithString  string to Time
 func TimeWithString(t string, layout ...string) (Time, error) {
 	l := ""
@@ -161,7 +191,7 @@ func byteToTime(b []byte, layout string) (Time, error) {
 }
 
 //String
-func (t *Time) String() string {
+func (t Time) String() string {
 	return t.Time.Format("2006-01-02 15:04:05")
 }
 
@@ -206,7 +236,9 @@ type Date Time
 
 //NowDate returns the current local date.
 func NowDate() Date {
-	return Date(Now())
+	y, m, d := time.Now().Date()
+	t := time.Date(y, m, d, 0, 0, 0, 0, time.Local)
+	return Date(Time{Time: t})
 }
 
 //NowDates returns the current local *date.
@@ -217,8 +249,9 @@ func NowDates() *Date {
 
 //DateByTime time.Time to Date
 func DateByTime(t time.Time) Date {
-	tt := Time{Time: t}
-	return Date(tt)
+	y, m, d := time.Now().Date()
+	t = time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+	return Date(Time{Time: t})
 }
 
 //DatesByTime time.Time to *Date
@@ -229,31 +262,27 @@ func DatesByTime(t time.Time) *Date {
 
 //DateByBTime bast.Time to Date
 func DateByBTime(t Time) Date {
-	tt := Date(t)
-	return tt
+	return DateByTime(t.Time)
 }
 
 //DatesByBTime *bast.Time to *Date
 func DatesByBTime(t Time) *Date {
-	tt := Date(t)
-	return &tt
+	return DatesByTime(t.Time)
 }
 
 //DateByBTimes *bast.Time to Date
 func DateByBTimes(t *Time) Date {
 	var tt Date
 	if t != nil {
-		tt = Date(*t)
+		tt = DateByTime(t.Time)
 	}
 	return tt
 }
 
 //DatesByBTimes *bast.Time to *Date
 func DatesByBTimes(t *Time) *Date {
-	var tt Date
 	if t != nil {
-		tt = Date(*t)
-		return &tt
+		return DatesByBTime(*t)
 	}
 	return nil
 }
@@ -323,8 +352,8 @@ func (t *Date) UnmarshalJSON(b []byte) error {
 
 //Value support  sql.Driver interface
 func (t Date) Value() (driver.Value, error) {
-	var zeroTime time.Time
-	if t.Time.UnixNano() == zeroTime.UnixNano() {
+	var zt time.Time
+	if t.Time.UnixNano() == zt.UnixNano() {
 		return nil, nil
 	}
 	return t.Time, nil
@@ -334,14 +363,14 @@ func (t Date) Value() (driver.Value, error) {
 func (t *Date) Scan(v interface{}) error {
 	value, ok := v.(time.Time)
 	if ok {
-		*t = Date{Time: value}
+		*t = DateByTime(value)
 		return nil
 	}
 	return fmt.Errorf("can not convert %v to Date", v)
 }
 
 //String
-func (t *Date) String() string {
+func (t Date) String() string {
 	return t.Time.Format("2006-01-02")
 }
 
