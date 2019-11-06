@@ -194,13 +194,15 @@ func E(msg string, fields ...zap.Field) {
 
 //Err Error log
 func Err(msg string, err error) {
-	if msg == "" {
-		msg = "error"
-	}
 	if err != nil {
-		msg += "," + err.Error()
+		if msg != "" {
+			msg += ","
+		}
+		msg += err.Error()
 	}
-	ErrorWithCaller(msg, "")
+	if msg != "" {
+		ErrorWithCaller(msg, "")
+	}
 }
 
 //ErrorWithCaller error log

@@ -249,7 +249,7 @@ func NowDates() *Date {
 
 //DateByTime time.Time to Date
 func DateByTime(t time.Time) Date {
-	y, m, d := time.Now().Date()
+	y, m, d := t.Date()
 	t = time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 	return Date(Time{Time: t})
 }
