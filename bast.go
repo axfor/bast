@@ -541,13 +541,13 @@ func doStart() error {
 		cmd.Dir = AppDir()
 		err := cmd.Start()
 		if err != nil {
-			logs.Err("create child process filed,", err)
+			logs.Errors("create child process filed,", err)
 			return err
 		}
 		app.cmd = append(app.cmd, work{key: c.Key, cmd: cmd, runing: true})
 	}
 	if err := logPid(); err != nil {
-		logs.Err("logging error log pid,", err)
+		logs.Errors("logging error log pid,", err)
 		if !flagService {
 			fmt.Println(err.Error())
 		}

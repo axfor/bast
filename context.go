@@ -23,7 +23,6 @@ import (
 	"github.com/aixiaoxiang/bast/session"
 
 	"github.com/julienschmidt/httprouter"
-	"go.uber.org/zap"
 )
 
 //const code
@@ -64,14 +63,14 @@ type Context struct {
 	Session session.Store
 }
 
-//Msgs is response message
-type Msgs struct {
+//Message is response message
+type Message struct {
 	Code int    `gorm:"-" json:"code"`
 	Msg  string `gorm:"-" json:"msg"`
 }
 
-//MsgDetail is response detail message
-type MsgDetail struct {
+//MessageDetail is response detail message
+type MessageDetail struct {
 	Code   int    `gorm:"-" json:"code"`
 	Msg    string `gorm:"-" json:"msg"`
 	Detail string `gorm:"-" json:"detail"`
@@ -79,21 +78,21 @@ type MsgDetail struct {
 
 //Data is response data
 type Data struct {
-	Msgs `gorm:"-"`
-	Data interface{} `gorm:"-"  json:"data"`
+	Message `gorm:"-"`
+	Data    interface{} `gorm:"-"  json:"data"`
 }
 
-//DataPage is Pagination data
-type DataPage struct {
-	Msgs
+//Pagination is Pagination data
+type Pagination struct {
+	Message
 	Data  interface{} `gorm:"-"  json:"data"`
 	Page  int         `gorm:"-"  json:"page"`
 	Total int         `gorm:"-"  json:"total"`
 }
 
-//InfoPage is invalid Pagination data
-type InfoPage struct {
-	DataPage
+//InvalidPagination is invalid Pagination data
+type InvalidPagination struct {
+	Pagination
 	Invalid bool `gorm:"-"  json:"invalid"`
 	Fix     bool `gorm:"-"  json:"fix"`
 }
@@ -125,16 +124,16 @@ func (c *Context) JSONWithMsg(v interface{}, msg string) {
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 	_, ok := v.(*Data)
 	if !ok {
-		_, ok = v.(*Msgs)
+		_, ok = v.(*Message)
 	}
 	if !ok {
-		_, ok = v.(*DataPage)
+		_, ok = v.(*Pagination)
 	}
 	if !ok {
-		_, ok = v.(*MsgDetail)
+		_, ok = v.(*MessageDetail)
 	}
 	if !ok {
-		_, ok = v.(*InfoPage)
+		_, ok = v.(*InvalidPagination)
 	}
 	if !ok {
 		d := &Data{}
@@ -161,7 +160,7 @@ func (c *Context) JSONWithPageAndCode(v interface{}, page, total, code int, msg 
 
 //JSONWithPageAndCodeMsg output Pagination JSON Data to client
 func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, msg string) {
-	d := &InfoPage{}
+	d := &InvalidPagination{}
 	_, _total, pageRow := c.Page()
 	if _total == 0 {
 		last := int(math.Ceil(float64(total) / float64(pageRow)))
@@ -194,7 +193,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 	if d.Invalid || d.Fix {
 		c.JSONResult(d)
 	} else {
-		c.JSONResult(d.DataPage)
+		c.JSONResult(d.Pagination)
 	}
 	d.Data = nil
 	d = nil
@@ -204,7 +203,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 func (c *Context) JSONResult(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		logs.Info("JSONResult-Error=" + err.Error())
+		logs.Debug("JSONResult-Error=" + err.Error())
 		c.StatusCode(http.StatusInternalServerError)
 		return
 	}
@@ -216,7 +215,7 @@ func (c *Context) JSONResult(v interface{}) {
 //Success output success result to client
 //	msg is success message
 func (c *Context) Success(msg string) {
-	d := &Msgs{}
+	d := &Message{}
 	d.Code = SerOK
 	d.Msg = msg
 	c.JSON(d)
@@ -228,7 +227,7 @@ func (c *Context) Successf(format string, a ...interface{}) {
 	if a != nil && len(a) > 0 {
 		format = fmt.Sprintf(format, a...)
 	}
-	d := &Msgs{}
+	d := &Message{}
 	d.Code = SerOK
 	d.Msg = format
 	c.JSON(d)
@@ -248,7 +247,7 @@ func (c *Context) Failed(msg string, err ...error) {
 //	msg is fail message
 //	detail is detail message
 func (c *Context) Faileds(msg string, detail string) {
-	d := &MsgDetail{}
+	d := &MessageDetail{}
 	d.Code = SerError
 	d.Msg = msg
 	d.Detail = detail
@@ -281,7 +280,7 @@ func (c *Context) Failedf(format string, a ...interface{}) {
 //	msg is fail message
 //	detail is detail message
 func (c *Context) Result(msg string, detail ...string) {
-	d := &MsgDetail{}
+	d := &MessageDetail{}
 	d.Code = SerOK
 	d.Msg = msg
 	if detail != nil {
@@ -296,24 +295,11 @@ func (c *Context) Result(msg string, detail ...string) {
 	d = nil
 }
 
-//SignOutError output user signout to client
+//SignOut output user signout to client
 //param:
 //	msg message
-func (c *Context) SignOutError(msg string) {
+func (c *Context) SignOut(msg string) {
 	c.FailResult(msg, SerSignOutError)
-}
-
-//DBError  output dataBase error to client
-//param:
-//	err db.error
-func (c *Context) DBError(err error) {
-	msg := "DataBase error"
-	if err != nil {
-		msg = "DataBase error,detail：" + err.Error()
-	} else {
-		msg = "DataBase error"
-	}
-	c.FailResult(msg, SerDBError)
 }
 
 //FailResult output fail result to client
@@ -322,7 +308,7 @@ func (c *Context) DBError(err error) {
 //	errCode ailed message code
 //  err  error
 func (c *Context) FailResult(msg string, errCode int, err ...error) {
-	d := &Msgs{}
+	d := &Message{}
 	if errCode == 0 {
 		errCode = SerError
 	}
@@ -339,10 +325,8 @@ func (c *Context) FailResult(msg string, errCode int, err ...error) {
 //param:
 //	err message
 func (c *Context) NoData(msg ...string) {
-	msgs := "Sorry！No Data"
-	if msg == nil {
-		msgs = "Sorry！No Data"
-	} else {
+	msgs := ""
+	if msg != nil {
 		msgs = msg[0]
 	}
 	c.FailResult(msgs, SerNoDataError)
@@ -355,10 +339,10 @@ func (c *Context) Say(data []byte) {
 	c.Out.Write(data)
 }
 
-//SayStr output string to client
+//Says output string to client
 //param:
 //	str string
-func (c *Context) SayStr(str string) {
+func (c *Context) Says(str string) {
 	c.Out.Write([]byte(str))
 }
 
@@ -383,10 +367,10 @@ func (c *Context) SendFile(fileName string, rawFileName ...string) {
 	fs = nil
 }
 
-//JSONToStr JSON to string
+//JSON2String JSON to string
 //param:
 //	obj is object
-func (c *Context) JSONToStr(obj interface{}) (string, error) {
+func (c *Context) JSON2String(obj interface{}) (string, error) {
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return "", nil
@@ -394,11 +378,11 @@ func (c *Context) JSONToStr(obj interface{}) (string, error) {
 	return string(data), err
 }
 
-//StrToJSON string to JSON
+//String2JSON string to JSON
 //param:
 //	str json string
 //  obj is object
-func (c *Context) StrToJSON(str string, obj interface{}) error {
+func (c *Context) String2JSON(str string, obj interface{}) error {
 	return c.JSONDecode(strings.NewReader(str), obj)
 }
 
@@ -410,8 +394,8 @@ func (c *Context) StatusCode(statusCode int) {
 	c.Out.Write([]byte(http.StatusText(statusCode)))
 }
 
-//GetRawStr getter raw string value from current request(request body)
-func (c *Context) GetRawStr() string {
+//RawString getter raw string value from current request(request body)
+func (c *Context) RawString() string {
 	body, err := ioutil.ReadAll(c.In.Body)
 	if err != nil {
 		return ""
@@ -565,11 +549,11 @@ func (c *Context) GetBool(key string) bool {
 	return false
 }
 
-//GetBoolWithDefault get a bool value from the current request  based on the key
+//GetBoolValue get a bool value from the current request  based on the key
 //param:
 //	key is key name
 //  def is default value
-func (c *Context) GetBoolWithDefault(key string, def bool) bool {
+func (c *Context) GetBoolValue(key string, def bool) bool {
 	d := c.GetStrings(key)
 	if len(d) > 0 {
 		ok, err := strconv.ParseBool(d[0])
@@ -586,6 +570,69 @@ func (c *Context) GetBoolWithDefault(key string, def bool) bool {
 func (c *Context) GetStrings(key string) []string {
 	c.ParseForm()
 	return c.In.Form[key]
+}
+
+//GetInt gets a int value from the current request  based on the key
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetInt(key string) (int, error) {
+	return strconv.Atoi(c.GetString(key))
+}
+
+//GetIntValue gets a int value  from the current request  based on the key（errors not included）
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetIntValue(key string, def int) int {
+	d := c.GetString(key)
+	v, err := strconv.Atoi(d)
+	if err != nil {
+		v = def
+	}
+	return v
+}
+
+//GetInt64 gets a int64 value  from the current request url  based on the key
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetInt64(key string) (int64, error) {
+	return strconv.ParseInt(c.GetString(key), 10, 64)
+}
+
+//GetInt64Value gets a int64 value  from the current request  based on the key（errors not included）
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetInt64Value(key string, def int64) int64 {
+	d := c.GetString(key)
+	v, err := strconv.ParseInt(d, 10, 64)
+	if err != nil {
+		v = def
+	}
+	return v
+}
+
+//GetFloat gets a float value  from the current request uri  based on the key
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetFloat(key string) (float64, error) {
+	return strconv.ParseFloat(c.GetString(key), 64)
+}
+
+//GetFloatValue gets a float value  from the current request  based on the key（errors not included）
+//param:
+//	key is key name
+//	def default value
+func (c *Context) GetFloatValue(key string, def float64) float64 {
+	d := c.GetString(key)
+	v, err := strconv.ParseFloat(d, 64)
+	if err != nil {
+		v = def
+	}
+	return v
 }
 
 //HasParam has a param from the current request based on the key(May not have a value)
@@ -615,100 +662,15 @@ func (c *Context) Query() url.Values {
 	return c.In.URL.Query()
 }
 
-//GetInt gets a int value from the current request  based on the key
-//param:
-//	key is key name
-//	def default value
-func (c *Context) GetInt(key string, def ...int) (int, error) {
-	d := c.GetString(key)
-	v, err := strconv.Atoi(d)
-	if err != nil {
-		if def != nil && len(def) > 0 {
-			v = def[0]
-		} else {
-			v = 0
-		}
-	}
-	return v, err
-}
-
-//GetIntVal gets a int value  from the current request  based on the key（errors not included）
-//param:
-//	key is key name
-//	def default value
-func (c *Context) GetIntVal(key string, def ...int) int {
-	d := c.GetString(key)
-	v, err := strconv.Atoi(d)
-	if err != nil {
-		if def != nil && len(def) > 0 {
-			v = def[0]
-		} else {
-			v = 0
-		}
-	}
-	return v
-}
-
-//GetInt64 gets a int64 value  from the current request url  based on the key
-//param:
-//	key is key name
-//	def default value
-func (c *Context) GetInt64(key string, def ...int64) (int64, error) {
-	d := c.GetString(key)
-	v, err := strconv.ParseInt(d, 10, 64)
-	if err != nil {
-		if def != nil && len(def) > 0 {
-			v = def[0]
-		} else {
-			v = 0
-		}
-	}
-	return v, err
-}
-
-//GetInt64Val gets a int64 value  from the current request  based on the key（errors not included）
-//param:
-//	key is key name
-//	def default value
-func (c *Context) GetInt64Val(key string, def ...int64) int64 {
-	d := c.GetString(key)
-	v, err := strconv.ParseInt(d, 10, 64)
-	if err != nil {
-		if def != nil && len(def) > 0 {
-			v = def[0]
-		} else {
-			v = 0
-		}
-	}
-	return v
-}
-
-//GetFloat gets a float value  from the current request uri  based on the key
-//param:
-//	key is key name
-//	def default value
-func (c *Context) GetFloat(key string, def ...float64) (float64, error) {
-	d := c.GetString(key)
-	v, err := strconv.ParseFloat(d, 64)
-	if err != nil {
-		if def != nil && len(def) > 0 {
-			v = def[0]
-		} else {
-			v = 0
-		}
-	}
-	return v, err
-}
-
 //Page get pages param from the current request
 //param:
 //	page 	current page index(start 1)
 //	total 	all data total count(cache total count for first service return)
 //  pageRow page maximum size(default is 100 row)
 func (c *Context) Page() (page int, total int, pageRow int) {
-	page, _ = c.GetInt("page")
-	total, _ = c.GetInt("total")
-	pageRow, _ = c.GetInt("pageRow", 100)
+	page = c.GetIntValue("page", 0)
+	total = c.GetIntValue("total", 0)
+	pageRow = c.GetIntValue("pageRow", 100)
 	if page > 0 {
 		page--
 	}
@@ -747,13 +709,6 @@ func (c *Context) Offset(total int) int {
 			page = last - 1
 		}
 	}
-	// fixPage := c.HasParam("fixPage")
-	// if fixPage {
-	// 	last := int(math.Ceil(float64(total) / float64(pageRow)))
-	// 	if page >= last {
-	// 		page = last - 1
-	// 	}
-	// }
 	offset := page * pageRow
 	return offset
 }
@@ -763,13 +718,6 @@ func (c *Context) Offset(total int) int {
 //	obj target object
 func (c *Context) JSONObj(obj interface{}) error {
 	return c.JSONDecode(c.In.Body, obj)
-}
-
-//GetJSON gets data from the current request body(JSON fromat) and convert it to a objecet
-//param:
-//	obj target object
-func (c *Context) GetJSON(obj interface{}) error {
-	return c.JSONObj(obj)
 }
 
 //JSONDecode gets data from the r reader(JSON fromat) and convert it to a objecet
@@ -785,9 +733,9 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		if app.Debug {
-			logs.Debug("JSONDecode-Error=" + err.Error() + ",detail=" + string(body))
+			logs.Debug("JSONDecode error=" + err.Error() + ",detail=" + string(body))
 		} else {
-			logs.Debug("JSONDecode-Error=" + err.Error())
+			logs.Debug("JSONDecode error=" + err.Error())
 		}
 		body = nil
 		return err
@@ -802,13 +750,6 @@ func (c *Context) XMLObj(obj interface{}) error {
 	return c.XMLDecode(c.In.Body, obj)
 }
 
-//GetXML gets data from the current request body(xml format)  and  convert it to a object
-//param:
-//	obj target object
-func (c *Context) GetXML(obj interface{}) error {
-	return c.XMLObj(obj)
-}
-
 //XMLDecode  gets data from the r reader(xml format) and convert it to a object
 //param:
 //	r is a reader
@@ -821,9 +762,9 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
 	err = xml.Unmarshal(body, obj)
 	if err != nil {
 		if app.Debug {
-			logs.Debug("XMLDecode-Err=" + err.Error() + ",detail=" + string(body))
+			logs.Debug("XMLDecode err=" + err.Error() + ",detail=" + string(body))
 		} else {
-			logs.Debug("XMLDecode-Err=" + err.Error())
+			logs.Debug("XMLDecode err=" + err.Error())
 		}
 		body = nil
 		return err
@@ -1008,32 +949,6 @@ func (c *Context) Reset() {
 	c.Authorization = false
 	c.IsAuthorization = false
 	c.Session = nil
-}
-
-//I  log info
-func (c *Context) I(msg string, fields ...zap.Field) {
-	logs.I(msg, fields...)
-}
-
-//D log debug
-func (c *Context) D(msg string, fields ...zap.Field) {
-	logs.D(msg, fields...)
-}
-
-//E log error
-func (c *Context) E(msg string, fields ...zap.Field) {
-	logs.E(msg, fields...)
-}
-
-//Err log error
-func (c *Context) Err(msg string, err error) {
-	if msg == "" {
-		msg = "error"
-	}
-	if err != nil {
-		msg += "," + err.Error()
-	}
-	logs.E(msg)
 }
 
 //ID return a ID

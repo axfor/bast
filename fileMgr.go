@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/aixiaoxiang/bast/guid"
+	"github.com/aixiaoxiang/bast/logs"
 )
 
 //FileInfo struct
@@ -52,7 +53,7 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 	//ctx.ParseForm()
 	err := ctx.ParseMultipartForm(32 << 40) //maximum 64M
 	if err != nil {
-		ctx.I("fileHandleUpload->parseMultipartForm-err=" + err.Error())
+		logs.Info("fileHandleUpload->parseMultipartForm-err=" + err.Error())
 		return nil, errors.New("Invalid file format")
 	}
 	mp := ctx.In.MultipartForm

@@ -77,7 +77,7 @@ func Manager() *AppConfMgr {
 		appConf := []AppConf{}
 		err = json.Unmarshal(data, &appConf)
 		if err != nil {
-			logs.Err("conf mgr init error", err)
+			logs.Errors("conf mgr init error", err)
 			fmt.Println("conf mgr init error:" + err.Error())
 			return nil
 		}

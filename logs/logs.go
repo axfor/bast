@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -35,6 +36,7 @@ type LogConf struct {
 	MaxBackups int    `json:"maxBackups"`
 	MaxAge     int    `json:"maxAge"`
 	Debug      bool   `json:"debug"`
+	LogSelect  bool   `json:"logSelect"`
 	Stdout     bool   `json:"-"`
 }
 
@@ -56,14 +58,10 @@ func (*GormLogger) Print(v ...interface{}) {
 			gromDebugLogger.Println(msg...)
 		}
 	} else {
-		msg, level := gromLogFormatter(v...)
+		msg, _ := gromLogFormatter(v...)
 		if msg != nil {
 			source, _ := v[1].(string)
-			if level == "sql" {
-				InfoWithCaller("gorm", source, msg...)
-			} else {
-				ErrorWithCaller("gorm", source, msg...)
-			}
+			InfoWithCaller("gorm", source, msg...)
 		}
 	}
 }
@@ -94,6 +92,7 @@ func LogInit(conf *LogConf) *XLogger {
 		if conf.MaxAge <= 0 {
 			conf.MaxAge = 28
 		}
+
 		l := logLevel(conf.Level)
 		var w zapcore.WriteSyncer
 		var core zapcore.Core
@@ -153,11 +152,6 @@ func Info(msg string, fields ...zap.Field) {
 	InfoWithCaller(msg, "", fields...)
 }
 
-//I info log
-func I(msg string, fields ...zap.Field) {
-	InfoWithCaller(msg, "", fields...)
-}
-
 //InfoWithCaller info log
 func InfoWithCaller(msg string, caller string, fields ...zap.Field) {
 	if logger != nil {
@@ -167,11 +161,6 @@ func InfoWithCaller(msg string, caller string, fields ...zap.Field) {
 
 //Debug debug log
 func Debug(msg string, fields ...zap.Field) {
-	DebugWithCaller(msg, "", fields...)
-}
-
-//D debug log
-func D(msg string, fields ...zap.Field) {
 	DebugWithCaller(msg, "", fields...)
 }
 
@@ -187,13 +176,8 @@ func Error(msg string, fields ...zap.Field) {
 	ErrorWithCaller(msg, "", fields...)
 }
 
-//E error log
-func E(msg string, fields ...zap.Field) {
-	ErrorWithCaller(msg, "", fields...)
-}
-
-//Err Error log
-func Err(msg string, err error) {
+//Errors Error log
+func Errors(msg string, err error) {
 	if err != nil {
 		if msg != "" {
 			msg += ","
@@ -298,10 +282,17 @@ func Caller(skip int) string {
 //grom logFormatter of debug
 var gromLogFormatterDebug = func(values ...interface{}) (messages []interface{}) {
 	if len(values) > 1 {
+		var level = values[0]
+		if level == "sql" && !logger.logConf.LogSelect {
+			s, ok := values[3].(string)
+			if ok && s != "" && strings.Index(s, "SELECT") >= 0 {
+				return
+			}
+		}
+
 		var (
 			sql             string
 			formattedValues []string
-			level           = values[0]
 			currentTime     = "\n\033[33m[" + time.Now().Format("2006-01-02 15:04:05") + "]\033[0m"
 			source          = fmt.Sprintf("\033[35m(%v)\033[0m", values[1])
 		)
@@ -378,10 +369,16 @@ var gromLogFormatterDebug = func(values ...interface{}) (messages []interface{})
 //grom logFormatter of production
 var gromLogFormatter = func(values ...interface{}) (messages []zap.Field, levels string) {
 	if len(values) > 1 {
+		var level = values[0]
+		if level == "sql" && !logger.logConf.LogSelect {
+			s, ok := values[3].(string)
+			if ok && s != "" && strings.Index(s, "SELECT") >= 0 {
+				return
+			}
+		}
 		var (
 			sql             string
 			formattedValues []string
-			level           = values[0]
 			currentTime     = ""
 			source          = ""
 		)
