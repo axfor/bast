@@ -206,7 +206,8 @@ bast.Run(":9999")
             "maxSize":10,
             "maxBackups":3,
             "maxAge":28,
-            "debug":false
+            "debug":false,
+            "logSelect":false,
         },
         "conf":{//user config(non bast framework)
             "key":"app",

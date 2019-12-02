@@ -203,7 +203,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 func (c *Context) JSONResult(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		logs.Debug("JSONResult-Error=" + err.Error())
+		logs.Debug("JSONResult error=" + err.Error())
 		c.StatusCode(http.StatusInternalServerError)
 		return
 	}

@@ -1,5 +1,4 @@
 //Copyright 2018 The axx Authors. All rights reserved.
-//Reference github.com/astaxie/beego/session
 
 package session
 
