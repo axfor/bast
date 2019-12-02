@@ -175,60 +175,69 @@ func (app *App) ListenAndServe() error {
 	return app.Server.ListenAndServe()
 }
 
+// All registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func All(pattern string, f func(ctx *Context), authorization ...bool) {
+	for _, v := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions} {
+		doHandle(v+"", pattern, f, authorization...)
+	}
+}
+
 // Get registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Get(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("GET", pattern, f, authorization...)
+	doHandle(http.MethodGet, pattern, f, authorization...)
 }
 
 // Post registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Post(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("POST", pattern, f, authorization...)
+	doHandle(http.MethodPost, pattern, f, authorization...)
 }
 
 // Put registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Put(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("PUT", pattern, f, authorization...)
+	doHandle(http.MethodPut, pattern, f, authorization...)
 }
 
 // Delete registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Delete(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("DELETE", pattern, f, authorization...)
+	doHandle(http.MethodDelete, pattern, f, authorization...)
 }
 
 // Head registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Head(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("HEAD", pattern, f, authorization...)
+	doHandle(http.MethodHead, pattern, f, authorization...)
 }
 
 // Patch registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Patch(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("PATCH", pattern, f, authorization...)
+	doHandle(http.MethodPatch, pattern, f, authorization...)
 }
 
 // Options registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func Options(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle("OPTIONS", pattern, f, authorization...)
+	doHandle(http.MethodOptions, pattern, f, authorization...)
 }
 
 // FileServer registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func FileServer(pattern string, root string) {
-	app.Router.Handler("GET", pattern+"*filepath", NoLookDirHandler(http.StripPrefix(pattern, http.FileServer(http.Dir(root)))))
+	app.Router.Handler(http.MethodGet, pattern+"*filepath", NoLookDirHandler(http.StripPrefix(pattern, http.FileServer(http.Dir(root)))))
 }
 
 //NoLookDirHandler disable directory look
@@ -281,12 +290,12 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 		logs.Info(r.Method + ":" + r.RequestURI + "->start")
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD")
 			w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization,Access-Control-Allow-Origin,Content-Length,Content-Type,BaseUrl")
 			w.Header().Set("Access-Control-Max-Age", "1728000")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			return
 		}
 		if pattern == "/" && r.URL.Path != pattern {
