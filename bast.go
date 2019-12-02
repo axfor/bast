@@ -217,6 +217,13 @@ func Patch(pattern string, f func(ctx *Context), authorization ...bool) {
 	doHandle("PATCH", pattern, f, authorization...)
 }
 
+// OPTIONS registers the handler function for the given pattern
+// in the DefaultServeMux.
+// The documentation for ServeMux explains how patterns are matched.
+func OPTIONS(pattern string, f func(ctx *Context), authorization ...bool) {
+	doHandle("OPTIONS", pattern, f, authorization...)
+}
+
 // FileServer registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
@@ -349,7 +356,6 @@ func Serve() bool {
 		return false
 	}
 	defer clear()
-
 	Debug(c.Debug)
 	Run(c.Addr)
 	return true
