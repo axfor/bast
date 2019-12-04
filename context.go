@@ -713,6 +713,20 @@ func (c *Context) Offset(total int) int {
 	return offset
 }
 
+//Obj gets data from the current request body(JSON or XML fromat) and convert it to a objecet
+//param:
+//	obj target object
+func (c *Context) Obj(obj interface{}) error {
+	contentType := "application/json"
+	contentType = c.In.Header.Get("Content-Type")
+	if contentType == "" {
+		return c.JSONDecode(c.In.Body, obj)
+	} else if strings.Index(contentType, "application/xml") >= 0 {
+		return c.XMLDecode(c.In.Body, obj)
+	}
+	return c.JSONDecode(c.In.Body, obj)
+}
+
 //JSONObj gets data from the current request body(JSON fromat) and convert it to a objecet
 //param:
 //	obj target object
@@ -724,21 +738,20 @@ func (c *Context) JSONObj(obj interface{}) error {
 //param:
 //	r is a reader
 //	obj target object
-func (c *Context) JSONDecode(r io.Reader, obj interface{}) error {
-	body, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	// logs.Debug("JSONDecode=" + string(body))
-	err = json.Unmarshal(body, obj)
-	if err != nil {
-		if app.Debug {
+func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
+	if app.Debug {
+		body, err := ioutil.ReadAll(r)
+		if err != nil {
 			logs.Debug("JSONDecode error=" + err.Error() + ",detail=" + string(body))
-		} else {
-			logs.Debug("JSONDecode error=" + err.Error())
+			return err
 		}
+		err = json.Unmarshal(body, obj)
 		body = nil
-		return err
+	} else {
+		err = json.NewDecoder(r).Decode(obj)
+	}
+	if err != nil {
+		logs.Debug("JSONDecode error=" + err.Error())
 	}
 	return err
 }
@@ -754,33 +767,33 @@ func (c *Context) XMLObj(obj interface{}) error {
 //param:
 //	r is a reader
 //	obj target object
-func (c *Context) XMLDecode(r io.Reader, obj interface{}) error {
-	body, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	err = xml.Unmarshal(body, obj)
-	if err != nil {
-		if app.Debug {
-			logs.Debug("XMLDecode err=" + err.Error() + ",detail=" + string(body))
-		} else {
-			logs.Debug("XMLDecode err=" + err.Error())
+func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
+	if app.Debug {
+		body, err := ioutil.ReadAll(r)
+		if err != nil {
+			logs.Debug("XMLDecode error=" + err.Error() + ",detail=" + string(body))
+			return err
 		}
+		err = xml.Unmarshal(body, obj)
 		body = nil
-		return err
+	} else {
+		err = xml.NewDecoder(r).Decode(obj)
+	}
+	if err != nil {
+		logs.Debug("XMLDecode error=" + err.Error())
 	}
 	return err
 }
 
 //MapObj gets current request body and convert it to a map
 func (c *Context) MapObj() map[string]interface{} {
-	body, _ := ioutil.ReadAll(c.In.Body)
 	result := make(map[string]interface{})
-	err := json.Unmarshal([]byte(body), &result)
-	if err == nil {
-		return result
+	err := c.Obj(result)
+	if err != nil {
+		logs.Debug("MapObj error=" + err.Error())
+		return nil
 	}
-	return nil
+	return result
 }
 
 // ParseForm populates r.Form and r.PostForm.
