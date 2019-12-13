@@ -4,13 +4,15 @@ import "errors"
 
 import "strings"
 
+import "fmt"
+
 var required = &requiredValidate{}
 
 type requiredValidate struct {
 }
 
 func (c *requiredValidate) Verify(v *Validator, key string, val interface{}) (bool, bool) {
-
+	fmt.Println("required", key, "=", val)
 	if val == nil {
 		v.SetError(errors.New("key is required"))
 		return true, false
