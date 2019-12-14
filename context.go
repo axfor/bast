@@ -21,7 +21,7 @@ import (
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/session"
-
+	"github.com/aixiaoxiang/bast/validate"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -42,6 +42,9 @@ const (
 	SerFailed               = -222222 // failed code
 	SerAuthorizationFailed  = -888888 // authorization failed code
 )
+
+//default validator
+var valid = validate.Validator{}
 
 //Context is app Context
 type Context struct {
@@ -386,6 +389,17 @@ func (c *Context) String2JSON(str string, obj interface{}) error {
 	return c.JSONDecode(strings.NewReader(str), obj)
 }
 
+//Verify verify current request
+//param:
+//rules is validate rule such as:
+// 	key1=required|int|min:1
+// 	key2=required|string|min:1
+//	key3=sometimes|date|required
+func (c *Context) Verify(rules ...string) error {
+	c.In.ParseForm()
+	return valid.Request(c.In.Form, rules...)
+}
+
 //StatusCode set current request statusCode
 //param:
 //	statusCode HTTP status code. such as: 200x,300x and so on
@@ -715,8 +729,9 @@ func (c *Context) Offset(total int) int {
 
 //Obj gets data from the current request body(JSON or XML fromat) and convert it to a objecet
 //param:
-//	obj target object
-func (c *Context) Obj(obj interface{}) error {
+//	obj 	target object
+//  verify	verify obj
+func (c *Context) Obj(obj interface{}, verify ...bool) error {
 	contentType := "application/json"
 	contentType = c.In.Header.Get("Content-Type")
 	if contentType == "" {
@@ -724,14 +739,23 @@ func (c *Context) Obj(obj interface{}) error {
 	} else if strings.Index(contentType, "application/xml") >= 0 {
 		return c.XMLDecode(c.In.Body, obj)
 	}
-	return c.JSONDecode(c.In.Body, obj)
+	err := c.JSONDecode(c.In.Body, obj)
+	if err == nil && verify != nil && verify[0] {
+		err = valid.Struct(obj)
+	}
+	return err
 }
 
 //JSONObj gets data from the current request body(JSON fromat) and convert it to a objecet
 //param:
-//	obj target object
-func (c *Context) JSONObj(obj interface{}) error {
-	return c.JSONDecode(c.In.Body, obj)
+//	obj 	target object
+//  verify	verify obj
+func (c *Context) JSONObj(obj interface{}, verify ...bool) error {
+	err := c.JSONDecode(c.In.Body, obj)
+	if err == nil && verify != nil && verify[0] {
+		err = valid.Struct(obj)
+	}
+	return err
 }
 
 //JSONDecode gets data from the r reader(JSON fromat) and convert it to a objecet
@@ -758,9 +782,14 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
 
 //XMLObj gets data from the current request(xml format) and convert it to a object
 //param:
-//	obj target object
-func (c *Context) XMLObj(obj interface{}) error {
-	return c.XMLDecode(c.In.Body, obj)
+//	obj 	target object
+//  verify	verify obj
+func (c *Context) XMLObj(obj interface{}, verify ...bool) error {
+	err := c.XMLDecode(c.In.Body, obj)
+	if err == nil && verify != nil && verify[0] {
+		err = valid.Struct(obj)
+	}
+	return err
 }
 
 //XMLDecode  gets data from the r reader(xml format) and convert it to a object

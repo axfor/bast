@@ -2,6 +2,7 @@ package validate
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 )
@@ -10,7 +11,7 @@ var vfuncs = map[string]VerifyFunc{}
 
 //VerifyFunc is store engine interface
 type VerifyFunc interface {
-	Verify(v *Validator, key string, val interface{}) (bool, bool)
+	Verify(v *Validator, key string, val interface{}, param ...string) (bool, bool)
 }
 
 //Validator a validate
@@ -28,47 +29,88 @@ func (c *Validator) SetError(err error) {
 	c.err = err
 }
 
-//Struct v
+//Struct verify that the a struct or each element is a struct int the slice or each element is a struct int the map
 //data is validate data
-//rules is validate rule such as:
-// 	key=required|int|min:1
-// 	key=required|min:1
-//	key=sometimes|required
 func (c *Validator) Struct(data interface{}) error {
 	t := reflect.TypeOf(data)
 	v := reflect.ValueOf(data)
 	ok := false
-	t, v, ok = getStruct(t, v)
-	if !ok { //not struct
-		t, v, ok = getSlice(t, v)
-		if ok { //is slice
-			for i := 0; i < v.Len(); i++ {
-				v2 := v.Index(i)
-				err := c.Struct(v2.Interface())
-				if err != nil {
-					return err
-				}
+	if t, v, ok = getStruct(t, v); ok {
+		return c.structVerify(t, v)
+	}
+	if t, v, ok = getSlice(t, v); ok {
+		for i := 0; i < v.Len(); i++ {
+			v2 := v.Index(i)
+			err := c.Struct(v2.Interface())
+			if err != nil {
+				return err
 			}
-			return nil
 		}
-		t, v, ok = getMap(t, v)
-		if ok { //is map
-			iter := v.MapRange()
-			for iter.Next() {
-				v2 := iter.Value()
-				err := c.Struct(v2.Interface())
-				if err != nil {
-					return err
-				}
+		return nil
+	}
+	if t, v, ok = getMap(t, v); ok {
+		iter := v.MapRange()
+		for iter.Next() {
+			v2 := iter.Value()
+			err := c.Struct(v2.Interface())
+			if err != nil {
+				return err
 			}
-			return nil
 		}
+		return nil
 	}
 	if !ok {
 		return fmt.Errorf("%v must be a struct or a struct pointer", t)
 	}
-	err := c.structVerify(t, v) //verify struct
-	return err
+	return nil
+}
+
+//Request verify that the url.Values
+//data is validate data
+//rules is validate rule such as:
+// 	key=required|int|min:1
+// 	key=required|string|min:1
+//	key=sometimes|date|required
+func (c *Validator) Request(data url.Values, rules ...string) error {
+	if rules == nil || len(rules) <= 0 {
+		return nil
+	}
+	for _, r := range rules {
+		rs := strings.Split(r, "=")
+		if len(rs) != 2 && rs[0] == "" {
+			continue
+		}
+		k := rs[0]
+		tag := rs[1]
+		tags := strings.Split(tag, "|")
+		vs, vok := data[k]
+		lg := 0
+		if vok {
+			lg = len(vs)
+		}
+		for _, tg := range tags {
+			tgs := strings.Split(tg, ":")
+			vf, ok := vfuncs[tgs[0]]
+			if !ok {
+				continue
+			}
+			if tgs != nil || len(tgs) > 1 {
+				tgs = tgs[1:]
+			}
+			if !vok || lg <= 0 {
+				if pass, continues := vf.Verify(c, k, nil, tgs...); !pass || !continues {
+					return c.Error()
+				}
+				continue
+			}
+			for _, v := range vs {
+				if pass, continues := vf.Verify(c, k, v, tgs...); !pass || !continues {
+					return c.Error()
+				}
+			}
+		}
+	}
+	return nil
 }
 
 //structVerify verify struct
@@ -86,15 +128,22 @@ func (c *Validator) structVerify(t reflect.Type, v reflect.Value) error {
 		}
 		tag := f.Tag.Get("v")
 		js := f.Tag.Get("json")
-		if tag != "" {
-			tags := strings.Split(tag, "|")
-			ks := strings.Split(js, ",")[0]
-			for _, tg := range tags {
-				if vf, ok := vfuncs[tg]; ok {
-					if hasErr, ok := vf.Verify(c, ks, rv); !ok || hasErr {
-						return c.Error()
-					}
-				}
+		if tag == "" {
+			continue
+		}
+		tags := strings.Split(tag, "|")
+		ks := strings.Split(js, ",")[0]
+		for _, tg := range tags {
+			tgs := strings.Split(tg, ":")
+			vf, ok := vfuncs[tgs[0]]
+			if !ok {
+				continue
+			}
+			if tgs != nil || len(tgs) > 1 {
+				tgs = tgs[1:]
+			}
+			if pass, continues := vf.Verify(c, ks, rv, tgs...); !pass || !continues {
+				return c.Error()
 			}
 		}
 	}

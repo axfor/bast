@@ -1,6 +1,9 @@
 package validate
 
-import "testing"
+import (
+	"net/url"
+	"testing"
+)
 
 type VV struct {
 	A string  `json:"a" v:"required|min:1"`
@@ -8,10 +11,10 @@ type VV struct {
 }
 
 func Test_V(t *testing.T) {
-	g := "h"
-	v := VV{A: "", B: &g}
-	v2 := []VV{{A: "111111name", B: &g}}
-	v3 := map[string]VV{"aa": VV{A: "111111name", B: &g}}
+	g := "a"
+	v := VV{A: "a", B: &g}
+	v2 := []VV{{A: "b", B: &g}}
+	v3 := map[string]VV{"c": VV{A: "c", B: &g}}
 
 	vr := Validator{}
 
@@ -31,6 +34,29 @@ func Test_V(t *testing.T) {
 	}
 
 	err = vr.Struct(map[string]string{"ccc": "ccc"})
+	if err == nil {
+		t.Error("FAIL")
+	}
+}
+
+//
+// 	key=required|int|min:1
+// 	key=required|string|min:1
+//	key=sometimes|date|required
+func Test_Rules(t *testing.T) {
+	v4 := url.Values{
+		"d": {
+			"11",
+		},
+		"e": {
+			"ff",
+		},
+		"f": {
+			"ff",
+		},
+	}
+	vr := Validator{}
+	err := vr.Request(v4, "d=required|int", "e=required")
 	if err != nil {
 		t.Error(err)
 	}
