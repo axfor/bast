@@ -394,7 +394,7 @@ func (c *Context) String2JSON(str string, obj interface{}) error {
 //rules is validate rule such as:
 // 	key1=required|int|min:1
 // 	key2=required|string|min:1
-//	key3=sometimes|date|required
+//	key3=sometimes|required|data
 func (c *Context) Verify(rules ...string) error {
 	c.In.ParseForm()
 	return valid.Request(c.In.Form, rules...)

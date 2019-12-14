@@ -46,17 +46,17 @@ func Test_V(t *testing.T) {
 func Test_Rules(t *testing.T) {
 	v4 := url.Values{
 		"d": {
-			"11",
+			"22",
 		},
 		"e": {
-			"ff",
+			"eeeee",
 		},
 		"f": {
 			"ff",
 		},
 	}
 	vr := Validator{}
-	err := vr.Request(v4, "d=required|int", "e=required")
+	err := vr.Request(v4, "d=required|int|min:12", "e=required|min:5")
 	if err != nil {
 		t.Error(err)
 	}

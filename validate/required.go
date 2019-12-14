@@ -2,6 +2,7 @@ package validate
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 )
 
@@ -10,7 +11,7 @@ var required = &requiredValidate{}
 type requiredValidate struct {
 }
 
-func (c *requiredValidate) Verify(v *Validator, key string, val interface{}, param ...string) (bool, bool) {
+func (c *requiredValidate) Verify(v *Validator, key string, val interface{}, kind reflect.Kind, param ...string) (bool, bool) {
 	//fmt.Println("required", key, "=", val)
 	if val == nil {
 		v.SetError(errors.New(key + " is required"))

@@ -11,7 +11,7 @@ var vfuncs = map[string]VerifyFunc{}
 
 //VerifyFunc is store engine interface
 type VerifyFunc interface {
-	Verify(v *Validator, key string, val interface{}, param ...string) (bool, bool)
+	Verify(v *Validator, key string, val interface{}, kind reflect.Kind, param ...string) (bool, bool)
 }
 
 //Validator a validate
@@ -68,9 +68,9 @@ func (c *Validator) Struct(data interface{}) error {
 //Request verify that the url.Values
 //data is validate data
 //rules is validate rule such as:
-// 	key=required|int|min:1
-// 	key=required|string|min:1
-//	key=sometimes|date|required
+// 	key1=required|int|min:1
+// 	key2=required|string|min:1
+//	key3=sometimes|required|date
 func (c *Validator) Request(data url.Values, rules ...string) error {
 	if rules == nil || len(rules) <= 0 {
 		return nil
@@ -88,6 +88,14 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		if vok {
 			lg = len(vs)
 		}
+		mayKind := reflect.String
+		if strings.Index(tag, "int") >= 0 {
+			mayKind = reflect.Int
+		} else if strings.Index(tag, "date") >= 0 {
+			mayKind = Date
+		} else if strings.Index(tag, "email") >= 0 {
+			mayKind = Email
+		}
 		for _, tg := range tags {
 			tgs := strings.Split(tg, ":")
 			vf, ok := vfuncs[tgs[0]]
@@ -98,13 +106,13 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 				tgs = tgs[1:]
 			}
 			if !vok || lg <= 0 {
-				if pass, continues := vf.Verify(c, k, nil, tgs...); !pass || !continues {
+				if pass, continues := vf.Verify(c, k, nil, mayKind, tgs...); !pass || !continues {
 					return c.Error()
 				}
 				continue
 			}
 			for _, v := range vs {
-				if pass, continues := vf.Verify(c, k, v, tgs...); !pass || !continues {
+				if pass, continues := vf.Verify(c, k, v, mayKind, tgs...); !pass || !continues {
 					return c.Error()
 				}
 			}
@@ -142,7 +150,7 @@ func (c *Validator) structVerify(t reflect.Type, v reflect.Value) error {
 			if tgs != nil || len(tgs) > 1 {
 				tgs = tgs[1:]
 			}
-			if pass, continues := vf.Verify(c, ks, rv, tgs...); !pass || !continues {
+			if pass, continues := vf.Verify(c, ks, rv, fv.Kind(), tgs...); !pass || !continues {
 				return c.Error()
 			}
 		}
