@@ -23,8 +23,8 @@
 
 //Person struct 
 type Person struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"` 
+	Name string `json:"name" v:"required|min:1`
+	Age  int    `json:"age"  v:"required|min:1` 
 }
 
 bast.Get("/xxx", func(ctx *bast.Context){
@@ -48,8 +48,8 @@ bast.Get("/xxx", func(ctx *bast.Context){
 
 //Person struct 
 type Person struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"` 
+	Name string `json:"name" v:"required|min:1"`
+	Age  int    `json:"age"  v:"min:1"` 
 } 
 
 bast.Post("/xxx", func(ctx *bast.Context){
