@@ -23,8 +23,8 @@
 
 //Person struct 
 type Person struct {
-	Name string `json:"name" v:"required|min:1`
-	Age  int    `json:"age"  v:"min:1` 
+	Name string `json:"name" v:"required|min:1"`
+	Age  int    `json:"age"  v:"min:1"` 
 }
 
 bast.Get("/xxx", func(ctx *bast.Context){
@@ -56,7 +56,7 @@ bast.Post("/xxx", func(ctx *bast.Context){
      person := &Person{}  
      err := ctx.JSONObj(person)
      if err != nil {
-          ctx.Failed("Sorry! invalid parameter")
+          ctx.Failed("sorry! invalid parameter")
 	   return
      }
      person.Age += 2
