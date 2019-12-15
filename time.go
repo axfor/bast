@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+var loc *time.Location
+
+func init() {
+	loc, _ = time.LoadLocation("Local")
+}
+
 //Time yyyy-MM-dd HH:mm:ss format time
 //1: auto handle string to time
 type Time struct {
@@ -165,21 +171,19 @@ func byteToTime(b []byte, layout string) (Time, error) {
 		s := strings.Trim(string(b), "\"")
 		l := len(s)
 		var v time.Time
-		loc, _ := time.LoadLocation("Local")
 		if l > 0 {
-			if l <= 10 {
-				if layout == "" {
+			if layout == "" {
+				if l <= 8 {
+					layout = "2006-1-2"
+				} else if l <= 10 {
+					layout = "2006-01-02"
+				} else if l <= 16 {
+					layout = "2006-01-02 15:04"
+				} else {
 					layout = "2006-01-02 15:04:05"
 				}
-				s += " 00:00:00"
-				v, err = time.ParseInLocation(layout, s, loc)
-
-			} else {
-				if layout == "" {
-					layout = "2006-01-02 15:04:05"
-				}
-				v, err = time.ParseInLocation(layout, s, loc)
 			}
+			v, err = time.ParseInLocation(layout, s, loc)
 			if err == nil {
 				t = Time{Time: v}
 			} else {
@@ -376,7 +380,6 @@ func (t Date) String() string {
 
 //TimeRangeWithYearMonth returns the time(year,month) of the specified mininum and maxnum time
 func TimeRangeWithYearMonth(year, month int) (start, end time.Time) {
-	loc, _ := time.LoadLocation("Local")
 	m := time.Month(month)
 	s := time.Date(year, m, 1, 0, 0, 0, 0, loc)
 	e := time.Date(year, m, MaxDay(month), 23, 59, 59, 0, loc)

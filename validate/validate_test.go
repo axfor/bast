@@ -7,15 +7,13 @@ import (
 
 func TestStruct(t *testing.T) {
 
-	type VV struct {
+	type vv struct {
 		A string  `json:"a" v:"required|min:1"`
 		B *string `json:"b" v:"required|min:1"`
 	}
 
 	g := "a"
-	v := VV{A: "a", B: &g}
-	v2 := []VV{{A: "b", B: &g}}
-	v3 := map[string]VV{"c": VV{A: "c", B: &g}}
+	v := vv{A: "a", B: &g}
 
 	vr := Validator{}
 
@@ -24,20 +22,18 @@ func TestStruct(t *testing.T) {
 		t.Error(err)
 	}
 
+	v2 := []vv{{A: "b", B: &g}}
 	err = vr.Struct(v2)
 	if err != nil {
 		t.Error(err)
 	}
 
+	v3 := map[string]vv{"c": vv{A: "c", B: &g}}
 	err = vr.Struct(v3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = vr.Struct(map[string]string{"ccc": "ccc"})
-	if err == nil {
-		t.Error("FAIL")
-	}
 }
 
 //
@@ -55,16 +51,15 @@ func TestRules(t *testing.T) {
 		"f": {
 			"ff",
 		},
+		"t": {
+			"2019-01-01 12:12",
+		},
 	}
 	vr := Validator{}
-	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5")
+	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5", "t=date")
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-type A struct {
-	A string `json:"a" v:"min:1"`
 }
 
 func BenchmarkFieldSuccess(b *testing.B) {
@@ -79,4 +74,19 @@ func BenchmarkFieldSuccess(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		_ = vr.Struct(validFoo)
 	}
+}
+
+func BenchmarkFieldSuccessParallel(t *testing.B) {
+	vr := &Validator{}
+	type Foo struct {
+		Valuer string `v:"min:1"`
+	}
+
+	validFoo := &Foo{Valuer: "1"}
+
+	t.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = vr.Struct(validFoo)
+		}
+	})
 }

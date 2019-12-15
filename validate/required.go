@@ -3,6 +3,7 @@ package validate
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
 var required = &requiredValidate{}
@@ -15,7 +16,9 @@ func (c *requiredValidate) Verify(v *Validator, val Val, param string) (pass boo
 	if val.Value == nil {
 		return false, false, errors.New("The " + val.Key + " field is required")
 	}
-	if s, ok := val.Value.(string); ok && strings.TrimSpace(s) == "" {
+	if v, ok := val.Value.(string); ok && (v == "" || strings.TrimSpace(v) == "") {
+		return false, false, errors.New("The " + val.Key + " field is required")
+	} else if v, ok := val.Value.(time.Time); ok && v.IsZero() {
 		return false, false, errors.New("The " + val.Key + " field is required")
 	}
 	return true, true, nil

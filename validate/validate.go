@@ -126,7 +126,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 	}
 	for _, r := range rules {
 		rs := strings.Split(r, "=")
-		if len(rs) != 2 && rs[0] == "" {
+		if len(rs) != 2 || rs[0] == "" {
 			continue
 		}
 		k := rs[0]
