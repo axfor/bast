@@ -2,7 +2,6 @@ package validate
 
 import (
 	"errors"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -12,29 +11,27 @@ var integer = &integerValidate{}
 type integerValidate struct {
 }
 
-func (c *integerValidate) Verify(v *Validator, key string, val interface{}, kind reflect.Kind, param ...string) (bool, bool) {
-	//fmt.Println("integer", key, "=", val)
-	if val == nil {
-		v.SetError(errors.New(key + " is not int"))
-		return false, false
+func (c *integerValidate) Verify(v *Validator, val Val, param string) (pass bool, next bool, err error) {
+	//fmt.Println("integer", val.Key, "=", val.Value)
+	if val.Value == nil {
+		return false, false, errors.New("The " + val.Key + " field is int")
 	}
-	if s, ok := val.(string); ok {
+	if s, ok := val.Value.(string); ok {
 		if strings.TrimSpace(s) == "" {
-			v.SetError(errors.New(key + " is not int"))
-			return false, false
+			return false, false, errors.New("The " + val.Key + " field is int")
 		}
 		_, err := strconv.ParseInt(s, 0, 32)
 		if err != nil {
 			_, err = strconv.ParseInt(s, 0, 64)
 		}
 		if err != nil {
-			v.SetError(errors.New(key + " is not int"))
+			err = errors.New("The " + val.Key + " field is int")
 		}
-		return err == nil, err == nil
+		return err == nil, err == nil, err
 	} else if isInteger(val) {
-		return true, true
+		return true, true, nil
 	}
-	return false, false
+	return false, false, nil
 }
 
 func isInteger(val interface{}) bool {

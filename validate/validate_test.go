@@ -5,12 +5,13 @@ import (
 	"testing"
 )
 
-type VV struct {
-	A string  `json:"a" v:"required|min:1"`
-	B *string `json:"b" v:"required|min:1"`
-}
+func TestStruct(t *testing.T) {
 
-func Test_V(t *testing.T) {
+	type VV struct {
+		A string  `json:"a" v:"required|min:1"`
+		B *string `json:"b" v:"required|min:1"`
+	}
+
 	g := "a"
 	v := VV{A: "a", B: &g}
 	v2 := []VV{{A: "b", B: &g}}
@@ -40,13 +41,13 @@ func Test_V(t *testing.T) {
 }
 
 //
-// 	key=required|int|min:1
-// 	key=required|string|min:1
-//	key=sometimes|date|required
-func Test_Rules(t *testing.T) {
+// 	key1=required|int|min:1
+// 	key2=required|string|min:1|max:12
+//	key3=sometimes|date|required
+func TestRules(t *testing.T) {
 	v4 := url.Values{
 		"d": {
-			"22",
+			"15",
 		},
 		"e": {
 			"eeeee",
@@ -56,8 +57,26 @@ func Test_Rules(t *testing.T) {
 		},
 	}
 	vr := Validator{}
-	err := vr.Request(v4, "d=required|int|min:12", "e=required|min:5")
+	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5")
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+type A struct {
+	A string `json:"a" v:"min:1"`
+}
+
+func BenchmarkFieldSuccess(b *testing.B) {
+	vr := Validator{}
+	type Foo struct {
+		Valuer string `v:"min:1"`
+	}
+
+	validFoo := &Foo{Valuer: "1"}
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = vr.Struct(validFoo)
 	}
 }

@@ -11,69 +11,69 @@ var min = &minValidate{}
 type minValidate struct {
 }
 
-func (c *minValidate) Verify(v *Validator, key string, val interface{}, kind reflect.Kind, param ...string) (bool, bool) {
-	//fmt.Println("min", key, "=", val)
-	if param == nil {
-		return true, true
+func (c *minValidate) Verify(v *Validator, val Val, param string) (pass bool, next bool, err error) {
+	//fmt.Println("min", val.Key, "=", val.Value)
+	if param == "" {
+		return true, true, nil
 	}
-	mi := "0"
-	mv := 0
-	if len(param) > 0 {
-		mi = param[0]
-		mv, _ = strconv.Atoi(mi)
+	mv, err := strconv.Atoi(param)
+	if err != nil {
+		return false, false, errors.New(val.Key + " min param is invalid")
 	}
 	msg := ""
-	if kind == Int {
-		if isint(val, mi) {
-			return true, true
-		}
-		va, ok := val.(string)
-		if ok {
-			vv, err := strconv.ParseInt(va, 0, 64)
-			if err == nil {
-				mv, err := strconv.ParseInt(mi, 0, 64)
-				ok = err == nil && (vv > mv)
-				if ok {
-					return ok, ok
+	if val.Expect == Int {
+		if val.Real == reflect.String {
+			va, ok := val.Value.(string)
+			if ok {
+				vv, err := strconv.ParseInt(va, 0, 64)
+				if err == nil {
+					mv, err := strconv.ParseInt(param, 0, 64)
+					ok = err == nil && (vv >= mv)
+					if ok {
+						return ok, ok, nil
+					}
 				}
 			}
+		} else {
+			if isIntWithMin(val, param) {
+				return true, true, nil
+			}
 		}
-	} else if kind == String {
-		msg = " length "
-		va, ok := val.(string)
-		if ok && len(va) > mv {
-			return true, true
+	} else if val.Expect == String || val.Expect == Email {
+		msg = "characters"
+		va, ok := val.Value.(string)
+		if ok && len(va) >= mv {
+			return true, true, nil
 		}
 	}
-	v.SetError(errors.New(key + " min " + msg + " is " + mi))
-	return false, false
+	return false, false, errors.New("The " + val.Key + " must be greater than " + param + " " + msg)
 }
 
-func isint(val interface{}, minVal string) bool {
+func isIntWithMin(val interface{}, minVal string) bool {
 	if v, ok := val.(int); ok {
 		mv, err := strconv.Atoi(minVal)
-		return err == nil && v > mv
+		return err == nil && v >= mv
 	} else if v, ok := val.(int64); ok {
 		mv, err := strconv.ParseInt(minVal, 0, 64)
-		return err == nil && (v > mv)
+		return err == nil && (v >= mv)
 	} else if v, ok := val.(int32); ok {
 		mv, err := strconv.ParseInt(minVal, 0, 32)
-		return err == nil && (v > int32(mv))
+		return err == nil && (v >= int32(mv))
 	} else if v, ok := val.(int8); ok {
 		mv, err := strconv.ParseInt(minVal, 0, 8)
-		return err == nil && (v > int8(mv))
+		return err == nil && (v >= int8(mv))
 	} else if v, ok := val.(uint); ok {
 		mv, err := strconv.ParseUint(minVal, 0, 64)
-		return err == nil && (v > uint(mv))
+		return err == nil && (v >= uint(mv))
 	} else if v, ok := val.(uint64); ok {
 		mv, err := strconv.ParseUint(minVal, 0, 64)
-		return err == nil && (v > uint64(mv))
+		return err == nil && (v >= uint64(mv))
 	} else if v, ok := val.(uint32); ok {
 		mv, err := strconv.ParseUint(minVal, 0, 64)
-		return err == nil && (v > uint32(mv))
+		return err == nil && (v >= uint32(mv))
 	} else if v, ok := val.(uint8); ok {
 		mv, err := strconv.ParseUint(minVal, 0, 64)
-		return err == nil && (v > uint8(mv))
+		return err == nil && (v >= uint8(mv))
 	}
 	return false
 }
