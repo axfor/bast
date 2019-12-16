@@ -23,20 +23,31 @@
 
 //Person struct 
 type Person struct {
-	Name string `json:"name" v:"required|min:1"`
-	Age  int    `json:"age"  v:"min:1"` 
+	Name string `json:"name"`
+	Age  int    `json:"age"` 
 }
 
 bast.Get("/xxx", func(ctx *bast.Context){
-     name := ctx.GetString("name")
-     age := ctx.GetInt("age") 
-     person := &Person{
+    //verify imput parameter
+    err := ctx.Verify("name=required|min:1","age=required|min:1")
+    if err != nil {
+        ctx.Failed(err.Error())
+	    return
+    }
+
+    name := ctx.GetString("name")
+    age := ctx.GetInt("age") 
+
+    //handling
+    //... 
+
+    person := &Person{
         Name:name,
         Age:Age, 
-     }
-     //handling
-     //...
-     ctx.JSON(person)
+    }
+    //handling
+    //...
+    ctx.JSON(person)
 })
 
 ```
@@ -53,16 +64,18 @@ type Person struct {
 } 
 
 bast.Post("/xxx", func(ctx *bast.Context){
-     person := &Person{}  
-     err := ctx.JSONObj(person)
-     if err != nil {
-          ctx.Failed("sorry! invalid parameter")
-	   return
-     }
-     person.Age += 2
-     //handling
-     //...
-     ctx.JSON(person)
+    person := &Person{}  
+    err := ctx.JSONObj(person)//or ctx.JSONObj(person,true) //version of verify imput parameter
+    if err != nil {
+        ctx.Failed("sorry! invalid parameter")
+	    return
+    }
+    person.Age += 2
+
+    //handling
+    //...
+
+    ctx.JSON(person)
 }) 
 
 ```
@@ -80,13 +93,13 @@ bast.Run(":9999")
 
 ` Like nginx commandline `
 
-### If Your program name is ``` Aibast ```
+### If Your program name is ``` Ai ```
 
 #### -h | -help
 
 ``` bash
 
-    ./Aibast -h
+    ./Ai -h
 
 ```
 
@@ -96,7 +109,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -start
+    ./Ai -start
 
 ```
 
@@ -106,7 +119,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -stop
+    ./Ai -stop
 
 ```
 
@@ -116,7 +129,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -reload
+    ./Ai -reload
 
 ```
 
@@ -126,7 +139,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -conf=your path/config.conf 
+    ./Ai -conf=your path/config.conf 
 
 ```
 
@@ -138,7 +151,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -install
+    ./Ai -install
 
 ```
 
@@ -150,7 +163,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -uninstall
+    ./Ai -uninstall
 
 ```
  
@@ -161,7 +174,7 @@ bast.Run(":9999")
 
 ``` bash
 
-    ./Aibast -migration
+    ./Ai -migration
 
 ```
  
@@ -172,7 +185,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./Aibast -start -conf=./config.conf 
+    ./Ai -start -conf=./config.conf 
 
 ```
 
@@ -182,7 +195,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./Aibast -install
+    ./Ai -install
 
 ```
 
