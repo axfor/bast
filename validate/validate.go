@@ -11,7 +11,7 @@ var vfuncs = map[string]VerifyFunc{}
 
 //VerifyFunc is store engine interface
 type VerifyFunc interface {
-	Verify(v *Validator, val Val, param string) (bool, bool, error)
+	Verify(v *Validator, val Val) (bool, bool, error)
 }
 
 //Validator a validate
@@ -20,10 +20,9 @@ type Validator struct {
 
 //Val a validate value
 type Val struct {
-	Key    string
-	Value  interface{}
-	Real   reflect.Kind
-	Expect reflect.Kind
+	Key, Param   string
+	Real, Expect reflect.Kind
+	Value        interface{}
 }
 
 //Struct verify that the a struct or each element is a struct int the slice or each element is a struct int the map
@@ -92,7 +91,7 @@ func (c *Validator) structVerify(v reflect.Value) error {
 		js := f.Get("json")
 		tags := strings.Split(tag, "|")
 		ks := strings.Split(js, ",")[0]
-		val := Val{ks, rv, real, real}
+		val := Val{ks, "", real, real, rv}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
@@ -102,11 +101,12 @@ func (c *Validator) structVerify(v reflect.Value) error {
 				pos++
 				ps = tg[pos:]
 			}
+			val.Param = ps
 			vf, ok := vfuncs[fk]
 			if !ok {
 				continue
 			}
-			if pass, next, err := vf.Verify(c, val, ps); !pass || !next {
+			if pass, next, err := vf.Verify(c, val); !pass || !next {
 				return err
 			}
 		}
@@ -145,7 +145,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		} else if strings.Index(tag, "email") >= 0 {
 			expect = Email
 		}
-		val := Val{k, nil, reflect.String, expect}
+		val := Val{k, "", reflect.String, expect, nil}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
@@ -161,14 +161,16 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 			}
 			if !vok || lg <= 0 {
 				val.Value = nil
-				if pass, next, err := vf.Verify(c, val, ps); !pass || !next {
+				val.Param = ""
+				if pass, next, err := vf.Verify(c, val); !pass || !next {
 					return err
 				}
 				continue
 			}
 			for _, v := range vs {
 				val.Value = v
-				if pass, next, err := vf.Verify(c, val, ps); !pass || !next {
+				val.Param = ps
+				if pass, next, err := vf.Verify(c, val); !pass || !next {
 					return err
 				}
 			}

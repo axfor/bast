@@ -11,7 +11,7 @@ var integer = &integerValidate{}
 type integerValidate struct {
 }
 
-func (c *integerValidate) Verify(v *Validator, val Val, param string) (pass bool, next bool, err error) {
+func (c *integerValidate) Verify(v *Validator, val Val) (pass bool, next bool, err error) {
 	//fmt.Println("integer", val.Key, "=", val.Value)
 	if val.Value == nil {
 		return false, false, errors.New("The " + val.Key + " field is int")
@@ -26,6 +26,8 @@ func (c *integerValidate) Verify(v *Validator, val Val, param string) (pass bool
 		}
 		if err != nil {
 			err = errors.New("The " + val.Key + " field is int")
+		} else {
+			//val.Value = vv
 		}
 		return err == nil, err == nil, err
 	} else if isInteger(val) {
@@ -34,16 +36,16 @@ func (c *integerValidate) Verify(v *Validator, val Val, param string) (pass bool
 	return false, false, nil
 }
 
-func isInteger(val interface{}) bool {
+func isInteger(val Val) bool {
 	ok := false
-	if _, ok = val.(int); ok {
-	} else if _, ok = val.(int64); ok {
-	} else if _, ok = val.(int32); ok {
-	} else if _, ok = val.(int8); ok {
-	} else if _, ok = val.(uint); ok {
-	} else if _, ok = val.(uint64); ok {
-	} else if _, ok = val.(uint32); ok {
-	} else if _, ok = val.(uint8); ok {
+	if _, ok = val.Value.(int); ok {
+	} else if _, ok = val.Value.(int64); ok {
+	} else if _, ok = val.Value.(int32); ok {
+	} else if _, ok = val.Value.(int8); ok {
+	} else if _, ok = val.Value.(uint); ok {
+	} else if _, ok = val.Value.(uint64); ok {
+	} else if _, ok = val.Value.(uint32); ok {
+	} else if _, ok = val.Value.(uint8); ok {
 	}
 	return ok
 }

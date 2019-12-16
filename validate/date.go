@@ -16,7 +16,7 @@ var date = &dateValidate{}
 type dateValidate struct {
 }
 
-func (c *dateValidate) Verify(v *Validator, val Val, param string) (pass bool, next bool, err error) {
+func (c *dateValidate) Verify(v *Validator, val Val) (pass bool, next bool, err error) {
 	//fmt.Println("date", val.Key, "=", val.Value)
 	if val.Value == nil {
 		return false, false, errors.New("The " + val.Key + " is not a valid date")

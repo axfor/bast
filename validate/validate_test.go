@@ -56,7 +56,27 @@ func TestRules(t *testing.T) {
 		},
 	}
 	vr := Validator{}
-	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5", "t=date")
+	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5", "t=date", "z=sometimes|required|int")
+	if err != nil {
+		t.Error(err)
+	}
+
+}
+
+func TestSometimesRules(t *testing.T) {
+	v4 := url.Values{
+		"t": {
+			"2019-01-01 12:12",
+		},
+	}
+
+	vr := Validator{}
+	err := vr.Request(v4, "t=sometimes|required|date")
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = vr.Request(v4, "f=sometimes|required|date")
 	if err != nil {
 		t.Error(err)
 	}
