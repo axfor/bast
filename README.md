@@ -19,56 +19,52 @@
 ### Get
 
 ``` golang
-
-
-//Person struct 
+//Person struct
 type Person struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"` 
+    Name string `json:"name"`
+    Age  int    `json:"age"`
 }
 
-bast.Get("/xxx", func(ctx *bast.Context){
+bast.Get("/xxx", func(ctx *bast.Context) {
     //verify imput parameter
-    err := ctx.Verify("name=required|min:1","age=required|min:1")
+    err := ctx.Verify("name=required|min:1", "age=required|min:1")
     if err != nil {
         ctx.Failed(err.Error())
-	    return
+        return
     }
 
     name := ctx.GetString("name")
-    age := ctx.GetInt("age") 
+    age := ctx.GetInt("age")
 
     //handling
-    //... 
+    //...
 
     person := &Person{
-        Name:name,
-        Age:Age, 
+        Name: name,
+        Age:  Age,
     }
     //handling
     //...
     ctx.JSON(person)
-})
-
+}) 
 ```
  
 
 ### Post
 
-``` golang
-
-//Person struct 
+``` golang 
+//Person struct
 type Person struct {
-	Name string `json:"name" v:"required|min:1"`
-	Age  int    `json:"age"  v:"min:1"` 
-} 
+    Name string `json:"name" v:"required|min:1"`
+    Age  int    `json:"age"  v:"min:1"`
+}
 
-bast.Post("/xxx", func(ctx *bast.Context){
-    person := &Person{}  
-    err := ctx.JSONObj(person)//or ctx.JSONObj(person,true) //version of verify imput parameter
+bast.Post("/xxx", func(ctx *bast.Context) {
+    person := &Person{}
+    err := ctx.JSONObj(person) //or ctx.JSONObj(person,true) //version of verify imput parameter
     if err != nil {
         ctx.Failed("sorry! invalid parameter")
-	    return
+        return
     }
     person.Age += 2
 
@@ -76,8 +72,8 @@ bast.Post("/xxx", func(ctx *bast.Context){
     //...
 
     ctx.JSON(person)
-}) 
-
+})
+    
 ```
 
 ### Run 
