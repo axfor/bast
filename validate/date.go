@@ -19,21 +19,21 @@ type dateValidate struct {
 func (c *dateValidate) Verify(v *Validator, val Val) (pass bool, next bool, err error) {
 	//fmt.Println("date", val.Key, "=", val.Value)
 	if val.Value == nil {
-		return false, false, errors.New("The " + val.Key + " is not a valid date")
+		return false, false, errors.New(v.Trans("date", val.Key))
 	}
 	if _, ok := val.Value.(time.Time); ok {
 		return true, true, nil
 	}
-	if v, ok := val.Value.(string); ok {
-		if v == "" || len(v) < 8 {
-			return false, false, errors.New("The " + val.Key + " is not a valid date")
+	if vv, ok := val.Value.(string); ok {
+		if vv == "" || len(vv) < 8 {
+			return false, false, errors.New(v.Trans("date", val.Key))
 		}
-		ok = s2t(v)
+		ok = s2t(vv)
 		if ok {
 			return true, true, nil
 		}
 	}
-	return false, false, errors.New("The " + val.Key + " is not a valid date")
+	return false, false, errors.New(v.Trans("date", val.Key))
 }
 
 func s2t(s string) bool {

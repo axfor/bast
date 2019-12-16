@@ -14,18 +14,18 @@ type integerValidate struct {
 func (c *integerValidate) Verify(v *Validator, val Val) (pass bool, next bool, err error) {
 	//fmt.Println("integer", val.Key, "=", val.Value)
 	if val.Value == nil {
-		return false, false, errors.New("The " + val.Key + " field is int")
+		return false, false, errors.New(v.Trans("int", val.Key))
 	}
 	if s, ok := val.Value.(string); ok {
 		if strings.TrimSpace(s) == "" {
-			return false, false, errors.New("The " + val.Key + " field is int")
+			return false, false, errors.New(v.Trans("int", val.Key))
 		}
 		_, err := strconv.ParseInt(s, 0, 32)
 		if err != nil {
 			_, err = strconv.ParseInt(s, 0, 64)
 		}
 		if err != nil {
-			err = errors.New("The " + val.Key + " field is int")
+			err = errors.New(v.Trans("int", val.Key))
 		} else {
 			//val.Value = vv
 		}

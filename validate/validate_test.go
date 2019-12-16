@@ -46,7 +46,7 @@ func TestRules(t *testing.T) {
 			"15",
 		},
 		"e": {
-			"eeeee",
+			"eeeeeee",
 		},
 		"f": {
 			"ff",
@@ -60,7 +60,6 @@ func TestRules(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 }
 
 func TestSometimesRules(t *testing.T) {
@@ -75,8 +74,22 @@ func TestSometimesRules(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
 
-	err = vr.Request(v4, "f=sometimes|required|date")
+func Test_Lang(t *testing.T) {
+	v4 := url.Values{
+		"t": {
+			"",
+		},
+	}
+
+	vr := Validator{"en"}
+	err := vr.Request(v4, "t=required")
+	if err != nil {
+		t.Error(err)
+	}
+	vr2 := Validator{"zh-cn"}
+	err = vr2.Request(v4, "t=required")
 	if err != nil {
 		t.Error(err)
 	}

@@ -16,7 +16,7 @@ func (c *maxValidate) Verify(v *Validator, val Val) (pass bool, next bool, err e
 	if val.Param == "" {
 		return true, true, nil
 	}
-	msg := ""
+	msg := "int"
 	if val.Expect == Int {
 		if val.Real == reflect.String {
 			va, ok := val.Value.(string)
@@ -36,17 +36,14 @@ func (c *maxValidate) Verify(v *Validator, val Val) (pass bool, next bool, err e
 			}
 		}
 	} else if val.Expect == String || val.Expect == Email {
-		msg = " characters"
+		msg = "string"
 		va, ok := val.Value.(string)
 		mv, err := strconv.Atoi(val.Param)
-		if err != nil {
-			return false, false, errors.New(val.Key + " max param is invalid")
-		}
-		if ok && len(va) <= mv {
+		if ok && err == nil && len(va) <= mv {
 			return true, true, nil
 		}
 	}
-	return false, false, errors.New("The " + val.Key + " must be less than " + val.Param + msg)
+	return false, false, errors.New(v.Trans("max."+msg, val.Key, val.Param))
 }
 
 func isIntWithMax(val Val) bool {

@@ -209,6 +209,7 @@ bast.Run(":9999")
         "fileDir":"./file/",//(default is ./file/)
         "debug":false,
         "baseUrl":"",
+        "validateLang":"en",// en,zh-cn
         "log":{
             "outPath":"./logs/logs.log", //(default is ./logs/logs.log)
             "level":"debug",

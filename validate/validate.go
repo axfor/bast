@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/aixiaoxiang/bast/validate/lang"
 )
 
 var vfuncs = map[string]VerifyFunc{}
@@ -16,6 +18,7 @@ type VerifyFunc interface {
 
 //Validator a validate
 type Validator struct {
+	Lang string //default en
 }
 
 //Val a validate value
@@ -177,6 +180,12 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		}
 	}
 	return nil
+}
+
+//Trans translator
+func (c *Validator) Trans(key string, param ...string) string {
+
+	return lang.Trans(c.Lang, key, param...)
 }
 
 //Register a validator provide by the vfuncs name

@@ -52,6 +52,7 @@ type AppConf struct {
 	SessionName        string        `json:"sessionName"`     //_sid
 	SessionEngine      string        `json:"sessionEngine"`   //memory
 	SessionSource      string        `json:"sessionSource"`   //url|header|cookie
+	ValidateLang       string        `json:"validateLang"`
 	CallBackConfHandle bool          `json:"-"`
 }
 
