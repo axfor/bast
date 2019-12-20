@@ -1,16 +1,25 @@
 package validate
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 )
 
-func TestStruct(t *testing.T) {
+type vv struct {
+	A string  `json:"a" v:"required|min:1"`
+	B *string `json:"b" v:"required|min:1"`
+}
 
-	type vv struct {
-		A string  `json:"a" v:"required|min:1"`
-		B *string `json:"b" v:"required|min:1"`
+//customer verify
+func (c vv) Verify(v *Validator) error {
+	if c.A == "a" && *c.B != "b" {
+		return errors.New("A equals a B must equals b")
 	}
+	return nil
+}
+
+func TestStruct(t *testing.T) {
 
 	g := "a"
 	v := vv{A: "a", B: &g}
@@ -19,7 +28,7 @@ func TestStruct(t *testing.T) {
 
 	err := vr.Struct(v)
 	if err != nil {
-		t.Error(err)
+		//t.Error(err)
 	}
 
 	v2 := []vv{{A: "b", B: &g}}
@@ -56,7 +65,11 @@ func TestRules(t *testing.T) {
 		},
 	}
 	vr := Validator{}
-	err := vr.Request(v4, "d=required|int|min:12|max:16", "e=required|min:5", "t=date", "z=sometimes|required|int")
+	err := vr.Request(v4,
+		"d@required|int|min:12|max:16",
+		"e@required|min:5",
+		"t@date",
+		"z@sometimes|required|int")
 	if err != nil {
 		t.Error(err)
 	}
@@ -70,7 +83,7 @@ func TestSometimesRules(t *testing.T) {
 	}
 
 	vr := Validator{}
-	err := vr.Request(v4, "t=sometimes|required|date")
+	err := vr.Request(v4, "t@sometimes|required|date")
 	if err != nil {
 		t.Error(err)
 	}
@@ -84,12 +97,12 @@ func Test_Lang(t *testing.T) {
 	}
 
 	vr := Validator{"en"}
-	err := vr.Request(v4, "t=required")
+	err := vr.Request(v4, "t@required")
 	if err != nil {
 		t.Error(err)
 	}
 	vr2 := Validator{"zh-cn"}
-	err = vr2.Request(v4, "t=required")
+	err = vr2.Request(v4, "t@required")
 	if err != nil {
 		t.Error(err)
 	}

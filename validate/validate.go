@@ -11,9 +11,14 @@ import (
 
 var vfuncs = map[string]VerifyFunc{}
 
-//VerifyFunc is store engine interface
+//VerifyFunc is verify interface
 type VerifyFunc interface {
 	Verify(v *Validator, val Val) (bool, bool, error)
+}
+
+//Verify is customer verify interface
+type Verify interface {
+	Verify(v *Validator) error
 }
 
 //Validator a validate
@@ -114,6 +119,9 @@ func (c *Validator) structVerify(v reflect.Value) error {
 			}
 		}
 	}
+	if f, ok := v.Interface().(Verify); ok {
+		return f.Verify(c)
+	}
 	return nil
 }
 
@@ -128,7 +136,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		return nil
 	}
 	for _, r := range rules {
-		rs := strings.Split(r, "=")
+		rs := strings.Split(r, "@")
 		if len(rs) != 2 || rs[0] == "" {
 			continue
 		}
