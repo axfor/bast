@@ -28,9 +28,9 @@ type Validator struct {
 
 //Val a validate value
 type Val struct {
-	Key, Param   string
-	Real, Expect reflect.Kind
-	Value        interface{}
+	Key, TranKey, Param string
+	Real, Expect        reflect.Kind
+	Value               interface{}
 }
 
 //Struct verify that the a struct or each element is a struct int the slice or each element is a struct int the map
@@ -97,9 +97,24 @@ func (c *Validator) structVerify(v reflect.Value) error {
 			rv = fv.Interface()
 		}
 		js := f.Get("json")
+		ks := ""
+		pos := 0
+		if js != "" {
+			pos = strings.Index(js, ",")
+			if pos != -1 {
+				ks = js[0:pos]
+			}
+		}
+		pos = strings.Index(tag, "@")
+		tk := ""
+		if pos != -1 {
+			tk = tag[0:pos]
+			tag = tag[pos+1:]
+		} else {
+			tk = ks
+		}
 		tags := strings.Split(tag, "|")
-		ks := strings.Split(js, ",")[0]
-		val := Val{ks, "", real, real, rv}
+		val := Val{ks, lang.Key(c.Lang, tk), "", real, real, rv}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
@@ -128,20 +143,30 @@ func (c *Validator) structVerify(v reflect.Value) error {
 //Request verify that the url.Values
 //data is validate data
 //rules is validate rule such as:
-// 	key1=required|int|min:1
-// 	key2=required|string|min:1|max:12
-//	key3=sometimes|required|date
+// 	key1@required|int|min:1
+// 	key2.key2_translator@required|string|min:1|max:12
+//	key3@sometimes|required|date
 func (c *Validator) Request(data url.Values, rules ...string) error {
 	if rules == nil || len(rules) <= 0 {
 		return nil
 	}
 	for _, r := range rules {
-		rs := strings.Split(r, "@")
-		if len(rs) != 2 || rs[0] == "" {
+		k, tag := "", ""
+		pos := strings.Index(r, "@")
+		if pos != -1 {
+			k = r[0:pos]
+			tag = r[pos+1:]
+		} else {
 			continue
 		}
-		k := rs[0]
-		tag := rs[1]
+		tk := ""
+		pos = strings.Index(k, ".")
+		if pos != -1 {
+			tk = k[pos+1:]
+			k = k[0:pos]
+		} else {
+			tk = k
+		}
 		tags := strings.Split(tag, "|")
 		vs, vok := data[k]
 		lg := 0
@@ -156,7 +181,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		} else if strings.Index(tag, "email") >= 0 {
 			expect = Email
 		}
-		val := Val{k, "", reflect.String, expect, nil}
+		val := Val{k, lang.Key(c.Lang, tk), "", reflect.String, expect, nil}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
@@ -192,7 +217,6 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 
 //Trans translator
 func (c *Validator) Trans(key string, param ...string) string {
-
 	return lang.Trans(c.Lang, key, param...)
 }
 

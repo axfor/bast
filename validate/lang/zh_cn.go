@@ -2,7 +2,7 @@ package lang
 
 //zh-cn
 var zhCn = map[string]string{
-	"required":   "{0} 是必需且非空",
+	"required":   "{0} 不能空",
 	"date":       "{0} 必须为有效日期类型",
 	"int":        "{0} 必须为数字类型",
 	"max.string": "{0} 必须小于 {1} 个字符",

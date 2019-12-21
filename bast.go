@@ -366,10 +366,10 @@ func Serve() bool {
 	}
 	defer clear()
 	//seting validate lang
-	if c.ValidateLang == "" {
-		c.ValidateLang = "en"
+	if c.Lang == "" {
+		c.Lang = "en"
 	}
-	valid.Lang = c.ValidateLang
+	valid.Lang = c.Lang
 	Debug(c.Debug)
 	Run(c.Addr)
 	return true

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"testing"
+
+	"github.com/aixiaoxiang/bast/validate/lang"
 )
 
 type vv struct {
@@ -46,13 +48,13 @@ func TestStruct(t *testing.T) {
 }
 
 //
-// 	key1=required|int|min:1
-// 	key2=required|string|min:1|max:12
-//	key3=sometimes|date|required
+// 	key1@required|int|min:1
+// 	key2.key2_translator@required|string|min:1|max:12
+//	key3@sometimes|date|required
 func TestRules(t *testing.T) {
 	v4 := url.Values{
 		"d": {
-			"15",
+			"12",
 		},
 		"e": {
 			"eeeeeee",
@@ -66,7 +68,7 @@ func TestRules(t *testing.T) {
 	}
 	vr := Validator{}
 	err := vr.Request(v4,
-		"d@required|int|min:12|max:16",
+		"d.d_name@required|int|min:12|max:16",
 		"e@required|min:5",
 		"t@date",
 		"z@sometimes|required|int")
@@ -95,12 +97,12 @@ func Test_Lang(t *testing.T) {
 			"",
 		},
 	}
-
 	vr := Validator{"en"}
 	err := vr.Request(v4, "t@required")
 	if err != nil {
 		t.Error(err)
 	}
+
 	vr2 := Validator{"zh-cn"}
 	err = vr2.Request(v4, "t@required")
 	if err != nil {
@@ -111,7 +113,7 @@ func Test_Lang(t *testing.T) {
 func BenchmarkFieldSuccess(b *testing.B) {
 	vr := Validator{}
 	type Foo struct {
-		Valuer string `v:"min:1"`
+		Valuer string `json:"v" v:"min:1"`
 	}
 
 	validFoo := &Foo{Valuer: "1"}
@@ -134,5 +136,18 @@ func BenchmarkFieldSuccessParallel(t *testing.B) {
 		for pb.Next() {
 			_ = vr.Struct(validFoo)
 		}
+	})
+}
+
+func init() {
+
+	//register translator key
+	lang.RegisterKey("zh-cn", "t", "标题")
+
+	//register translator keys
+	lang.RegisterKeys("zh-cn", map[string]string{
+		"d_name": "地址信息",
+		"e":      "名称",
+		"d":      "地址",
 	})
 }

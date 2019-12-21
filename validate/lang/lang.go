@@ -6,6 +6,7 @@ import (
 )
 
 var trans = map[string][]TranItem{}
+var keyTrans = map[string]string{}
 
 //TranItem a trans item
 type TranItem struct {
@@ -35,6 +36,17 @@ func Trans(lang, key string, param ...string) string {
 		return s.String()
 	}
 	return ""
+}
+
+//Key translator key
+func Key(lang, key string) string {
+	if lang == "" {
+		lang = "en"
+	}
+	if v, ok := keyTrans[lang+"."+key]; ok {
+		return v
+	}
+	return key
 }
 
 //Register a translator provide by the trans name
@@ -76,5 +88,22 @@ func Register(lang string, ts map[string]string) {
 			trans[vs] = trs
 		}
 	}
-	//fmt.Printf("%v\r\n", trans)
+}
+
+//RegisterKeys a translator provide by the key trans name
+func RegisterKeys(lang string, ks map[string]string) {
+	for k, v := range ks {
+		vs := lang + "." + k
+		if _, ok := keyTrans[vs]; !ok {
+			keyTrans[vs] = v + ""
+		}
+	}
+}
+
+//RegisterKey a translator provide by the key tran name
+func RegisterKey(lang string, key, tran string) {
+	vs := lang + "." + key
+	if _, ok := keyTrans[vs]; !ok {
+		keyTrans[vs] = tran
+	}
 }

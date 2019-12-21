@@ -38,12 +38,14 @@ func (c *minValidate) Verify(v *Validator, val Val) (pass bool, next bool, err e
 	} else if val.Expect == String || val.Expect == Email {
 		msg = "string"
 		va, ok := val.Value.(string)
-		mv, err := strconv.Atoi(val.Param)
-		if ok && err == nil && len(va) >= mv {
-			return true, true, nil
+		if ok && va != "" {
+			mv, err := strconv.Atoi(val.Param)
+			if err == nil && len(va) >= mv {
+				return true, true, nil
+			}
 		}
 	}
-	return false, false, errors.New(v.Trans("min."+msg, val.Key, val.Param))
+	return false, false, errors.New(v.Trans("min."+msg, val.TranKey, val.Param))
 }
 
 func isIntWithMin(val Val) bool {

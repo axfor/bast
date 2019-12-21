@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -29,31 +30,32 @@ type FinishHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
-	frist              *AppConf
-	rawConfs           []AppConf
-	callBackConfHandle bool
-	Confs              map[string]*AppConf
+	frist      *AppConf
+	rawConfs   []AppConf
+	confHandle bool
+	Confs      map[string]*AppConf
 }
 
 //AppConf  app config item
 type AppConf struct {
-	Key                string        `json:"key"`
-	Name               string        `json:"name"`
-	Addr               string        `json:"addr"`
-	FileDir            string        `json:"fileDir"`
-	Debug              bool          `json:"debug"`
-	BaseURL            string        `json:"baseUrl"`
-	IDNode             uint8         `json:"idNode"`
-	Log                *logs.LogConf `json:"log"`
-	Conf               interface{}   `json:"conf"`
-	Extend             string        `json:"extend"`
-	SessionEnable      bool          `json:"sessionEnable"`   //false
-	SessionLifeTime    int           `json:"sessionLifeTime"` //20 (min)
-	SessionName        string        `json:"sessionName"`     //_sid
-	SessionEngine      string        `json:"sessionEngine"`   //memory
-	SessionSource      string        `json:"sessionSource"`   //url|header|cookie
-	ValidateLang       string        `json:"validateLang"`
-	CallBackConfHandle bool          `json:"-"`
+	Key             string        `json:"key"`
+	Name            string        `json:"name"`
+	Addr            string        `json:"addr"`
+	FileDir         string        `json:"fileDir"`
+	Debug           bool          `json:"debug"`
+	BaseURL         string        `json:"baseUrl"`
+	IDNode          uint8         `json:"idNode"`
+	Log             *logs.LogConf `json:"log"`
+	Conf            interface{}   `json:"conf"`
+	Extend          string        `json:"extend"`
+	SessionEnable   bool          `json:"sessionEnable"`   //false
+	SessionLifeTime int           `json:"sessionLifeTime"` //20 (min)
+	SessionName     string        `json:"sessionName"`     //_sid
+	SessionEngine   string        `json:"sessionEngine"`   //memory
+	SessionSource   string        `json:"sessionSource"`   //url|header|cookie
+	SameSite        string        `json:"sameSite"`        //strict|lax|none
+	Lang            string        `json:"lang"`
+	ConfHandle      bool          `json:"-"`
 }
 
 //Item default db config
@@ -109,7 +111,7 @@ func Init(appConf []AppConf) {
 				if err != nil {
 					continue
 				}
-				c.CallBackConfHandle = true
+				c.ConfHandle = true
 			}
 			if c.Key == flagAppKey && confObj.frist == nil {
 				confObj.frist = c
@@ -124,7 +126,7 @@ func Init(appConf []AppConf) {
 			ids.SetCurrentIDNode(confObj.frist.IDNode)
 		}
 		if confHandle != nil {
-			confObj.callBackConfHandle = true
+			confObj.confHandle = true
 		}
 	}
 	if confFinishHandle != nil && confObj != nil {
@@ -206,6 +208,22 @@ func SessionSource() string {
 	return "cookie"
 }
 
+//SameSite if app config configuration cookie sameSite return it，orherwise return 'None'
+func SameSite() http.SameSite {
+	c := Conf()
+	if c != nil && c.SameSite != "" {
+		switch c.SameSite {
+		case "lax":
+			return http.SameSiteLaxMode //Lax
+		case "strict":
+			return http.SameSiteStrictMode //Strict
+		default:
+			return http.SameSiteNoneMode //None
+		}
+	}
+	return http.SameSiteDefaultMode
+}
+
 //Config returns the key app config
 func Config(key string) *AppConf {
 	appConf := Manager()
@@ -274,7 +292,7 @@ func RegistConf(handle ConfingHandle, finish ...FinishHandle) {
 	if finish != nil {
 		confFinishHandle = finish[0]
 	}
-	if confObj == nil || confObj.callBackConfHandle {
+	if confObj == nil || confObj.confHandle {
 		return
 	}
 	cf := confObj.rawConfs

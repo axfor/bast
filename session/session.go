@@ -80,6 +80,7 @@ func Start(w http.ResponseWriter, r *http.Request) (Store, error) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   isSecure(r),
+		SameSite: conf.SameSite(),
 		// Domain:   "",
 	}
 	if lifeTime > 0 {
