@@ -49,20 +49,22 @@ bast.Get("/xxx", func(ctx *bast.Context) {
     ctx.JSON(person)
 })  
 
-func init() {
-    //register keys translator //note：is key
-    //suck as:verify error
-    //en:    The name field is required
-    //zh-cn: {0} 不能空
-    //......
+func init() { 
+	//register keys translator //note：is key
+	//suck as:verify error
+	//en:    The name field is required
+	//zh-cn: {0} 不能空
+	//......
+
 	lang.RegisterKeys("zh-cn", map[string]string{
 		"name":    "姓名",
 		"age":     "年龄",
 		"address": "地址",
 	})
-    //other langs
-    //......
-} 
+
+	//other langs
+	//......
+}
 
 ```
  
