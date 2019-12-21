@@ -19,15 +19,16 @@
 ### Get
 
 ``` golang
-//Person struct
+//Person struct  
 type Person struct {
-    Name string `json:"name"`
-    Age  int    `json:"age"`
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+	Addr string `json:"addr"`
 }
-
+ 
 bast.Get("/xxx", func(ctx *bast.Context) {
     //verify imput parameter
-    err := ctx.Verify("name=required|min:1", "age=required|min:1")
+    err := ctx.Verify("name@required|min:1", "age@required|min:1", "addr.address@required|min:1")
     if err != nil {
         ctx.Failed(err.Error())
         return
@@ -46,7 +47,23 @@ bast.Get("/xxx", func(ctx *bast.Context) {
     //handling
     //...
     ctx.JSON(person)
-}) 
+})  
+
+func init() {
+    //register keys translator //note：is key
+    //suck as:verify error
+    //en:    The name field is required
+    //zh-cn: {0} 不能空
+    //......
+	lang.RegisterKeys("zh-cn", map[string]string{
+		"name":    "姓名",
+		"age":     "年龄",
+		"address": "地址",
+	})
+    //other langs
+    //......
+} 
+
 ```
  
 
