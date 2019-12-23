@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/aixiaoxiang/bast/validate/lang"
+	"github.com/aixiaoxiang/bast/lang"
 )
 
 var vfuncs = map[string]VerifyFunc{}
@@ -130,7 +130,11 @@ func (c *Validator) structVerify(v reflect.Value) error {
 				continue
 			}
 			if pass, next, err := vf.Verify(c, val); !pass || !next {
-				return err
+				if err != nil {
+					return err
+				} else if !next {
+					break
+				}
 			}
 		}
 	}
@@ -199,7 +203,11 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 				val.Value = nil
 				val.Param = ""
 				if pass, next, err := vf.Verify(c, val); !pass || !next {
-					return err
+					if err != nil {
+						return err
+					} else if !next {
+						break
+					}
 				}
 				continue
 			}
@@ -207,7 +215,11 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 				val.Value = v
 				val.Param = ps
 				if pass, next, err := vf.Verify(c, val); !pass || !next {
-					return err
+					if err != nil {
+						return err
+					} else if !next {
+						break
+					}
 				}
 			}
 		}
@@ -217,7 +229,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 
 //Trans translator
 func (c *Validator) Trans(key string, param ...string) string {
-	return lang.Trans(c.Lang, key, param...)
+	return lang.Trans(c.Lang, "v."+key, param...)
 }
 
 //Register a validator provide by the vfuncs name

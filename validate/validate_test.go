@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/aixiaoxiang/bast/validate/lang"
+	"github.com/aixiaoxiang/bast/lang"
 )
 
 type vv struct {
@@ -54,7 +54,7 @@ func TestStruct(t *testing.T) {
 func TestRules(t *testing.T) {
 	v4 := url.Values{
 		"d": {
-			"12",
+			"16",
 		},
 		"e": {
 			"eeeeeee",
@@ -65,13 +65,18 @@ func TestRules(t *testing.T) {
 		"t": {
 			"2019-01-01 12:12",
 		},
+		"email": {
+			"a@a.com",
+		},
 	}
-	vr := Validator{}
+	vr := Validator{Lang: "zh-cn"}
 	err := vr.Request(v4,
 		"d.d_name@required|int|min:12|max:16",
 		"e@required|min:5",
 		"t@date",
-		"z@sometimes|required|int")
+		"z@sometimes|required|int",
+		"email@email",
+	)
 	if err != nil {
 		t.Error(err)
 	}
