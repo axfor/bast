@@ -107,13 +107,19 @@ func (c *Validator) structVerify(v reflect.Value) error {
 		}
 		pos = strings.Index(tag, "@")
 		tk := ""
+		split := "|"
 		if pos != -1 {
 			tk = tag[0:pos]
 			tag = tag[pos+1:]
+			pos = strings.Index(tk, "/")
+			if pos != -1 {
+				split = tk[pos+1:]
+				tk = tk[0:pos]
+			}
 		} else {
 			tk = ks
 		}
-		tags := strings.Split(tag, "|")
+		tags := strings.Split(tag, split)
 		val := Val{ks, lang.Key(c.Lang, tk), "", real, real, rv}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
@@ -148,7 +154,7 @@ func (c *Validator) structVerify(v reflect.Value) error {
 //data is validate data
 //rules is validate rule such as:
 // 	key1@required|int|min:1
-// 	key2.key2_translator@required|string|min:1|max:12
+// 	key2/key2_translator@required|string|min:1|max:12
 //	key3@sometimes|required|date
 func (c *Validator) Request(data url.Values, rules ...string) error {
 	if rules == nil || len(rules) <= 0 {
@@ -156,22 +162,28 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 	}
 	for _, r := range rules {
 		k, tag := "", ""
+		split := "|"
 		pos := strings.Index(r, "@")
 		if pos != -1 {
 			k = r[0:pos]
 			tag = r[pos+1:]
+			pos = strings.Index(k, ",")
+			if pos != -1 {
+				split = k[pos+1:]
+				k = k[0:pos]
+			}
 		} else {
 			continue
 		}
 		tk := ""
-		pos = strings.Index(k, ".")
+		pos = strings.Index(k, "/")
 		if pos != -1 {
 			tk = k[pos+1:]
 			k = k[0:pos]
 		} else {
 			tk = k
 		}
-		tags := strings.Split(tag, "|")
+		tags := strings.Split(tag, split)
 		vs, vok := data[k]
 		lg := 0
 		if vok {

@@ -10,6 +10,8 @@ var zhCn = map[string]string{
 	"v.min.string": "{0}必须大于{1}个字符",
 	"v.min.int":    "{0}必须大于等于{1}",
 	"v.email":      "{0}无效的邮件格式",
+	"v.ip":         "{0}无效的IP地址",
+	"v.match":      "{0}无效的数据格式",
 }
 
 func init() {

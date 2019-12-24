@@ -1,6 +1,6 @@
 # bast
 
-## A lightweight RESTful  for Golang
+# A lightweight RESTful  for Golang
 
 
 > Install
@@ -16,7 +16,7 @@
 > Router
  
 
-### Get
+## Get
 
 ``` golang
 //Person struct  
@@ -28,7 +28,7 @@ type Person struct {
  
 bast.Get("/xxx", func(ctx *bast.Context) {
     //verify imput parameter
-    err := ctx.Verify("name@required|min:1", "age@required|min:1", "addr.address@required|min:1")
+    err := ctx.Verify("name@required|min:1", "age@required|min:1", "addr/address@required|min:1")
     if err != nil {
         ctx.Failed(err.Error())
         return
@@ -50,7 +50,56 @@ bast.Get("/xxx", func(ctx *bast.Context) {
 })  
 
 
-```
+``` 
+
+## Post
+
+``` golang 
+//Person struct
+type Person struct {
+    Name string `json:"name" v:"required|min:1"`
+    Age  int    `json:"age"  v:"min:1"`
+}
+
+bast.Post("/xxx", func(ctx *bast.Context) {
+    person := &Person{}
+    err := ctx.JSONObj(person) 
+    //or ctx.JSONObj(person,true) //version of verify imput parameter
+    if err != nil {
+        ctx.Failed("sorry! invalid parameter")
+        return
+    }
+    person.Age += 2
+
+    //handling
+    //...
+
+    ctx.JSON(person)
+})
+    
+``` 
+---
+
+# Validate
+
+## Syntax
+
+ ``` bash
+
+  key[/key translator][/split divide (default is |)]@verify1[:verify1 param]|verify2
+
+ ```
+
+## Syntax such as 
+
+>
+    key1@required|int|min:1     
+    key2/key2_translator@required|string|min:1|max:12      
+    key3@sometimes|date|required        
+
+## Global register keys translator
+
+` note：only is key `
 
 ``` golang 
 
@@ -71,35 +120,24 @@ func init() {
 }
 
 ```
- 
 
-### Post
+## Support for the validator 
 
-``` golang 
-//Person struct
-type Person struct {
-    Name string `json:"name" v:"required|min:1"`
-    Age  int    `json:"age"  v:"min:1"`
-}
+` note：continue to add new validator `
 
-bast.Post("/xxx", func(ctx *bast.Context) {
-    person := &Person{}
-    err := ctx.JSONObj(person) //or ctx.JSONObj(person,true) //version of verify imput parameter
-    if err != nil {
-        ctx.Failed("sorry! invalid parameter")
-        return
-    }
-    person.Age += 2
+ - date
+ - email
+ - int
+ - ip
+ - match
+ - max
+ - min
+ - required
+ - sometimes 
 
-    //handling
-    //...
+---
 
-    ctx.JSON(person)
-})
-    
-```
-
-### Run 
+# Run 
 
 ``` golang
 

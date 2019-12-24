@@ -25,11 +25,7 @@ func (c *dateValidate) Verify(v *Validator, val Val) (pass bool, next bool, err 
 		return true, true, nil
 	}
 	if vv, ok := val.Value.(string); ok {
-		if vv == "" || len(vv) < 8 {
-			return false, false, errors.New(v.Trans("date", val.TranKey))
-		}
-		ok = s2t(vv)
-		if ok {
+		if vv != "" && len(vv) > 8 && s2t(vv) {
 			return true, true, nil
 		}
 	}
@@ -54,6 +50,7 @@ func s2t(s string) bool {
 	vv := v.String()
 	return err == nil && !v.IsZero() && vv != ""
 }
+
 func init() {
 	Register("date", date)
 }

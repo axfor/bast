@@ -47,9 +47,10 @@ func TestStruct(t *testing.T) {
 
 }
 
-//
+//syntax:  key[/key translator][/split divide (default is |)]@verify1[:verify1 param]|verify2
+//such as:
 // 	key1@required|int|min:1
-// 	key2.key2_translator@required|string|min:1|max:12
+// 	key2/key2_translator@required|string|min:1|max:12
 //	key3@sometimes|date|required
 func TestRules(t *testing.T) {
 	v4 := url.Values{
@@ -68,14 +69,25 @@ func TestRules(t *testing.T) {
 		"email": {
 			"a@a.com",
 		},
+		"host": {
+			"127.0.0.1",
+		},
+		"bast": {
+			"github.aixiaoxiang/bast",
+		},
+		"bast1": {
+			"github.axx/bast",
+		},
 	}
-	vr := Validator{Lang: "zh-cn"}
+	vr := Validator{"zh-cn"}
 	err := vr.Request(v4,
-		"d.d_name@required|int|min:12|max:16",
+		"d/d_name@required|int|min:12|max:16",
 		"e@required|min:5",
 		"t@date",
 		"z@sometimes|required|int",
 		"email@email",
+		`bast//!@match:^([a-zA-Z]+\.[a-zA-Z]*\/[a-zA-Z]*)$`,  //regular expression match will cache the same //new a regular
+		`bast1//!@match:^([a-zA-Z]+\.[a-zA-Z]*\/[a-zA-Z]*)$`, //form cache //not new regular
 	)
 	if err != nil {
 		t.Error(err)

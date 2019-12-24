@@ -10,6 +10,8 @@ var en = map[string]string{
 	"v.min.string": "The {0} must must be greater than {1} characters",
 	"v.min.int":    "The {0} must must be greater than {1}",
 	"v.email":      "The {0} must be a valid email address",
+	"v.ip":         "The {0} must be a valid ip address",
+	"v.match":      "The {0} is a invalid format",
 }
 
 func init() {
