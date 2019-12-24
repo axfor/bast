@@ -82,6 +82,8 @@ bast.Post("/xxx", func(ctx *bast.Context) {
 
 # Validate
 
+`a similar pipeline validator`
+
 ## Syntax
 
  ``` bash
@@ -123,7 +125,7 @@ func init() {
 
 ## Support for the validator 
 
-` note：continue to add new validator `
+` note：will continue to add new validator `
 
  - date
  - email
