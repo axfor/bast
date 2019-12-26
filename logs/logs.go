@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -50,24 +49,8 @@ type XLogger struct {
 type GormLogger struct {
 }
 
-//Print Gorm log
-func (*GormLogger) Print(v ...interface{}) {
-	if logger.logConf.Stdout {
-		msg := gromLogFormatterDebug(v...)
-		if msg != nil {
-			gromDebugLogger.Println(msg...)
-		}
-	} else {
-		msg, _ := gromLogFormatter(v...)
-		if msg != nil {
-			source, _ := v[1].(string)
-			InfoWithCaller("gorm", source, msg...)
-		}
-	}
-}
-
-//LogInit init log
-func LogInit(conf *LogConf) *XLogger {
+//Init init log
+func Init(conf *LogConf) *XLogger {
 	if logger == nil {
 		if conf == nil {
 			conf = &LogConf{
@@ -147,56 +130,95 @@ func LogInit(conf *LogConf) *XLogger {
 	return logger
 }
 
-//Info info log
+// Info logs a message at InfoLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
 func Info(msg string, fields ...zap.Field) {
-	InfoWithCaller(msg, "", fields...)
-}
-
-//InfoWithCaller info log
-func InfoWithCaller(msg string, caller string, fields ...zap.Field) {
-	if logger != nil {
-		logger.Info(msg, LogCaller(caller, 0, fields...)...)
+	if logger != nil && msg != "" {
+		logger.Info(msg, fields...)
 	}
 }
 
-//Debug debug log
+// Warn logs a message at WarnLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func Warn(msg string, fields ...zap.Field) {
+	if logger != nil && msg != "" {
+		logger.Warn(msg, fields...)
+	}
+}
+
+// Debug logs a message at DebugLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
 func Debug(msg string, fields ...zap.Field) {
-	DebugWithCaller(msg, "", fields...)
-}
-
-//DebugWithCaller debug log
-func DebugWithCaller(msg string, caller string, fields ...zap.Field) {
-	if logger != nil {
-		logger.Debug(msg, LogCaller(caller, 0, fields...)...)
+	if logger != nil && msg != "" {
+		c := caller()
+		if fields != nil {
+			fields = append(fields, c)
+			logger.Debug(msg, fields...)
+		} else {
+			logger.Debug(msg, c)
+		}
 	}
 }
 
-//Error error log
+// Error logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
 func Error(msg string, fields ...zap.Field) {
-	ErrorWithCaller(msg, "", fields...)
+	if logger != nil && msg != "" {
+		c := caller()
+		if fields != nil {
+			fields = append(fields, c)
+			logger.Error(msg, fields...)
+		} else {
+			logger.Error(msg, c)
+		}
+	}
 }
 
-//Errors Error log
+// Errors logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
 func Errors(msg string, err error) {
-	if err != nil {
-		if msg != "" {
-			msg += ","
+	if logger != nil && msg != "" {
+		c := caller()
+		if err != nil {
+			logger.Error(msg, c, zap.Error(err))
+		} else {
+			logger.Error(msg, c)
 		}
-		msg += err.Error()
-	}
-	if msg != "" {
-		ErrorWithCaller(msg, "")
+		//fields = append(fields, zap.ByteString("stack", debug.Stack()))
 	}
 }
 
-//ErrorWithCaller error log
-func ErrorWithCaller(msg string, caller string, fields ...zap.Field) {
-	if logger != nil {
-		fields = LogCaller(caller, 0, fields...)
-		if logger.logConf.Debug {
-			fields = append(fields, zap.ByteString("stack", debug.Stack()))
+// DPanic logs a message at DPanicLevel. The message includes any fields
+// passed at the log site, as well as any fields accumulated on the logger.
+//
+// If the logger is in development mode, it then panics (DPanic means
+// "development panic"). This is useful for catching errors that are
+// recoverable, but shouldn't ever happen.
+func DPanic(msg string, fields ...zap.Field) {
+	if logger != nil && msg != "" {
+		c := caller()
+		if fields != nil {
+			fields = append(fields, c)
+			logger.DPanic(msg, fields...)
+		} else {
+			logger.DPanic(msg, c)
 		}
-		logger.Error(msg, fields...)
+	}
+}
+
+// Panic logs a message at PanicLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+//
+// The logger then panics, even if logging at PanicLevel is disabled.
+func Panic(msg string, fields ...zap.Field) {
+	if logger != nil && msg != "" {
+		c := caller()
+		if fields != nil {
+			fields = append(fields, c)
+			logger.Panic(msg, fields...)
+		} else {
+			logger.Panic(msg, c)
+		}
 	}
 }
 
@@ -217,62 +239,32 @@ func Sync() {
 	}
 }
 
-func logLevel(text string) zapcore.Level {
-	switch text {
-	case "debug", "DEBUG":
-		return zapcore.DebugLevel
-	case "info", "INFO", "": // make the zero value useful
-		return zapcore.InfoLevel
-	case "warn", "WARN":
-		return zapcore.WarnLevel
-	case "error", "ERROR":
-		return zapcore.ErrorLevel
-	case "dpanic", "DPANIC":
-		return zapcore.DPanicLevel
-	case "panic", "PANIC":
-		return zapcore.PanicLevel
-	case "fatal", "FATAL":
-		return zapcore.FatalLevel
-	}
-	return zapcore.ErrorLevel
+func caller() zap.Field {
+	return zap.String("caller", callerWithIndex(0))
 }
 
-//LogCaller callers
-func LogCaller(caller string, skip int, fields ...zap.Field) []zap.Field {
-	if caller == "" {
-		if skip <= 0 {
-			skip = 3
-		}
-		if caller == "" {
-			caller = Caller(skip)
-		}
-	}
-	if caller != "" {
-		var fs []zap.Field
-		if fields != nil {
-			fs = fields[:]
-		} else {
-			fs = make([]zap.Field, 0, 1)
-		}
-		fs = append(fs, zap.String("caller", caller))
-		return fs
-	}
-	return fields[:]
+func callerWithIndex(skip int) string {
+	const callerSkipOffset = 3
+	return zapcore.NewEntryCaller(runtime.Caller(skip + callerSkipOffset)).TrimmedPath()
 }
 
-//Caller caller
-func Caller(skip int) string {
-	if skip <= 0 {
-		skip = 3
+//Print Gorm log
+func (*GormLogger) Print(v ...interface{}) {
+	if logger.logConf.Stdout {
+		msg := gromLogFormatterDebug(v...)
+		if msg != nil {
+			gromDebugLogger.Println(msg...)
+		}
 	} else {
-		skip++
+		msg, _ := gromLogFormatter(v...)
+		if msg != nil {
+			source, ok := v[1].(string)
+			if ok && source != "" {
+				msg = append(msg, zap.String("caller", source))
+			}
+			Info("gorm", msg...)
+		}
 	}
-	_, file, line, ok := runtime.Caller(skip)
-	if ok {
-		caller := file + ":" + strconv.Itoa(line)
-		return caller
-	}
-	return ""
 }
 
 /*********************************
@@ -466,6 +458,26 @@ func isPrintable(s string) bool {
 		}
 	}
 	return true
+}
+
+func logLevel(text string) zapcore.Level {
+	switch text {
+	case "debug", "DEBUG":
+		return zapcore.DebugLevel
+	case "info", "INFO", "": // make the zero value useful
+		return zapcore.InfoLevel
+	case "warn", "WARN":
+		return zapcore.WarnLevel
+	case "error", "ERROR":
+		return zapcore.ErrorLevel
+	case "dpanic", "DPANIC":
+		return zapcore.DPanicLevel
+	case "panic", "PANIC":
+		return zapcore.PanicLevel
+	case "fatal", "FATAL":
+		return zapcore.FatalLevel
+	}
+	return zapcore.ErrorLevel
 }
 
 //ClearLogger clear logs

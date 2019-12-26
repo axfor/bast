@@ -29,6 +29,7 @@ import (
 	"github.com/aixiaoxiang/bast/session"
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
+	"go.uber.org/zap"
 )
 
 var (
@@ -89,7 +90,7 @@ func init() {
 	}
 	//init config
 	if conf.OK() {
-		logs.LogInit(conf.LogConf())
+		logs.Init(conf.LogConf())
 	}
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
@@ -263,8 +264,13 @@ type NotFoundHandler struct {
 
 //ServeHTTP not found handler
 func (NotFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "404 page not found", http.StatusNotFound)
-	logs.Info(r.Method + ":" + r.RequestURI + "->404 page not found")
+	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	logs.Error("not-found",
+		zap.String("url", r.RequestURI),
+		zap.String("method", r.Method),
+		zap.Int("status code", http.StatusNotFound),
+		zap.String("status text", http.StatusText(http.StatusNotFound)),
+	)
 }
 
 //MethodNotAllowedHandler method Not Allowed
@@ -273,8 +279,13 @@ type MethodNotAllowedHandler struct {
 
 //ServeHTTP method Not Allowed handler
 func (MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	logs.Info(r.Method + ":" + r.RequestURI + "->Method Not Allowed")
+	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	logs.Error("method-not-allowed",
+		zap.String("url", r.RequestURI),
+		zap.String("method", r.Method),
+		zap.Int("status code", http.StatusMethodNotAllowed),
+		zap.String("status text", http.StatusText(http.StatusMethodNotAllowed)),
+	)
 }
 
 // doHandle registers the handler function for the given pattern
@@ -287,7 +298,11 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 	}
 	//app.Router.HandlerFunc(method,pattern)
 	app.Router.Handle(method, pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		logs.Info(r.Method + ":" + r.RequestURI + "->start")
+		logs.Info("access-start",
+			zap.String("url", r.RequestURI),
+			zap.String("method", r.Method),
+		)
+		st := time.Now()
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD")
@@ -296,51 +311,53 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		if r.Method == http.MethodOptions {
-			return
+			goto end
 		}
 		if pattern == "/" && r.URL.Path != pattern {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, http.StatusText(http.StatusNotFound))
-			return
+			goto end
 		}
-		if r.Method == method {
-			if f != nil {
-				ctx := app.pool.Get().(*Context)
-				ctx.Reset()
-				defer app.pool.Put(ctx)
-				ctx.In = r
-				ctx.Out = w
-				ctx.Params = ps
-				ctx.Authorization = auth
-				defer func() {
-					if err := recover(); err != nil {
-						errMsg := fmt.Sprintf("%s", err)
-						logs.Error(r.Method + ":" + r.RequestURI + "->error=" + errMsg)
-						w.WriteHeader(http.StatusInternalServerError)
-						fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
-					}
-				}()
-				s, err := session.Start(w, r)
-				if err == nil && s != nil {
-					ctx.Session = s
+		if f != nil {
+			ctx := app.pool.Get().(*Context)
+			ctx.Reset()
+			defer app.pool.Put(ctx)
+			ctx.In = r
+			ctx.Out = w
+			ctx.Params = ps
+			ctx.Authorization = auth
+			defer func() {
+				if err := recover(); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
+					logs.Error("access-error",
+						zap.Any("error", err),
+						zap.String("url", r.RequestURI),
+						zap.String("method", r.Method),
+						zap.String("cost", time.Since(st).String()),
+					)
 				}
-				if app.Before != nil {
-					if app.Before(ctx) != nil {
-						logs.Info(r.Method + ":" + r.RequestURI + "->end")
-						return
-					}
-				}
-				f(ctx)
-				if app.After != nil {
-					app.After(ctx)
-				}
-				logs.Info(r.Method + ":" + r.RequestURI + "->end")
+			}()
+			s, err := session.Start(w, r)
+			if err == nil && s != nil {
+				ctx.Session = s
 			}
-		} else {
-			logs.Info(r.Method + ":" + r.RequestURI + "->end=Not allowed")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			fmt.Fprint(w, http.StatusText(http.StatusMethodNotAllowed))
+			if app.Before != nil {
+				if app.Before(ctx) != nil {
+					goto end
+				}
+			}
+			f(ctx)
+			if app.After != nil {
+				app.After(ctx)
+			}
 		}
+	end:
+		logs.Info("access-end",
+			zap.String("url", r.RequestURI),
+			zap.String("method", r.Method),
+			zap.String("cost", time.Since(st).String()),
+		)
 	})
 }
 
@@ -408,19 +425,16 @@ func doRun(addr string) {
 	app.Addr = addr
 	err := tryRun()
 	if err == nil {
-		logs.Info("addr=" + app.Addr)
-		// fmt.Println("start")
+		logs.Info("run", zap.String("address", app.Addr))
 		err = app.ListenAndServe()
 		if err != nil {
 			fmt.Println("listenAndServe error=" + err.Error())
-			logs.Info("listenAndServe error=" + err.Error())
+			logs.Errors("listenAndServe", err)
 			os.Exit(0)
 		}
-		// fmt.Println("finish")
 		logs.Info("finish")
 	} else {
-		// fmt.Println("listen error=" + err.Error())
-		logs.Info("listen error=" + err.Error())
+		logs.Errors("listen", err)
 		os.Exit(-1)
 	}
 }

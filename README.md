@@ -97,7 +97,7 @@ bast.Post("/xxx", func(ctx *bast.Context) {
 >
     key1@required|int|min:1     
     key2/key2_translator@required|string|min:1|max:12      
-    key3@sometimes|date|required        
+    key3@sometimes|required|date      
 
 ## Global register keys translator
 
