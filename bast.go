@@ -59,6 +59,7 @@ type App struct {
 	Server                               *http.Server
 	Before                               BeforeHandle
 	After                                AfterHandle
+	Authorization                        AuthorizationHandle
 	Migration                            MigrationHandle
 	Debug, Daemon, isCallCommand, runing bool
 	cmd                                  []work
@@ -71,10 +72,13 @@ type work struct {
 	exitCount int
 }
 
-//BeforeHandle is before then request handler
+//BeforeHandle a before handler for each request
 type BeforeHandle func(ctx *Context) error
 
-//AfterHandle is after then request handler
+//AuthorizationHandle a authorization handler for each request
+type AuthorizationHandle func(ctx *Context) error
+
+//AfterHandle a after handler for each request
 type AfterHandle func(ctx *Context) error
 
 //MigrationHandle is migration handler
@@ -154,12 +158,17 @@ func parseCommandLine() {
 	conf.Parse(f)
 }
 
-//Before the request
+//Before set the request 'before' handle
 func Before(f BeforeHandle) {
 	app.Before = f
 }
 
-//After the request
+//Authorization set the request 'authorization' handle
+func Authorization(f AuthorizationHandle) {
+	app.Authorization = f
+}
+
+//After  set the request 'after' handle
 func After(f AfterHandle) {
 	app.After = f
 }
@@ -292,6 +301,9 @@ func (MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
 func doHandle(method, pattern string, f func(ctx *Context), authorization ...bool) {
+	if f == nil {
+		return
+	}
 	auth := false
 	if authorization != nil {
 		auth = authorization[0]
@@ -302,6 +314,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			zap.String("url", r.RequestURI),
 			zap.String("method", r.Method),
 		)
+
 		st := time.Now()
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -310,23 +323,23 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			w.Header().Set("Access-Control-Max-Age", "1728000")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
+
 		if r.Method == http.MethodOptions {
 			goto end
 		}
+
 		if pattern == "/" && r.URL.Path != pattern {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, http.StatusText(http.StatusNotFound))
 			goto end
 		}
-		if f != nil {
+
+		{
 			ctx := app.pool.Get().(*Context)
 			ctx.Reset()
-			defer app.pool.Put(ctx)
-			ctx.In = r
-			ctx.Out = w
-			ctx.Params = ps
-			ctx.Authorization = auth
+			// defer app.pool.Put(ctx)
 			defer func() {
+				app.pool.Put(ctx)
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
@@ -338,16 +351,35 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 					)
 				}
 			}()
+
+			ctx.In = r
+			ctx.Out = w
+			ctx.Params = ps
+			ctx.NeedAuthorization = auth
+
 			s, err := session.Start(w, r)
 			if err == nil && s != nil {
 				ctx.Session = s
 			}
-			if app.Before != nil {
-				if app.Before(ctx) != nil {
-					goto end
-				}
+
+			if auth && app.Authorization != nil && app.Authorization(ctx) != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprint(w, http.StatusText(http.StatusUnauthorized))
+				goto end
 			}
+
+			if ctx.NeedAuthorization {
+				ctx.IsAuthorization = true
+			}
+
+			if app.Before != nil && app.Before(ctx) != nil {
+				w.WriteHeader(http.StatusPreconditionFailed)
+				fmt.Fprint(w, http.StatusText(http.StatusPreconditionFailed))
+				goto end
+			}
+
 			f(ctx)
+
 			if app.After != nil {
 				app.After(ctx)
 			}

@@ -59,8 +59,8 @@ type Context struct {
 	Params httprouter.Params
 	//isParseForm Parse tag
 	isParseForm bool
-	//Authorization is need authorization
-	Authorization bool
+	//NeedAuthorization is need authorization
+	NeedAuthorization bool
 	//IsAuthorization is authorization finish?
 	IsAuthorization bool
 	//Session is session
@@ -989,7 +989,7 @@ func (c *Context) Reset() {
 	c.Out = nil
 	c.Params = nil
 	c.isParseForm = false
-	c.Authorization = false
+	c.NeedAuthorization = false
 	c.IsAuthorization = false
 	c.Session = nil
 }
