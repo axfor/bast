@@ -35,7 +35,7 @@ func IDStr(node ...uint8) string {
 	return n.Generate().String()
 }
 
-//IDClear clear
-func IDClear() {
+//Clear clear all
+func Clear() {
 	snowflake.Clear()
 }

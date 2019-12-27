@@ -539,15 +539,15 @@ func service() {
 	}
 	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
-		logs.Info("service failed," + err.Error())
+		logs.Errors("service failed", err)
 		return
 	}
 	status, err := service.Run(&daemonExecutable{})
 	if err != nil {
-		logs.Info("service failed," + err.Error())
+		logs.Errors("service failed", err)
 		return
 	}
-	logs.Info("service info:" + status)
+	logs.Info("service status", zap.String("status", status))
 }
 
 func doService() {
@@ -558,14 +558,14 @@ func doService() {
 func doStart() error {
 	appConfs := conf.Confs()
 	if appConfs == nil || len(appConfs) <= 0 {
-		logs.Info("not found conf")
+		logs.Error("not found conf")
 		return errors.New("not found conf")
 	}
 	path := conf.Path()
 	pid := strconv.Itoa(os.Getpid())
 	app.pipeName = pid
 	if flagService {
-		logs.Info("service=" + path + ",master pid=" + pid)
+		logs.Info("service info", zap.String("path", path), zap.String("masterPid", pid))
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
@@ -575,13 +575,13 @@ func doStart() error {
 		cmd.Dir = AppDir()
 		err := cmd.Start()
 		if err != nil {
-			logs.Errors("create child process filed,", err)
+			logs.Errors("create child process filed", err)
 			return err
 		}
 		app.cmd = append(app.cmd, work{key: c.Key, cmd: cmd, runing: true})
 	}
 	if err := logPid(); err != nil {
-		logs.Errors("logging error log pid,", err)
+		logs.Errors("logging error log pid", err)
 		if !flagService {
 			fmt.Println(err.Error())
 		}
@@ -635,7 +635,7 @@ func checkWorkProcess() {
 			exitCode = strconv.Itoa(w.cmd.ProcessState.ExitCode())
 		}
 		if flagService {
-			logs.Error("has work process exited,exit code=" + exitCode)
+			logs.Error("has work process exited", zap.String("exitCode", exitCode))
 		} else {
 			fmt.Println("has work process exited,exit code=" + exitCode)
 		}
@@ -772,13 +772,13 @@ func signalListen() {
 	for {
 		s := <-c
 		if s == syscall.SIGINT || (runtime.GOOS == "windows" && s == os.Interrupt) {
-			logs.Info("signal=" + s.String())
+			logs.Info("signal", zap.String("signalText", s.String()))
 			signal.Stop(c)
 			err := Shutdown(nil)
 			if err != nil {
-				logs.Info("shutdown-error=" + err.Error())
+				logs.Errors("shutdown error", err)
 			} else {
-				logs.Info("shutdown-success")
+				logs.Info("shutdown success")
 			}
 			break
 		}
@@ -920,8 +920,8 @@ func False() *bool {
 	return &fv
 }
 
-//Str return a * string
-func Str(s string) *string {
+//String return a * string
+func String(s string) *string {
 	return &s
 }
 
@@ -963,7 +963,7 @@ func clear() {
 		return
 	}
 	isClear = true
-	logs.ClearLogger()
-	ids.IDClear()
+	logs.Clear()
+	ids.Clear()
 	removePid()
 }

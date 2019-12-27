@@ -5,11 +5,16 @@ import (
 	"strings"
 )
 
-var trans = map[string][]TranItem{}
+var trans = map[string]*translator{}
+
 var keyTrans = map[string]string{}
 
-//TranItem a trans item
-type TranItem struct {
+type translator struct {
+	Item []item
+	Cap  int
+}
+
+type item struct {
 	Text  string
 	Index int
 }
@@ -26,7 +31,8 @@ func Trans(lang, key string, param ...string) string {
 			lg = len(param)
 		}
 		var s strings.Builder
-		for _, v := range t {
+		s.Grow(t.Cap)
+		for _, v := range t.Item {
 			if v.Index >= 0 && v.Index < lg {
 				s.WriteString(param[v.Index])
 			} else {
@@ -38,7 +44,7 @@ func Trans(lang, key string, param ...string) string {
 	return ""
 }
 
-//Key translator key
+//Key translator of key
 func Key(lang, key string) string {
 	if lang == "" {
 		lang = "en"
@@ -53,40 +59,48 @@ func Key(lang, key string) string {
 func Register(lang string, ts map[string]string) {
 	for k, v := range ts {
 		vs := lang + "." + k
-		if _, ok := trans[vs]; !ok {
-			vv := v
-			lg := len(v)
-			trs := []TranItem{}
-			for {
-				i := strings.Index(vv, "{")
-				j := strings.Index(vv, "}")
-				if i == -1 || j == -1 || i >= j {
-					break
-				}
-				if i > 0 {
-					trs = append(trs, TranItem{vv[0:i], -1})
-				}
-				i++
-				p := vv[i:j]
-				pi, err := strconv.Atoi(p)
-				if err != nil {
-					break
-				}
-				rp := "{" + p + "}"
-				trs = append(trs, TranItem{rp, pi})
-				j++
-				if j < lg {
-					vv = vv[j:]
-					continue
-				}
-				vv = ""
+		//if _, ok := trans[vs]; !ok {
+		vv := v
+		lg := len(v)
+		trs := []item{}
+		refCap := lg
+		for {
+			i := strings.Index(vv, "{")
+			j := strings.Index(vv, "}")
+			if i == -1 || j == -1 || i >= j {
 				break
 			}
-			if vv != "" {
-				trs = append(trs, TranItem{vv, -1})
+			if i > 0 {
+				trs = append(trs, item{vv[0:i], -1})
 			}
-			trans[vs] = trs
+			i++
+			p := vv[i:j]
+			pi, err := strconv.Atoi(p)
+			if err != nil {
+				break
+			}
+			rp := "{" + p + "}"
+			trs = append(trs, item{rp, pi})
+			j++
+			if j < lg {
+				vv = vv[j:]
+				continue
+			}
+			vv = ""
+			break
 		}
+		if vv != "" {
+			trs = append(trs, item{vv, -1})
+		}
+		lg = len(trs)
+		if lg > 0 {
+			refCap += lg * 20
+			trans[vs] = &translator{
+				Item: trs,
+				Cap:  refCap,
+			}
+		}
+		//}
 	}
 }
 

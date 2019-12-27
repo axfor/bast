@@ -23,6 +23,7 @@ import (
 	"github.com/aixiaoxiang/bast/session"
 	"github.com/aixiaoxiang/bast/validate"
 	"github.com/julienschmidt/httprouter"
+	"go.uber.org/zap"
 )
 
 //const code
@@ -206,7 +207,7 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 func (c *Context) JSONResult(v interface{}) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		logs.Debug("JSONResult error=" + err.Error())
+		logs.Errors("JSONResult error", err)
 		c.StatusCode(http.StatusInternalServerError)
 		return
 	}
@@ -766,7 +767,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
 	if app.Debug {
 		body, err := ioutil.ReadAll(r)
 		if err != nil {
-			logs.Debug("JSONDecode error=" + err.Error() + ",detail=" + string(body))
+			logs.Debug("JSONDecode error", zap.Error(err), zap.ByteString("detail", body))
 			return err
 		}
 		err = json.Unmarshal(body, obj)
@@ -775,7 +776,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
 		err = json.NewDecoder(r).Decode(obj)
 	}
 	if err != nil {
-		logs.Debug("JSONDecode error=" + err.Error())
+		logs.Debug("JSONDecode error", zap.Error(err))
 	}
 	return err
 }
@@ -800,7 +801,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
 	if app.Debug {
 		body, err := ioutil.ReadAll(r)
 		if err != nil {
-			logs.Debug("XMLDecode error=" + err.Error() + ",detail=" + string(body))
+			logs.Debug("XMLDecode error", zap.Error(err), zap.ByteString("detail", body))
 			return err
 		}
 		err = xml.Unmarshal(body, obj)
@@ -809,7 +810,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
 		err = xml.NewDecoder(r).Decode(obj)
 	}
 	if err != nil {
-		logs.Debug("XMLDecode error=" + err.Error())
+		logs.Debug("XMLDecode error", zap.Error(err))
 	}
 	return err
 }
@@ -819,7 +820,7 @@ func (c *Context) MapObj() map[string]interface{} {
 	result := make(map[string]interface{})
 	err := c.Obj(result)
 	if err != nil {
-		logs.Debug("MapObj error=" + err.Error())
+		logs.Debug("MapObj error", zap.Error(err))
 		return nil
 	}
 	return result

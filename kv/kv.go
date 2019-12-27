@@ -13,18 +13,18 @@ type Stringer interface {
 	String() string
 }
 
-//I key value
+//Any key value
 //support url signature such as k1=v1&k2=v2
-type I map[interface{}]interface{}
+type Any map[interface{}]interface{}
 
-//New new KI
+//New new Any
 //key type is interface and value type is interface
-func New() I {
-	return make(I)
+func New() Any {
+	return make(Any)
 }
 
 //URL returns k1=v1&k2=v2
-func (c *I) URL() string {
+func (c *Any) URL() string {
 	var s []string
 	ks, vs := "", ""
 	var ser Stringer
@@ -53,17 +53,17 @@ func (c *I) URL() string {
 	return strings.Join(s, "&")
 }
 
-//S KV for string
-type S map[string]string
+//String KV for string
+type String map[string]string
 
-//NewS new KS
+//NewString new KS
 //key type is string and value type is string
-func NewS() S {
-	return make(S)
+func NewString() String {
+	return make(String)
 }
 
 //URL returns k1=v1&k2=v2
-func (c *S) URL() string {
+func (c *String) URL() string {
 	var s []string
 	for k, v := range *c {
 		if k != "" && v != "" {

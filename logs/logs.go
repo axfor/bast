@@ -27,8 +27,8 @@ var (
 	gromNumericPlaceHolderRegexp = regexp.MustCompile(`\$\d+`)
 )
 
-//LogConf log config
-type LogConf struct {
+//Conf log config
+type Conf struct {
 	OutPath    string `json:"outPath"`
 	Level      string `json:"level"`
 	MaxSize    int    `json:"maxSize"`
@@ -42,7 +42,7 @@ type LogConf struct {
 //XLogger log
 type XLogger struct {
 	zap.Logger
-	logConf *LogConf
+	logConf *Conf
 }
 
 //GormLogger Gorm loger
@@ -50,12 +50,12 @@ type GormLogger struct {
 }
 
 //Init init log
-func Init(conf *LogConf) *XLogger {
+func Init(conf *Conf) *XLogger {
 	if logger == nil {
 		if conf == nil {
-			conf = &LogConf{
-				OutPath:    "./logs.log",
-				Level:      "error",
+			conf = &Conf{
+				OutPath:    "./logs/logs.log",
+				Level:      "info",
 				MaxSize:    10,
 				MaxBackups: 5,
 				MaxAge:     28,
@@ -480,8 +480,8 @@ func logLevel(text string) zapcore.Level {
 	return zapcore.ErrorLevel
 }
 
-//ClearLogger clear logs
-func ClearLogger() {
+//Clear clear all logs
+func Clear() {
 	logger = nil
 	gromDebugLogger = nil
 	gromLogFormatter = nil

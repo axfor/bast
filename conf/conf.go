@@ -38,24 +38,24 @@ type AppConfMgr struct {
 
 //AppConf  app config item
 type AppConf struct {
-	Key             string        `json:"key"`
-	Name            string        `json:"name"`
-	Addr            string        `json:"addr"`
-	FileDir         string        `json:"fileDir"`
-	Debug           bool          `json:"debug"`
-	BaseURL         string        `json:"baseUrl"`
-	IDNode          uint8         `json:"idNode"`
-	Log             *logs.LogConf `json:"log"`
-	Conf            interface{}   `json:"conf"`
-	Extend          string        `json:"extend"`
-	SessionEnable   bool          `json:"sessionEnable"`   //false
-	SessionLifeTime int           `json:"sessionLifeTime"` //20 (min)
-	SessionName     string        `json:"sessionName"`     //_sid
-	SessionEngine   string        `json:"sessionEngine"`   //memory
-	SessionSource   string        `json:"sessionSource"`   //url|header|cookie
-	SameSite        string        `json:"sameSite"`        //strict|lax|none
-	Lang            string        `json:"lang"`
-	ConfHandle      bool          `json:"-"`
+	Key             string      `json:"key"`
+	Name            string      `json:"name"`
+	Addr            string      `json:"addr"`
+	FileDir         string      `json:"fileDir"`
+	Debug           bool        `json:"debug"`
+	BaseURL         string      `json:"baseUrl"`
+	IDNode          uint8       `json:"idNode"`
+	Log             *logs.Conf  `json:"log"`
+	Conf            interface{} `json:"conf"`
+	Extend          string      `json:"extend"`
+	SessionEnable   bool        `json:"sessionEnable"`   //false
+	SessionLifeTime int         `json:"sessionLifeTime"` //20 (min)
+	SessionName     string      `json:"sessionName"`     //_sid
+	SessionEngine   string      `json:"sessionEngine"`   //memory
+	SessionSource   string      `json:"sessionSource"`   //url|header|cookie
+	SameSite        string      `json:"sameSite"`        //strict|lax|none
+	Lang            string      `json:"lang"`
+	ConfHandle      bool        `json:"-"`
 }
 
 //Item default db config
@@ -255,7 +255,7 @@ func UserConf() interface{} {
 }
 
 //LogConf  returns the current log config
-func LogConf() *logs.LogConf {
+func LogConf() *logs.Conf {
 	appConf := Conf()
 	if appConf != nil && appConf.Log != nil {
 		return appConf.Log

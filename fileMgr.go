@@ -53,7 +53,7 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 	//ctx.ParseForm()
 	err := ctx.ParseMultipartForm(32 << 40) //maximum 64M
 	if err != nil {
-		logs.Info("fileHandleUpload->parseMultipartForm-err=" + err.Error())
+		logs.Errors("parseMultipartForm error", err)
 		return nil, errors.New("Invalid file format")
 	}
 	mp := ctx.In.MultipartForm
