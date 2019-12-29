@@ -296,26 +296,6 @@ func (c *HTTPClient) BodyWithContentType(data []byte, contentType string) *HTTPC
 	return c
 }
 
-// Do add files into request.
-func (c *HTTPClient) Do() (resp *http.Response, err error) {
-	c.response = nil
-	err = c.build()
-	if err != nil {
-		return
-	}
-	// retries default value is 0, it will run once.
-	// retries equal to -1, it will run forever until success
-	// retries is setted, it will retries fixed times.
-	for i := 0; c.Retry == -1 || i <= c.Retry; i++ {
-		resp, err = c.client.Do(c.Request)
-		if err == nil {
-			break
-		}
-	}
-	c.response = resp
-	return
-}
-
 func (c *HTTPClient) String() (string, error) {
 	data, err := c.Bytes()
 	if err != nil {
@@ -417,34 +397,37 @@ func (c *HTTPClient) Bytes() ([]byte, error) {
 }
 
 func (c *HTTPClient) build() error {
-	if c.EnableCookie {
+	if c.EnableCookie && c.client.Jar == nil {
 		c.client.Jar = defaultCookieJar
 	}
-	if c.Request.Method == http.MethodGet && len(c.params) > 0 {
-		var urlParam string
-		var buf bytes.Buffer
-		for k, v := range c.params {
-			for i, vv := range v {
-				if i > 0 {
-					buf.WriteByte('&')
-				}
-				buf.WriteString(url.QueryEscape(k))
-				buf.WriteByte('=')
-				buf.WriteString(url.QueryEscape(vv))
+	var urlParam string
+	var buf bytes.Buffer
+	for k, v := range c.params {
+		for i, vv := range v {
+			if i > 0 {
+				buf.WriteByte('&')
 			}
+			buf.WriteString(url.QueryEscape(k))
+			buf.WriteByte('=')
+			buf.WriteString(url.QueryEscape(vv))
 		}
-		urlParam = buf.String()
-		rurl := c.Request.URL.String()
-		if strings.Contains(rurl, "?") {
-			rurl += "&" + urlParam
-		} else {
-			rurl += "?" + urlParam
+	}
+	urlParam = buf.String()
+	has := len(c.params) > 0
+	if c.Request.Method == http.MethodGet {
+		if has {
+			rurl := c.Request.URL.String()
+			if strings.Contains(rurl, "?") {
+				rurl += "&" + urlParam
+			} else {
+				rurl += "?" + urlParam
+			}
+			urls, err := url.Parse(rurl)
+			if err != nil {
+				return err
+			}
+			c.Request.URL = urls
 		}
-		urls, err := url.Parse(rurl)
-		if err != nil {
-			return err
-		}
-		c.Request.URL = urls
 		return nil
 	}
 	if (c.Request.Method == http.MethodPost || c.Request.Method == http.MethodPut || c.Request.Method == http.MethodPatch ||
@@ -476,19 +459,86 @@ func (c *HTTPClient) build() error {
 			bodyWriter.Close()
 			c.Header("Content-Type", bodyWriter.FormDataContentType())
 			c.Request.Body = ioutil.NopCloser(bodyBuffer)
+		} else if has {
+			c.Header("Content-Type", "application/x-www-form-urlencoded")
+			c.Body(urlParam)
 		}
 	}
 	return nil
 }
 
-//Get proxy method http.Get
+// Get issues a GET to the specified URL. If the response is one of
+// the following redirect codes, Get follows the redirect, up to a
+// maximum of 10 redirects:
+//
+//    301 (Moved Permanently)
+//    302 (Found)
+//    303 (See Other)
+//    307 (Temporary Redirect)
+//    308 (Permanent Redirect)
+//
+// An error is returned if there were too many redirects or if there
+// was an HTTP protocol error. A non-2xx response doesn't cause an
+// error. Any returned error will be of type *url.Error. The url.Error
+// value's Timeout method will report true if request timed out or was
+// canceled.
+//
+// When err is nil, resp always contains a non-nil resp.Body.
+// Caller should close resp.Body when done reading from it.
+//
+// Get is a wrapper around DefaultClient.Get.
+//
+// To make a request with custom headers, use NewRequest and
+// DefaultClient.Do.
 func Get(url string) *HTTPClient {
 	return createRequest(url, http.MethodGet)
 }
 
-//Post proxy http.Get
+// Post issues a POST to the specified URL.
+//
+// Caller should close resp.Body when done reading from it.
+//
+// If the provided body is an io.Closer, it is closed after the
+// request.
+//
+// Post is a wrapper around DefaultClient.Post.
+//
+// To set custom headers, use NewRequest and DefaultClient.Do.
+//
+// See the Client.Do method documentation for details on how redirects
+// are handled.
 func Post(url string) *HTTPClient {
 	return createRequest(url, http.MethodPost)
+}
+
+// Head issues a HEAD to the specified URL. If the response is one of
+// the following redirect codes, Head follows the redirect, up to a
+// maximum of 10 redirects:
+//
+//    301 (Moved Permanently)
+//    302 (Found)
+//    303 (See Other)
+//    307 (Temporary Redirect)
+//    308 (Permanent Redirect)
+//
+// Head is a wrapper around DefaultClient.Head
+func Head(url string) *HTTPClient {
+	return createRequest(url, http.MethodHead)
+}
+
+// Put returns *HTTPClient with PUT method
+func Put(url string) *HTTPClient {
+	return createRequest(url, http.MethodPut)
+}
+
+// Delete returns *HTTPClient with Delete method
+func Delete(url string) *HTTPClient {
+	return createRequest(url, http.MethodDelete)
+}
+
+// Patch returns *HTTPClient with Patch method
+func Patch(url string) *HTTPClient {
+	return createRequest(url, http.MethodPatch)
 }
 
 func createRequest(uri, method string) *HTTPClient {
@@ -512,7 +562,24 @@ func createRequest(uri, method string) *HTTPClient {
 	return c
 }
 
-// Timeout returns functions of connection dialer with timeout settings for http.Transport Dial field.
+// Do add files into request
+func (c *HTTPClient) Do() (resp *http.Response, err error) {
+	c.response = nil
+	err = c.build()
+	if err != nil {
+		return
+	}
+	for i := 0; c.Retry == -1 || i <= c.Retry; i++ {
+		resp, err = c.client.Do(c.Request)
+		if err == nil {
+			break
+		}
+	}
+	c.response = resp
+	return
+}
+
+// Timeout returns functions of connection dialer with timeout settings for http.Transport Dial field
 func Timeout(connTimeout time.Duration, rwTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
 	return func(netw, addr string) (net.Conn, error) {
 		conn, err := net.DialTimeout(netw, addr, connTimeout)
