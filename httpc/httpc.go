@@ -232,15 +232,15 @@ func (c *HTTPClient) Params(values url.Values) *HTTPClient {
 // Body adds request raw body.
 func (c *HTTPClient) Body(data interface{}) *HTTPClient {
 	switch t := data.(type) {
-	case uint, uint8, uint16, uint32, uint64:
-	case int, int8, int16, int32, int64:
-	case float32, float64:
 	case string:
 		c.Request.Body = ioutil.NopCloser(bytes.NewBufferString(t))
 		c.Request.ContentLength = int64(len(t))
 	case []byte:
 		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(t))
 		c.Request.ContentLength = int64(len(t))
+	case uint, uint8, uint16, uint32, uint64:
+	case int, int8, int16, int32, int64:
+	case float32, float64:
 	default:
 		return c
 	}
