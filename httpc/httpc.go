@@ -357,13 +357,32 @@ func (c *HTTPClient) ToFile(filename string) error {
 		return nil
 	}
 	defer c.response.Body.Close()
-	pathExist(filename)
+	err := pathExistAndMkdir(filename)
+	if err != nil {
+		return err
+	}
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	_, err = io.Copy(f, c.response.Body)
+	return err
+}
+
+//Check that the file directory exists, there is no automatically created
+func pathExistAndMkdir(filename string) (err error) {
+	filename = path.Dir(filename)
+	_, err = os.Stat(filename)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(filename, os.ModePerm)
+		if err == nil {
+			return nil
+		}
+	}
 	return err
 }
 
@@ -589,21 +608,6 @@ func Timeout(connTimeout time.Duration, rwTimeout time.Duration) func(net, addr 
 		err = conn.SetDeadline(time.Now().Add(rwTimeout))
 		return conn, err
 	}
-}
-
-func pathExist(pathName string) bool {
-	pathName = path.Dir(pathName)
-	_, err := os.Stat(pathName)
-	if err == nil {
-		return true
-	}
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(pathName, os.ModePerm)
-		if err == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func init() {
