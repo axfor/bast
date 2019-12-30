@@ -29,6 +29,8 @@ var (
 	defaultRetries   = 3
 	defaultTimeout   = Timeout(60*time.Second, 60*time.Second)
 	defaultCookieJar http.CookieJar
+	before           func(*HTTPClient) error
+	after            func(*HTTPClient)
 )
 
 //HTTPClient http client
@@ -42,6 +44,14 @@ type HTTPClient struct {
 	Retry              int
 	body               []byte
 	EnableCookie       bool
+	err                error
+	Tag                string
+}
+
+// MarkTag sets an tag field
+func (c *HTTPClient) MarkTag(tag string) *HTTPClient {
+	c.Tag = tag
+	return c
 }
 
 // Transport specifies the mechanism by which individual
@@ -94,6 +104,12 @@ func (c *HTTPClient) UserAgent(useragent string) *HTTPClient {
 	if c.Request.UserAgent() == "" {
 		c.Request.Header.Set("User-Agent", useragent)
 	}
+	return c
+}
+
+// Accept sets Accept header field
+func (c *HTTPClient) Accept(accept string) *HTTPClient {
+	c.Request.Header.Set("Accept", accept)
 	return c
 }
 
@@ -250,8 +266,18 @@ func (c *HTTPClient) Body(data interface{}) *HTTPClient {
 	return c
 }
 
-// JSON adds request raw body encoding by JSON.
-func (c *HTTPClient) JSON(obj interface{}) (*HTTPClient, error) {
+// JSONBody adds request raw body encoding by JSON.
+func (c *HTTPClient) JSONBody(obj interface{}) *HTTPClient {
+	_, err := c.JSONBodyWithError(obj)
+	if err != nil {
+		c.err = err
+		return c
+	}
+	return c
+}
+
+// JSONBodyWithError adds request raw body encoding by JSON.
+func (c *HTTPClient) JSONBodyWithError(obj interface{}) (*HTTPClient, error) {
 	if c.Request.Body == nil && obj != nil {
 		data, err := json.Marshal(obj)
 		if err != nil {
@@ -262,8 +288,18 @@ func (c *HTTPClient) JSON(obj interface{}) (*HTTPClient, error) {
 	return c, nil
 }
 
-// XML adds request raw body encoding by XML.
-func (c *HTTPClient) XML(obj interface{}) (*HTTPClient, error) {
+// XMLBody adds request raw body encoding by XML.
+func (c *HTTPClient) XMLBody(obj interface{}) *HTTPClient {
+	_, err := c.XMLBodyWithError(obj)
+	if err != nil {
+		c.err = err
+		return c
+	}
+	return c
+}
+
+// XMLBodyWithError adds request raw body encoding by XML.
+func (c *HTTPClient) XMLBodyWithError(obj interface{}) (*HTTPClient, error) {
 	if c.Request.Body == nil && obj != nil {
 		data, err := xml.Marshal(obj)
 		if err != nil {
@@ -274,8 +310,18 @@ func (c *HTTPClient) XML(obj interface{}) (*HTTPClient, error) {
 	return c, nil
 }
 
-// YAML adds request raw body encoding by YAML.
-func (c *HTTPClient) YAML(obj interface{}) (*HTTPClient, error) {
+// YAMLBody adds request raw body encoding by YAML.
+func (c *HTTPClient) YAMLBody(obj interface{}) *HTTPClient {
+	_, err := c.YAMLBodyWithError(obj)
+	if err != nil {
+		c.err = err
+		return c
+	}
+	return c
+}
+
+// YAMLBodyWithError adds request raw body encoding by YAML.
+func (c *HTTPClient) YAMLBodyWithError(obj interface{}) (*HTTPClient, error) {
 	if c.Request.Body == nil && obj != nil {
 		data, err := yaml.Marshal(obj)
 		if err != nil {
@@ -288,12 +334,29 @@ func (c *HTTPClient) YAML(obj interface{}) (*HTTPClient, error) {
 
 // BodyWithContentType adds request raw body encoding by XML.
 func (c *HTTPClient) BodyWithContentType(data []byte, contentType string) *HTTPClient {
-	if c.Request.Body == nil && data != nil {
+	if c.Request.Body == nil && data != nil && len(data) > 0 {
 		c.Request.Body = ioutil.NopCloser(bytes.NewReader(data))
 		c.Request.ContentLength = int64(len(data))
 		c.Request.Header.Set("Content-Type", contentType)
 	}
 	return c
+}
+
+func (c *HTTPClient) Error() error {
+	if c.err != nil {
+		return c.err
+	}
+	return nil
+}
+
+// HasError has error
+func (c *HTTPClient) HasError() bool {
+	return c.err != nil
+}
+
+// OK status code is 200
+func (c *HTTPClient) OK() bool {
+	return c.err == nil && c.response != nil && c.response.StatusCode == http.StatusOK
 }
 
 func (c *HTTPClient) String() (string, error) {
@@ -302,6 +365,24 @@ func (c *HTTPClient) String() (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// Result returns the map that marshals from the body bytes as json or xml or yaml in response .
+// default json
+func (c *HTTPClient) Result(v interface{}) error {
+	data, err := c.Bytes()
+	if err != nil {
+		return err
+	}
+	contentType := c.response.Header.Get("Content-Type")
+	if contentType == "" || strings.Index(contentType, "application/json") >= 0 {
+		return json.Unmarshal(data, v)
+	} else if strings.Index(contentType, "application/xml") >= 0 {
+		return xml.Unmarshal(data, v)
+	} else if strings.Index(contentType, "application/x+yaml") >= 0 {
+		return yaml.Unmarshal(data, v)
+	}
+	return json.Unmarshal(data, v)
 }
 
 // ToJSON returns the map that marshals from the body bytes as json in response .
@@ -577,6 +658,7 @@ func createRequest(uri, method string) *HTTPClient {
 			ProtoMajor: 1,
 			ProtoMinor: 1,
 		},
+		err: nil,
 	}
 	return c
 }
@@ -584,7 +666,14 @@ func createRequest(uri, method string) *HTTPClient {
 // Do add files into request
 func (c *HTTPClient) Do() (resp *http.Response, err error) {
 	c.response = nil
+	if c.err != nil {
+		return nil, c.err
+	}
 	err = c.build()
+	if err != nil {
+		return
+	}
+	err = callBefore(c)
 	if err != nil {
 		return
 	}
@@ -595,7 +684,21 @@ func (c *HTTPClient) Do() (resp *http.Response, err error) {
 		}
 	}
 	c.response = resp
+	callAfter(c)
 	return
+}
+
+func callBefore(c *HTTPClient) error {
+	if before != nil {
+		return before(c)
+	}
+	return nil
+}
+
+func callAfter(c *HTTPClient) {
+	if after != nil {
+		after(c)
+	}
 }
 
 // Timeout returns functions of connection dialer with timeout settings for http.Transport Dial field
@@ -610,6 +713,17 @@ func Timeout(connTimeout time.Duration, rwTimeout time.Duration) func(net, addr 
 	}
 }
 
+//Before before handler for each network request
+func Before(f func(*HTTPClient) error) {
+	before = f
+}
+
+//After after handler for each network request
+func After(f func(*HTTPClient)) {
+	after = f
+}
+
+//init
 func init() {
 	defaultCookieJar, _ = cookiejar.New(nil)
 }

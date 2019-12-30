@@ -24,6 +24,7 @@ import (
 	"github.com/aixiaoxiang/bast/validate"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v2"
 )
 
 //const code
@@ -728,26 +729,23 @@ func (c *Context) Offset(total int) int {
 	return offset
 }
 
-//Obj gets data from the current request body(JSON or XML fromat) and convert it to a objecet
+//Obj gets data from the current request body(json or xml or yaml fromat) and convert it to a objecet
 //param:
 //	obj 	target object
 //  verify	verify obj
 func (c *Context) Obj(obj interface{}, verify ...bool) error {
-	contentType := "application/json"
-	contentType = c.In.Header.Get("Content-Type")
-	if contentType == "" {
-		return c.JSONDecode(c.In.Body, obj)
+	contentType := c.In.Header.Get("Content-Type")
+	if contentType == "" || strings.Index(contentType, "application/json") >= 0 {
+		return c.JSONObj(obj, verify...)
 	} else if strings.Index(contentType, "application/xml") >= 0 {
-		return c.XMLDecode(c.In.Body, obj)
+		return c.XMLObj(obj, verify...)
+	} else if strings.Index(contentType, "application/x+yaml") >= 0 {
+		return c.YAMLObj(obj, verify...)
 	}
-	err := c.JSONDecode(c.In.Body, obj)
-	if err == nil && verify != nil && verify[0] {
-		err = valid.Struct(obj)
-	}
-	return err
+	return c.JSONObj(obj, verify...)
 }
 
-//JSONObj gets data from the current request body(JSON fromat) and convert it to a objecet
+//JSONObj gets data from the current request body(json fromat) and convert it to a objecet
 //param:
 //	obj 	target object
 //  verify	verify obj
@@ -759,7 +757,7 @@ func (c *Context) JSONObj(obj interface{}, verify ...bool) error {
 	return err
 }
 
-//JSONDecode gets data from the r reader(JSON fromat) and convert it to a objecet
+//JSONDecode gets data from the r reader(json fromat) and convert it to a objecet
 //param:
 //	r is a reader
 //	obj target object
@@ -811,6 +809,40 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
 	}
 	if err != nil {
 		logs.Debug("XMLDecode error", zap.Error(err))
+	}
+	return err
+}
+
+//YAMLObj gets data from the current request(yaml format) and convert it to a object
+//param:
+//	obj 	target object
+//  verify	verify obj
+func (c *Context) YAMLObj(obj interface{}, verify ...bool) error {
+	err := c.YAMLDecode(c.In.Body, obj)
+	if err == nil && verify != nil && verify[0] {
+		err = valid.Struct(obj)
+	}
+	return err
+}
+
+//YAMLDecode  gets data from the r reader(yaml format) and convert it to a object
+//param:
+//	r is a reader
+//	obj target object
+func (c *Context) YAMLDecode(r io.Reader, obj interface{}) (err error) {
+	if app.Debug {
+		body, err := ioutil.ReadAll(r)
+		if err != nil {
+			logs.Debug("YAMLDecode error", zap.Error(err), zap.ByteString("detail", body))
+			return err
+		}
+		err = yaml.Unmarshal(body, obj)
+		body = nil
+	} else {
+		err = yaml.NewDecoder(r).Decode(obj)
+	}
+	if err != nil {
+		logs.Debug("YAMLDecode error", zap.Error(err))
 	}
 	return err
 }

@@ -27,6 +27,27 @@ func TestHttp(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	rv = &tb{}
+	err = Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").Result(rv)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestBeforeAndAfterWithMarkTag(t *testing.T) {
+	type tb struct {
+		Result [][]string `json:"result"`
+	}
+
+	rv := &tb{}
+
+	url := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+
+	err := Get(url).MarkTag("httpc").ToJSON(rv)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestFile(t *testing.T) {
@@ -40,4 +61,23 @@ func TestFile(t *testing.T) {
 	if len(c) <= 0 || err != nil {
 		t.Fatal(err)
 	}
+}
+
+func init() {
+	Before(func(c *HTTPClient) error {
+		if c.Tag == "httpc" {
+			c.Header("xxxx-test-header", "httpc")
+		} else {
+			//
+		}
+		return nil
+	})
+
+	After(func(c *HTTPClient) {
+		if c.Tag == "httpc" && c.OK() {
+			//log ..
+		} else {
+			///
+		}
+	})
 }
