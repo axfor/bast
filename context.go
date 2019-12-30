@@ -43,6 +43,9 @@ const (
 	SerMustFailed           = -111111 // must failed code
 	SerFailed               = -222222 // failed code
 	SerAuthorizationFailed  = -888888 // authorization failed code
+	KindAcceptJSON          = 0       // json
+	KindAcceptXML           = 1       // xml
+	KindAcceptYAML          = 2       // yaml
 )
 
 //default validator
@@ -53,6 +56,10 @@ type Context struct {
 	//In A Request represents an HTTP request received by a server
 	// or to be sent by a client.
 	In *http.Request
+	//Accept
+	Accept string
+	//Kind Accept
+	KindAccept int
 	//Out A ResponseWriter interface is used by an HTTP handler to
 	// construct an HTTP response.
 	Out http.ResponseWriter
@@ -102,31 +109,301 @@ type InvalidPagination struct {
 	Fix     bool `gorm:"-"  json:"fix"`
 }
 
-//JSON  output JSON Data to client
+/**********data  start**********/
+
+//Data  output Data data to client
+//v data
+func (c *Context) Data(v interface{}) {
+	c.DataWithCodeMsg(v, SerOK, "")
+}
+
+//DataWithCode output Data data to client
+//v data
+//code is message code
+func (c *Context) DataWithCode(v interface{}, code int) {
+	c.DataWithCodeMsg(v, code, "")
+}
+
+//DataWithMsg output Data data to client
+//v data
+//msg is string message
+func (c *Context) DataWithMsg(v interface{}, msg string) {
+	c.DataWithCodeMsg(v, SerOK, msg)
+}
+
+//DataWithCodeMsg output Data data to client
+//v data
+//code is message code
+//msg is string message
+func (c *Context) DataWithCodeMsg(v interface{}, code int, msg string) {
+	c.DataResult(c.ObjWithCodeMsg(c, code, msg))
+}
+
+//DataWithPage output pagination Data data to client
+//v data
+//page is page
+//total is total row count
+func (c *Context) DataWithPage(v interface{}, page, total int) {
+	c.DataWithPageCodeMsg(v, page, total, SerOK, "")
+}
+
+//DataWithPageCode output pagination Data data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+func (c *Context) DataWithPageCode(v interface{}, page, total, code int) {
+	c.DataWithPageCodeMsg(v, page, total, code, "")
+}
+
+//DataWithPageCodeMsg output pagination Data data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) DataWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.DataResult(c.ObjWithPageAndCodeMsg(v, page, total, code, msg))
+}
+
+//DataResult output Data data to client
+func (c *Context) DataResult(v interface{}) {
+	switch c.KindAccept {
+	case KindAcceptJSON:
+		c.JSONResult(v)
+		break
+	case KindAcceptXML:
+		c.XMLResult(v)
+		break
+	case KindAcceptYAML:
+		c.YAMLResult(v)
+		break
+	}
+}
+
+/**********data  end**********/
+
+/**********json  start**********/
+
+//JSON  output JSON data to client
 //v data
 func (c *Context) JSON(v interface{}) {
 	c.JSONWithCodeMsg(v, SerOK, "")
 }
 
-//JSONWithCode output JSON Data to client
+//JSONWithCode output JSON data to client
 //v data
 //code is message code
 func (c *Context) JSONWithCode(v interface{}, code int) {
 	c.JSONWithCodeMsg(v, code, "")
 }
 
-//JSONWithMsg output JSON Data to client
+//JSONWithMsg output JSON data to client
 //v data
 //msg is string message
 func (c *Context) JSONWithMsg(v interface{}, msg string) {
 	c.JSONWithCodeMsg(v, SerOK, msg)
 }
 
-//JSONWithCodeMsg output JSON Data to client
+//JSONWithCodeMsg output JSON data to client
 //v data
 //code is message code
 //msg is string message
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
+	c.JSONResult(c.ObjWithCodeMsg(c, code, msg))
+}
+
+//JSONWithPage output pagination JSON data to client
+//v data
+//page is page
+//total is total row count
+func (c *Context) JSONWithPage(v interface{}, page, total int) {
+	c.JSONWithPageCodeMsg(v, page, total, SerOK, "")
+}
+
+//JSONWithPageCode output pagination JSON data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+func (c *Context) JSONWithPageCode(v interface{}, page, total, code int) {
+	c.JSONWithPageCodeMsg(v, page, total, code, "")
+}
+
+//JSONWithPageCodeMsg output pagination JSON data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) JSONWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.JSONResult(c.ObjWithPageAndCodeMsg(v, page, total, code, msg))
+}
+
+//JSONResult output json data to client
+func (c *Context) JSONResult(v interface{}) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		logs.Errors("JSONResult error", err)
+		c.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	c.Out.Header().Set("Content-Type", "application/json")
+	c.Out.Write(data)
+	data = nil
+}
+
+/**********json  end**********/
+
+/**********xml  start**********/
+
+//XML  output XML data to client
+//v data
+func (c *Context) XML(v interface{}) {
+	c.XMLWithCodeMsg(v, SerOK, "")
+}
+
+//XMLWithCode output XML data to client
+//v data
+//code is message code
+func (c *Context) XMLWithCode(v interface{}, code int) {
+	c.XMLWithCodeMsg(v, code, "")
+}
+
+//XMLWithMsg output XML data to client
+//v data
+//msg is string message
+func (c *Context) XMLWithMsg(v interface{}, msg string) {
+	c.XMLWithCodeMsg(v, SerOK, msg)
+}
+
+//XMLWithCodeMsg output XML data to client
+//v data
+//code is message code
+//msg is string message
+func (c *Context) XMLWithCodeMsg(v interface{}, code int, msg string) {
+	c.XMLResult(c.ObjWithCodeMsg(c, code, msg))
+}
+
+//XMLWithPage output pagination XML data to client
+//v data
+//page is page
+//total is total row count
+func (c *Context) XMLWithPage(v interface{}, page, total int) {
+	c.XMLWithPageCodeMsg(v, page, total, SerOK, "")
+}
+
+//XMLWithPageCode output pagination XML data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+func (c *Context) XMLWithPageCode(v interface{}, page, total, code int) {
+	c.XMLWithPageCodeMsg(v, page, total, code, "")
+}
+
+//XMLWithPageCodeMsg output pagination XML data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) XMLWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.XMLResult(c.ObjWithPageAndCodeMsg(v, page, total, code, msg))
+}
+
+//XMLResult output xml data to client
+func (c *Context) XMLResult(v interface{}) {
+	data, err := xml.Marshal(v)
+	if err != nil {
+		logs.Errors("XMLResult error", err)
+		c.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	c.Out.Header().Set("Content-Type", "application/xml")
+	c.Out.Write(data)
+	data = nil
+}
+
+/**********xml  end**********/
+
+/**********yaml  start**********/
+
+//YAML  output YAML data to client
+//v data
+func (c *Context) YAML(v interface{}) {
+	c.YAMLWithCodeMsg(v, SerOK, "")
+}
+
+//YAMLWithCode output YAML data to client
+//v data
+//code is message code
+func (c *Context) YAMLWithCode(v interface{}, code int) {
+	c.YAMLWithCodeMsg(v, code, "")
+}
+
+//YAMLWithMsg output YAML data to client
+//v data
+//msg is string message
+func (c *Context) YAMLWithMsg(v interface{}, msg string) {
+	c.YAMLWithCodeMsg(v, SerOK, msg)
+}
+
+//YAMLWithCodeMsg output YAML data to client
+//v data
+//code is message code
+//msg is string message
+func (c *Context) YAMLWithCodeMsg(v interface{}, code int, msg string) {
+	c.YAMLResult(c.ObjWithCodeMsg(c, code, msg))
+}
+
+//YAMLWithPage output pagination YAML data to client
+//v data
+//page is page
+//total is total row count
+func (c *Context) YAMLWithPage(v interface{}, page, total int) {
+	c.YAMLWithPageCodeMsg(v, page, total, SerOK, "")
+}
+
+//YAMLWithPageCode output pagination YAML data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+func (c *Context) YAMLWithPageCode(v interface{}, page, total, code int) {
+	c.YAMLWithPageCodeMsg(v, page, total, code, "")
+}
+
+//YAMLWithPageCodeMsg output pagination YAML data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) YAMLWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.YAMLResult(c.ObjWithPageAndCodeMsg(v, page, total, code, msg))
+}
+
+//YAMLResult output yaml data to client
+func (c *Context) YAMLResult(v interface{}) {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		logs.Errors("YAMLResult error", err)
+		c.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	c.Out.Header().Set("Content-Type", "application/x+yaml")
+	c.Out.Write(data)
+	data = nil
+}
+
+/**********yaml  end**********/
+
+//ObjWithCodeMsg output JSON data to client
+//v data
+//code is message code
+//msg is string message
+func (c *Context) ObjWithCodeMsg(v interface{}, code int, msg string) interface{} {
 	_, ok := v.(*Data)
 	if !ok {
 		_, ok = v.(*Message)
@@ -145,26 +422,18 @@ func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 		d.Code = code
 		d.Msg = msg
 		d.Data = v
-		c.JSONResult(d)
-		d.Data = nil
-		d = nil
-	} else {
-		c.JSONResult(v)
+		return d
 	}
+	return v
 }
 
-//JSONWithPage output Pagination JSON Data to client
-func (c *Context) JSONWithPage(v interface{}, page, total int) {
-	c.JSONWithPageAndCodeMsg(v, page, total, SerOK, "")
-}
-
-//JSONWithPageAndCode output Pagination JSON Data to client
-func (c *Context) JSONWithPageAndCode(v interface{}, page, total, code int, msg string) {
-	c.JSONWithPageAndCodeMsg(v, page, total, code, msg)
-}
-
-//JSONWithPageAndCodeMsg output Pagination JSON Data to client
-func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, msg string) {
+//ObjWithPageAndCodeMsg output pagination data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) ObjWithPageAndCodeMsg(v interface{}, page, total, code int, msg string) interface{} {
 	d := &InvalidPagination{}
 	_, _total, pageRow := c.Page()
 	if _total == 0 {
@@ -189,42 +458,24 @@ func (c *Context) JSONWithPageAndCodeMsg(v interface{}, page, total, code int, m
 	} else {
 		d.Invalid = true
 	}
-
 	d.Data = v
 	d.Page = page
 	d.Total = total
 	d.Code = code
 	d.Msg = msg
 	if d.Invalid || d.Fix {
-		c.JSONResult(d)
-	} else {
-		c.JSONResult(d.Pagination)
+		return d
 	}
-	d.Data = nil
-	d = nil
-}
-
-//JSONResult output Data to client
-func (c *Context) JSONResult(v interface{}) {
-	data, err := json.Marshal(v)
-	if err != nil {
-		logs.Errors("JSONResult error", err)
-		c.StatusCode(http.StatusInternalServerError)
-		return
-	}
-	c.Out.Header().Set("Content-Type", "application/json")
-	c.Out.Write(data)
-	data = nil
+	return d.Pagination
 }
 
 //Success output success result to client
 //	msg is success message
 func (c *Context) Success(msg string) {
-	d := &Message{}
-	d.Code = SerOK
-	d.Msg = msg
-	c.JSON(d)
-	d = nil
+	v := &Message{}
+	v.Code = SerOK
+	v.Msg = msg
+	c.Data(v)
 }
 
 //Successf output success result and format to client
@@ -232,11 +483,10 @@ func (c *Context) Successf(format string, a ...interface{}) {
 	if a != nil && len(a) > 0 {
 		format = fmt.Sprintf(format, a...)
 	}
-	d := &Message{}
-	d.Code = SerOK
-	d.Msg = format
-	c.JSON(d)
-	d = nil
+	v := &Message{}
+	v.Code = SerOK
+	v.Msg = format
+	c.Data(v)
 }
 
 //Failed  output failed result to client
@@ -252,12 +502,11 @@ func (c *Context) Failed(msg string, err ...error) {
 //	msg is fail message
 //	detail is detail message
 func (c *Context) Faileds(msg string, detail string) {
-	d := &MessageDetail{}
-	d.Code = SerError
-	d.Msg = msg
-	d.Detail = detail
-	c.JSONWithCode(d, SerError)
-	d = nil
+	v := &MessageDetail{}
+	v.Code = SerError
+	v.Msg = msg
+	v.Detail = detail
+	c.DataWithCode(v, SerError)
 }
 
 //Failedf output failed result and format to client
@@ -285,19 +534,37 @@ func (c *Context) Failedf(format string, a ...interface{}) {
 //	msg is fail message
 //	detail is detail message
 func (c *Context) Result(msg string, detail ...string) {
-	d := &MessageDetail{}
-	d.Code = SerOK
-	d.Msg = msg
+	v := &MessageDetail{}
+	v.Code = SerOK
+	v.Msg = msg
 	if detail != nil {
 		for _, s := range detail {
-			if d.Detail != "" {
-				d.Detail += ","
+			if v.Detail != "" {
+				v.Detail += ","
 			}
-			d.Detail += s
+			v.Detail += s
 		}
 	}
-	c.JSONWithCode(d, SerError)
-	d = nil
+	c.DataWithCode(v, SerError)
+	v = nil
+}
+
+//FailResult output fail result to client
+//param:
+//	msg failed message
+//	errCode ailed message code
+//  err  error
+func (c *Context) FailResult(msg string, errCode int, err ...error) {
+	v := &Message{}
+	if errCode == 0 {
+		errCode = SerError
+	}
+	v.Code = errCode
+	v.Msg = msg
+	if err != nil && err[0] != nil {
+		v.Msg += ", [" + err[0].Error() + "]"
+	}
+	c.DataWithCode(v, errCode)
 }
 
 //SignOut output user signout to client
@@ -307,34 +574,11 @@ func (c *Context) SignOut(msg string) {
 	c.FailResult(msg, SerSignOutError)
 }
 
-//FailResult output fail result to client
-//param:
-//	msg failed message
-//	errCode ailed message code
-//  err  error
-func (c *Context) FailResult(msg string, errCode int, err ...error) {
-	d := &Message{}
-	if errCode == 0 {
-		errCode = SerError
-	}
-	d.Code = errCode
-	d.Msg = msg
-	if err != nil && err[0] != nil {
-		d.Msg += ", [" + err[0].Error() + "]"
-	}
-	c.JSONWithCode(d, errCode)
-	d = nil
-}
-
 //NoData output no data result to client
 //param:
 //	err message
-func (c *Context) NoData(msg ...string) {
-	msgs := ""
-	if msg != nil {
-		msgs = msg[0]
-	}
-	c.FailResult(msgs, SerNoDataError)
+func (c *Context) NoData(msg string) {
+	c.FailResult(msg, SerNoDataError)
 }
 
 //Say output raw bytes to client
@@ -734,15 +978,16 @@ func (c *Context) Offset(total int) int {
 //	obj 	target object
 //  verify	verify obj
 func (c *Context) Obj(obj interface{}, verify ...bool) error {
-	contentType := c.In.Header.Get("Content-Type")
-	if contentType == "" || strings.Index(contentType, "application/json") >= 0 {
+	switch c.KindAccept {
+	case KindAcceptJSON:
 		return c.JSONObj(obj, verify...)
-	} else if strings.Index(contentType, "application/xml") >= 0 {
+	case KindAcceptXML:
 		return c.XMLObj(obj, verify...)
-	} else if strings.Index(contentType, "application/x+yaml") >= 0 {
+	case KindAcceptYAML:
 		return c.YAMLObj(obj, verify...)
 	}
 	return c.JSONObj(obj, verify...)
+
 }
 
 //JSONObj gets data from the current request body(json fromat) and convert it to a objecet
@@ -1024,6 +1269,8 @@ func (c *Context) Reset() {
 	c.NeedAuthorization = false
 	c.IsAuthorization = false
 	c.Session = nil
+	c.Accept = ""
+	c.KindAccept = 0
 }
 
 //ID return a ID
