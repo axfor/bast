@@ -394,11 +394,11 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 
 			ctx.In = r
 			ctx.Accept = r.Header.Get("Accept")
-			if ctx.Accept == "" || strings.Index(ctx.Accept, "application/json") >= 0 {
+			if ctx.Accept == "" || strings.HasPrefix(ctx.Accept, "application/json") {
 				ctx.KindAccept = KindAcceptJSON
-			} else if strings.Index(ctx.Accept, "application/xml") >= 0 {
+			} else if strings.HasPrefix(ctx.Accept, "application/xml") {
 				ctx.KindAccept = KindAcceptXML
-			} else if strings.Index(ctx.Accept, "application/x+yaml") >= 0 {
+			} else if strings.HasPrefix(ctx.Accept, "application/x+yaml") {
 				ctx.KindAccept = KindAcceptYAML
 			}
 			ctx.Out = w

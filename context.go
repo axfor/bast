@@ -88,8 +88,8 @@ type MessageDetail struct {
 	Detail string `gorm:"-" json:"detail"`
 }
 
-//Data is response data
-type Data struct {
+//Datum is response data
+type Datum struct {
 	Message `gorm:"-"`
 	Data    interface{} `gorm:"-"  json:"data"`
 }
@@ -136,7 +136,7 @@ func (c *Context) DataWithMsg(v interface{}, msg string) {
 //code is message code
 //msg is string message
 func (c *Context) DataWithCodeMsg(v interface{}, code int, msg string) {
-	c.DataResult(c.ObjWithCodeMsg(c, code, msg))
+	c.DataResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
 //Pagination output pagination data data to client
@@ -210,7 +210,7 @@ func (c *Context) JSONWithMsg(v interface{}, msg string) {
 //code is message code
 //msg is string message
 func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
-	c.JSONResult(c.ObjWithCodeMsg(c, code, msg))
+	c.JSONResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
 //JSONWithPagination output pagination JSON data to client
@@ -282,7 +282,7 @@ func (c *Context) XMLWithMsg(v interface{}, msg string) {
 //code is message code
 //msg is string message
 func (c *Context) XMLWithCodeMsg(v interface{}, code int, msg string) {
-	c.XMLResult(c.ObjWithCodeMsg(c, code, msg))
+	c.XMLResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
 //XMLWithPagination output pagination XML data to client
@@ -354,7 +354,7 @@ func (c *Context) YAMLWithMsg(v interface{}, msg string) {
 //code is message code
 //msg is string message
 func (c *Context) YAMLWithCodeMsg(v interface{}, code int, msg string) {
-	c.YAMLResult(c.ObjWithCodeMsg(c, code, msg))
+	c.YAMLResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
 //YAMLWithPagination output pagination YAML data to client
@@ -404,27 +404,39 @@ func (c *Context) YAMLResult(v interface{}) {
 //code is message code
 //msg is string message
 func (c *Context) ObjWithCodeMsg(v interface{}, code int, msg string) interface{} {
-	_, ok := v.(*Data)
-	if !ok {
-		_, ok = v.(*Message)
+	if isDatumType(v) || isPaginationType(v) || isInvalidPaginationType(v) || isMessageType(v) || isMessageDetailType(v) {
+		return v
 	}
-	if !ok {
-		_, ok = v.(*Pagination)
-	}
-	if !ok {
-		_, ok = v.(*MessageDetail)
-	}
-	if !ok {
-		_, ok = v.(*InvalidPagination)
-	}
-	if !ok {
-		d := &Data{}
-		d.Code = code
-		d.Msg = msg
-		d.Data = v
-		return d
-	}
-	return v
+	d := &Datum{}
+	d.Code = code
+	d.Msg = msg
+	d.Data = v
+	return d
+}
+
+func isDatumType(v interface{}) bool {
+	_, ok := v.(*Datum)
+	return ok
+}
+
+func isPaginationType(v interface{}) bool {
+	_, ok := v.(*Pagination)
+	return ok
+}
+
+func isInvalidPaginationType(v interface{}) bool {
+	_, ok := v.(*InvalidPagination)
+	return ok
+}
+
+func isMessageType(v interface{}) bool {
+	_, ok := v.(*Message)
+	return ok
+}
+
+func isMessageDetailType(v interface{}) bool {
+	_, ok := v.(*MessageDetail)
+	return ok
 }
 
 //ObjWithPaginationCodeMsg return pagination obj data

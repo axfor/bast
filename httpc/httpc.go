@@ -375,11 +375,11 @@ func (c *HTTPClient) Result(v interface{}) error {
 		return err
 	}
 	contentType := c.response.Header.Get("Content-Type")
-	if contentType == "" || strings.Index(contentType, "application/json") >= 0 {
+	if contentType == "" || strings.HasPrefix(contentType, "application/json") {
 		return json.Unmarshal(data, v)
-	} else if strings.Index(contentType, "application/xml") >= 0 {
+	} else if strings.HasPrefix(contentType, "application/xml") {
 		return xml.Unmarshal(data, v)
-	} else if strings.Index(contentType, "application/x+yaml") >= 0 {
+	} else if strings.HasPrefix(contentType, "application/x+yaml") {
 		return yaml.Unmarshal(data, v)
 	}
 	return json.Unmarshal(data, v)
