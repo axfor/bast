@@ -55,6 +55,7 @@ type AppConf struct {
 	SessionSource   string      `json:"sessionSource"`   //url|header|cookie
 	SameSite        string      `json:"sameSite"`        //strict|lax|none
 	Lang            string      `json:"lang"`
+	CORS            *CORS       `json:"cors"`
 	ConfHandle      bool        `json:"-"`
 }
 
@@ -68,6 +69,15 @@ type Item struct {
 	Charset   string `json:"dbCharset"`
 	ParseTime *bool  `json:"dbParseTime"`
 	Loc       string `json:"dbLoc"`
+}
+
+//CORS default CORS config
+type CORS struct {
+	AllowOrigin      string `json:"allowOrigin"`
+	AllowMethods     string `json:"allowMethods"`
+	AllowHeaders     string `json:"allowHeaders"`
+	MaxAge           string `json:"maxAge"`
+	AllowCredentials string `json:"allowCredentials"`
 }
 
 //Manager is manager all config objects
@@ -259,6 +269,15 @@ func LogConf() *logs.Conf {
 	appConf := Conf()
 	if appConf != nil && appConf.Log != nil {
 		return appConf.Log
+	}
+	return nil
+}
+
+//CORSConf  returns the current log config
+func CORSConf() *CORS {
+	appConf := Conf()
+	if appConf != nil && appConf.CORS != nil {
+		return appConf.CORS
 	}
 	return nil
 }

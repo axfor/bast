@@ -283,6 +283,13 @@ bast.Run(":9999")
             "debug":false,
             "logSelect":false,
         },
+        "cors":{
+            "allowOrigin":"",
+            "allowMethods":"",
+            "allowHeaders":"",
+            "maxAge":"",
+            "allowCredentials":""
+        },
         "conf":{//user config(non bast framework)
             "key":"app",
             "name":"xxx",

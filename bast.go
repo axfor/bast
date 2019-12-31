@@ -102,6 +102,8 @@ func init() {
 	app.Router.NotFound = NotFoundHandler{}
 	//register not allowed handler of router
 	app.Router.MethodNotAllowed = MethodNotAllowedHandler{}
+	//register options handler of router
+	app.Router.GlobalOPTIONS = MethodOptionsHandler{}
 }
 
 //parseCommandLine parse commandLine
@@ -297,6 +299,54 @@ func (MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	)
 }
 
+//MethodOptionsHandler method Options
+type MethodOptionsHandler struct {
+}
+
+//ServeHTTP method Options handler
+func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	allowOrigin := r.Header.Get("Origin")
+	cf := conf.CORSConf()
+	allowHeaders := r.Header.Get("Access-Control-Request-Headers")
+	allowMethods := "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE"
+	maxAge := "1728000"
+	allowCredentials := "false"
+	if cf != nil {
+		if cf.AllowOrigin != "" {
+			allowOrigin = cf.AllowOrigin
+		}
+		if cf.AllowHeaders != "" {
+			allowHeaders = cf.AllowHeaders
+		}
+		if cf.AllowMethods != "" {
+			allowMethods = cf.AllowMethods
+		}
+		if cf.MaxAge != "" {
+			maxAge = cf.MaxAge
+		}
+		if cf.AllowCredentials != "" {
+			allowCredentials = cf.AllowCredentials
+		}
+	}
+	logs.Info("options",
+		zap.String("url", r.RequestURI),
+		zap.String("origin", allowOrigin),
+		zap.String("host", r.Host),
+		zap.String("referer", r.Referer()),
+	)
+	if allowHeaders == "" {
+		allowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, BaseUrl, baseurl"
+	} else {
+		allowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, " + allowHeaders
+	}
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Access-Control-Allow-Methods", allowMethods)
+	//w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
+	w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
+	w.Header().Set("Access-Control-Max-Age", maxAge)
+	w.Header().Set("Access-Control-Allow-Credentials", allowCredentials)
+}
+
 // doHandle registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
@@ -314,19 +364,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			zap.String("url", r.RequestURI),
 			zap.String("method", r.Method),
 		)
-
 		st := time.Now()
-		if origin := r.Header.Get("Origin"); origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD")
-			w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization,Access-Control-Allow-Origin,Content-Length,Content-Type,BaseUrl")
-			w.Header().Set("Access-Control-Max-Age", "1728000")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-
-		if r.Method == http.MethodOptions {
-			goto end
-		}
 
 		if pattern == "/" && r.URL.Path != pattern {
 			w.WriteHeader(http.StatusNotFound)
