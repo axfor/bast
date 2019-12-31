@@ -340,8 +340,9 @@ func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		allowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, " + allowHeaders
 	}
 	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Vary", allowOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", allowMethods)
-	//w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
+	w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
 	w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
 	w.Header().Set("Access-Control-Max-Age", maxAge)
 	w.Header().Set("Access-Control-Allow-Credentials", allowCredentials)
@@ -365,7 +366,8 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			zap.String("method", r.Method),
 		)
 		st := time.Now()
-
+		allowOrigin := r.Header.Get("Origin")
+		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 		if pattern == "/" && r.URL.Path != pattern {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, http.StatusText(http.StatusNotFound))
