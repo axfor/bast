@@ -63,6 +63,7 @@ type App struct {
 	Migration                            MigrationHandle
 	Debug, Daemon, isCallCommand, runing bool
 	cmd                                  []work
+	cors                                 *conf.CORS
 }
 
 type work struct {
@@ -96,6 +97,7 @@ func init() {
 	if conf.OK() {
 		logs.Init(conf.LogConf())
 	}
+	app.cors = conf.CORSConf()
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
 	//register not found handler of router
@@ -306,46 +308,30 @@ type MethodOptionsHandler struct {
 //ServeHTTP method Options handler
 func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	allowOrigin := r.Header.Get("Origin")
-	cf := conf.CORSConf()
 	allowHeaders := r.Header.Get("Access-Control-Request-Headers")
-	allowMethods := "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE"
-	maxAge := "1728000"
-	allowCredentials := "false"
-	if cf != nil {
-		if cf.AllowOrigin != "" {
-			allowOrigin = cf.AllowOrigin
-		}
-		if cf.AllowHeaders != "" {
-			allowHeaders = cf.AllowHeaders
-		}
-		if cf.AllowMethods != "" {
-			allowMethods = cf.AllowMethods
-		}
-		if cf.MaxAge != "" {
-			maxAge = cf.MaxAge
-		}
-		if cf.AllowCredentials != "" {
-			allowCredentials = cf.AllowCredentials
-		}
-	}
 	logs.Info("options",
 		zap.String("url", r.RequestURI),
 		zap.String("origin", allowOrigin),
 		zap.String("host", r.Host),
 		zap.String("referer", r.Referer()),
 	)
-	if allowHeaders == "" {
-		allowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, BaseUrl, baseurl"
+	if app.cors.AllowHeaders == "" || allowHeaders == "" {
+		w.Header().Set("Access-Control-Allow-Headers", app.cors.AllowHeaders)
+		w.Header().Set("Access-Control-Expose-Headers", app.cors.AllowHeaders)
 	} else {
-		allowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, " + allowHeaders
+		w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
+		w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
 	}
-	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-	w.Header().Set("Vary", allowOrigin)
-	w.Header().Set("Access-Control-Allow-Methods", allowMethods)
-	w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
-	w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
-	w.Header().Set("Access-Control-Max-Age", maxAge)
-	w.Header().Set("Access-Control-Allow-Credentials", allowCredentials)
+	if app.cors.AllowOrigin == "" || allowOrigin == "" {
+		w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
+		w.Header().Set("Vary", app.cors.AllowOrigin)
+	} else {
+		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		w.Header().Set("Vary", allowOrigin)
+	}
+	w.Header().Set("Access-Control-Allow-Methods", app.cors.AllowMethods)
+	w.Header().Set("Access-Control-Max-Age", app.cors.MaxAge)
+	w.Header().Set("Access-Control-Allow-Credentials", app.cors.AllowCredentials)
 }
 
 // doHandle registers the handler function for the given pattern
@@ -367,13 +353,19 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 		)
 		st := time.Now()
 		allowOrigin := r.Header.Get("Origin")
-		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		if app.cors.AllowOrigin == "" || allowOrigin == "" {
+			w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
+			w.Header().Set("Vary", app.cors.AllowOrigin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+			w.Header().Set("Vary", allowOrigin)
+		}
+		w.Header().Set("Access-Control-Allow-Credentials", app.cors.AllowCredentials)
 		if pattern == "/" && r.URL.Path != pattern {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, http.StatusText(http.StatusNotFound))
 			goto end
 		}
-
 		{
 			ctx := app.pool.Get().(*Context)
 			ctx.Reset()

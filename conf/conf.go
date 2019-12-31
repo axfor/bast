@@ -76,8 +76,8 @@ type CORS struct {
 	AllowOrigin      string `json:"allowOrigin"`
 	AllowMethods     string `json:"allowMethods"`
 	AllowHeaders     string `json:"allowHeaders"`
-	MaxAge           string `json:"maxAge"`
 	AllowCredentials string `json:"allowCredentials"`
+	MaxAge           string `json:"maxAge"`
 }
 
 //Manager is manager all config objects
@@ -277,9 +277,27 @@ func LogConf() *logs.Conf {
 func CORSConf() *CORS {
 	appConf := Conf()
 	if appConf != nil && appConf.CORS != nil {
+		if appConf.CORS.AllowMethods == "" {
+			appConf.CORS.AllowMethods = "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE"
+		}
+		if appConf.CORS.AllowHeaders == "" {
+			appConf.CORS.AllowHeaders = "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, BaseUrl, baseurl"
+		}
+		if appConf.CORS.AllowCredentials == "" {
+			appConf.CORS.AllowCredentials = "true"
+		}
+		if appConf.CORS.MaxAge == "" {
+			appConf.CORS.MaxAge = "1728000"
+		}
 		return appConf.CORS
 	}
-	return nil
+	return &CORS{
+		AllowOrigin:      "",
+		AllowMethods:     "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE",
+		AllowHeaders:     "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, BaseUrl, baseurl",
+		AllowCredentials: "true",
+		MaxAge:           "1728000",
+	}
 }
 
 //Path  returns the current config path
