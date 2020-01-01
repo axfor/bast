@@ -160,7 +160,7 @@ func init() {
 
 	result, err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").String()
 	if err != nil {
-		 //handling  
+		//handling
 	}
 
 ``` 
@@ -173,11 +173,11 @@ func init() {
 		Result [][]string `json:"result"`
 	}
 
-    rv := &tb{}
-    
-    err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToJSON(rv)
+	rv := &tb{}
+
+	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToJSON(rv)
 	if err != nil {
-		//handling  
+		//handling
 	}
 
 ```  
@@ -188,7 +188,7 @@ func init() {
 
 	err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").ToFile("./files/f.json")
 	if err != nil {
-		 //handling  
+		//handling
 	}
 
 ``` 
@@ -197,23 +197,22 @@ func init() {
 
 ``` golang
 
-	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").File("testFile","./files/f.json").String()
+	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").File("testFile", "./files/f.json").String()
 	if err != nil {
-		 //handling  
-    } 
+		//handling
+	}
 
 ```   
 
 ### mark tag and hook's
-
-> call
+ 
 
 ``` golang
 
 	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").MarkTag("ai").String()
 	if err != nil {
-		 //handling  
-    } 
+		//handling
+	}
 
 ```   
 
@@ -238,8 +237,7 @@ func init() {
 			//others handling
 		}
 	})
-}
-
+} 
 
 ```
 
