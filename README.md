@@ -141,14 +141,15 @@ func init() {
 
 # Http Client 
 
-` httpc is inter-connect call lib for http client`
- 
+` httpc is HTTP client library `
+
+## install 
+
 ``` bash
 
  go get -u github.com/aixiaoxiang/bast/httpc
 
- ```
----
+``` 
 
 ## Support for GET POST HEAD POST PUT PATCH DELETE etc
 
