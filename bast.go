@@ -315,14 +315,14 @@ func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		zap.String("host", r.Host),
 		zap.String("referer", r.Referer()),
 	)
-	if app.cors.AllowHeaders == "" || allowHeaders == "" {
+	if app.cors.AllowHeaders != "" || allowHeaders == "" {
 		w.Header().Set("Access-Control-Allow-Headers", app.cors.AllowHeaders)
 		w.Header().Set("Access-Control-Expose-Headers", app.cors.AllowHeaders)
 	} else {
 		w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
 		w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
 	}
-	if app.cors.AllowOrigin == "" || allowOrigin == "" {
+	if app.cors.AllowOrigin != "" || allowOrigin == "" {
 		w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
 		w.Header().Set("Vary", app.cors.AllowOrigin)
 	} else {
@@ -353,7 +353,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 		)
 		st := time.Now()
 		allowOrigin := r.Header.Get("Origin")
-		if app.cors.AllowOrigin == "" || allowOrigin == "" {
+		if app.cors.AllowOrigin != "" || allowOrigin == "" {
 			w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
 			w.Header().Set("Vary", app.cors.AllowOrigin)
 		} else {
