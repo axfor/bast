@@ -200,9 +200,48 @@ func init() {
 	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").File("testFile","./files/f.json").String()
 	if err != nil {
 		 //handling  
-	}
+    } 
 
-```  
+```   
+
+### mark tag and hook's
+
+> call
+
+``` golang
+
+	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").MarkTag("ai").String()
+	if err != nil {
+		 //handling  
+    } 
+
+```   
+
+> Global register hook Before and After
+
+``` golang 
+
+func init() {
+	httpc.Before(func(c *httpc.HTTPClient) error {
+		if c.Tag == "httpc" {
+			c.Header("xxxx-test-header", "httpc")
+		} else {
+			//others handling
+		}
+		return nil
+	})
+
+	httpc.After(func(c *httpc.HTTPClient) {
+		if c.Tag == "httpc" && c.OK() {
+			//log..
+		} else {
+			//others handling
+		}
+	})
+}
+
+
+```
 
 ---
 # Run 
