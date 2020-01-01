@@ -183,7 +183,42 @@ func init() {
 
 ```  
  
-### save to file
+### xml result
+
+``` golang 
+
+	type tb struct {
+		Result [][]string `json:"result"`
+	}
+
+	rv := &tb{}
+
+	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToXML(rv)
+	if err != nil {
+		//handling
+	}
+
+```  
+
+
+### yaml result
+
+``` golang 
+
+	type tb struct {
+		Result [][]string `json:"result"`
+	}
+
+	rv := &tb{}
+
+	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToYAML(rv)
+	if err != nil {
+		//handling
+	}
+
+```  
+ 
+### save result to file
 
 ``` golang
 
@@ -223,7 +258,7 @@ func init() {
 
 func init() {
 	httpc.Before(func(c *httpc.HTTPClient) error {
-		if c.Tag == "httpc" {
+		if c.Tag == "ai" {
 			c.Header("xxxx-test-header", "httpc")
 		} else {
 			//others handling
@@ -232,7 +267,7 @@ func init() {
 	})
 
 	httpc.After(func(c *httpc.HTTPClient) {
-		if c.Tag == "httpc" && c.OK() {
+		if c.Tag == "ai" && c.OK() {
 			//log..
 		} else {
 			//others handling
