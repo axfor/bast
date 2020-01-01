@@ -139,6 +139,72 @@ func init() {
 
 ---
 
+# Http Client 
+
+` httpc is inter-connect call lib for http client`
+ 
+``` bash
+
+ go get -u github.com/aixiaoxiang/bast/httpc
+
+ ```
+---
+
+## Support for GET POST HEAD POST PUT PATCH DELETE etc
+
+`result support string,json,xml,yaml,file etc`
+
+### string result
+
+``` golang
+
+	result, err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").String()
+	if err != nil {
+		 //handling  
+	}
+
+``` 
+
+### json result
+
+``` golang 
+
+	type tb struct {
+		Result [][]string `json:"result"`
+	}
+
+    rv := &tb{}
+    
+    err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToJSON(rv)
+	if err != nil {
+		//handling  
+	}
+
+```  
+ 
+### save to file
+
+``` golang
+
+	err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").ToFile("./files/f.json")
+	if err != nil {
+		 //handling  
+	}
+
+``` 
+
+### upload file to server
+
+``` golang
+
+	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").File("testFile","./files/f.json").String()
+	if err != nil {
+		 //handling  
+	}
+
+```  
+
+---
 # Run 
 
 ``` golang
