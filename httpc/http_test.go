@@ -8,7 +8,7 @@ import (
 
 func TestHttp(t *testing.T) {
 	c, err := Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").String()
-	if err != nil {
+	if err != nil || c == "" {
 		t.Error(err.Error())
 	}
 
@@ -63,8 +63,20 @@ func TestFile(t *testing.T) {
 	}
 }
 
+func BenchmarkHttp(t *testing.B) {
+	t.ResetTimer()
+	t.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			c, err := Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").String()
+			if err != nil || c == "" {
+				t.Error(err.Error())
+			}
+		}
+	})
+}
+
 func init() {
-	Before(func(c *HTTPClient) error {
+	Before(func(c *Client) error {
 		if c.Tag == "httpc" {
 			c.Header("xxxx-test-header", "httpc")
 		} else {
@@ -73,7 +85,7 @@ func init() {
 		return nil
 	})
 
-	After(func(c *HTTPClient) {
+	After(func(c *Client) {
 		if c.Tag == "httpc" && c.OK() {
 			//log ..
 		} else {

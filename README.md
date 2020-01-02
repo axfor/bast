@@ -257,7 +257,7 @@ func init() {
 ``` golang 
 
 func init() {
-	httpc.Before(func(c *httpc.HTTPClient) error {
+	httpc.Before(func(c *httpc.Client) error {
 		if c.Tag == "ai" {
 			c.Header("xxxx-test-header", "httpc")
 		} else {
@@ -266,7 +266,7 @@ func init() {
 		return nil
 	})
 
-	httpc.After(func(c *httpc.HTTPClient) {
+	httpc.After(func(c *httpc.Client) {
 		if c.Tag == "ai" && c.OK() {
 			//log..
 		} else {
