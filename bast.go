@@ -64,6 +64,7 @@ type App struct {
 	Debug, Daemon, isCallCommand, runing bool
 	cmd                                  []work
 	cors                                 *conf.CORS
+	wrap                                 bool
 }
 
 type work struct {
@@ -88,7 +89,7 @@ type MigrationHandle func() error
 //init application
 func init() {
 	os.Chdir(AppDir())
-	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true}
+	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true, wrap: true}
 	parseCommandLine()
 	app.pool.New = func() interface{} {
 		return &Context{}
@@ -98,6 +99,9 @@ func init() {
 		logs.Init(conf.LogConf())
 	}
 	app.cors = conf.CORSConf()
+
+	app.wrap = conf.Wrap()
+
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
 	//register not found handler of router

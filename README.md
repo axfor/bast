@@ -422,20 +422,21 @@ bast.Run(":9999")
             "debug":false,
             "logSelect":false,
         },
-        "cors":{
+        "cors":{//CORS https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS
             "allowOrigin":"",
-            "allowMethods":"",
+            "allowMethods":"GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE",
             "allowHeaders":"",
-            "maxAge":"",
-            "allowCredentials":""
+            "maxAge":"1728000",
+            "allowCredentials":"true"
         },
+        "wrap":true,//wrap response body
         "conf":{//user config(non bast framework)
             "key":"app",
             "name":"xxx",
-            "dbTitle":"xxx",
-            "dbName":"xxxx",
+            "dbTitle":"xxx app",
+            "dbName":"xxxx db",
             "dbUser":"xxx",
-            "dbPwd":"xxx",
+            "dbPwd":"******",
             "dbServer":"localhost"
             //..more field..//
         }

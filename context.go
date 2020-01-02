@@ -77,36 +77,41 @@ type Context struct {
 
 //Message is response message
 type Message struct {
-	Code int    `gorm:"-" json:"code"`
-	Msg  string `gorm:"-" json:"msg"`
+	XMLName xml.Name `xml:"msg" json:"-" yaml:"-"`
+	Code    int      `json:"code" xml:"code" yaml:"code"`
+	Msg     string   `json:"msg" xml:"msg" yaml:"msg"`
 }
 
 //MessageDetail is response detail message
 type MessageDetail struct {
-	Code   int    `gorm:"-" json:"code"`
-	Msg    string `gorm:"-" json:"msg"`
-	Detail string `gorm:"-" json:"detail"`
+	XMLName xml.Name `xml:"msg" json:"-" yaml:"-"`
+	Code    int      `json:"code" xml:"code" yaml:"code"`
+	Msg     string   `json:"msg" xml:"msg" yaml:"msg"`
+	Detail  string   `json:"detail" xml:"detail" yaml:"detail"`
 }
 
 //Datum is response data
 type Datum struct {
-	Message `gorm:"-"`
-	Data    interface{} `gorm:"-"  json:"data"`
+	Message `yaml:",inline"`
+	XMLName xml.Name    `xml:"data"  json:"-" yaml:"-"`
+	Data    interface{} `json:"data" xml:"data>data" yaml:"data"`
 }
 
 //Pagination is Pagination data
 type Pagination struct {
-	Message
-	Data  interface{} `gorm:"-"  json:"data"`
-	Page  int         `gorm:"-"  json:"page"`
-	Total int         `gorm:"-"  json:"total"`
+	Message `yaml:",inline"`
+	XMLName xml.Name    `xml:"page" json:"-" yaml:"-"`
+	Data    interface{} `json:"data" xml:"data>data" yaml:"data"`
+	Page    int         `json:"page" xml:"page" yaml:"page"`
+	Total   int         `json:"total" xml:"total" yaml:"total"`
 }
 
 //InvalidPagination is invalid Pagination data
 type InvalidPagination struct {
-	Pagination
-	Invalid bool `gorm:"-"  json:"invalid"`
-	Fix     bool `gorm:"-"  json:"fix"`
+	Pagination `yaml:",inline"`
+	XMLName    xml.Name `xml:"page" json:"-" yaml:"-"`
+	Invalid    bool     `json:"invalid" xml:"invalid" yaml:"invalid"`
+	Fix        bool     `json:"fix" xml:"fix" yaml:"fix"`
 }
 
 /**********data  start**********/
@@ -404,6 +409,9 @@ func (c *Context) YAMLResult(v interface{}) {
 //code is message code
 //msg is string message
 func (c *Context) ObjWithCodeMsg(v interface{}, code int, msg string) interface{} {
+	if !app.wrap {
+		return v
+	}
 	if isDatumType(v) || isPaginationType(v) || isInvalidPaginationType(v) || isMessageType(v) || isMessageDetailType(v) {
 		return v
 	}
@@ -446,6 +454,9 @@ func isMessageDetailType(v interface{}) bool {
 //code is message code
 //msg is string message
 func (c *Context) ObjWithPaginationCodeMsg(v interface{}, page, total, code int, msg string) interface{} {
+	if !app.wrap {
+		return v
+	}
 	d := &InvalidPagination{}
 	_, _total, pageRow := c.Page()
 	if _total == 0 {

@@ -44,18 +44,19 @@ type AppConf struct {
 	FileDir         string      `json:"fileDir"`
 	Debug           bool        `json:"debug"`
 	BaseURL         string      `json:"baseUrl"`
-	IDNode          uint8       `json:"idNode"`
-	Log             *logs.Conf  `json:"log"`
-	Conf            interface{} `json:"conf"`
-	Extend          string      `json:"extend"`
+	IDNode          uint8       `json:"idNode"`          //id node
+	Log             *logs.Conf  `json:"log"`             //log conf
+	Conf            interface{} `json:"conf"`            //user conf
+	Extend          string      `json:"extend"`          //user extend
 	SessionEnable   bool        `json:"sessionEnable"`   //false
 	SessionLifeTime int         `json:"sessionLifeTime"` //20 (min)
 	SessionName     string      `json:"sessionName"`     //_sid
 	SessionEngine   string      `json:"sessionEngine"`   //memory
 	SessionSource   string      `json:"sessionSource"`   //url|header|cookie
 	SameSite        string      `json:"sameSite"`        //strict|lax|none
-	Lang            string      `json:"lang"`
-	CORS            *CORS       `json:"cors"`
+	Lang            string      `json:"lang"`            //lang
+	CORS            *CORS       `json:"cors"`            //CORS
+	Wrap            *bool       `json:"wrap"`            //wrap response body
 	ConfHandle      bool        `json:"-"`
 }
 
@@ -298,6 +299,15 @@ func CORSConf() *CORS {
 		AllowCredentials: "true",
 		MaxAge:           "1728000",
 	}
+}
+
+//Wrap  wrap response body
+func Wrap() bool {
+	appConf := Conf()
+	if appConf != nil && appConf.Wrap != nil {
+		return *appConf.Wrap
+	}
+	return true
 }
 
 //Path  returns the current config path
