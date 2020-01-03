@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aixiaoxiang/bast/logs"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -43,7 +45,7 @@ type Client struct {
 	files     map[string]string
 	params    url.Values
 	client    *http.Client
-	settings  Settings
+	Conf      Settings
 	Tag       string
 	resp      *http.Response
 	err       error
@@ -53,9 +55,11 @@ type Client struct {
 
 //Settings of Client
 type Settings struct {
-	Transport    http.RoundTripper
-	EnableCookie bool
-	Retry        int
+	Transport       http.RoundTripper
+	EnableCookie    bool
+	Retry           int
+	Log             bool
+	Title, LogTitle string
 }
 
 // MarkTag sets an tag field
@@ -82,11 +86,29 @@ func (c *Client) Request(request *http.Request) *Client {
 	return c
 }
 
+// Title set log http.Request
+func (c *Client) Title(title string) *Client {
+	c.Conf.Title = title
+	return c
+}
+
+// Logging set log http.Request
+func (c *Client) Logging() *Client {
+	c.Conf.Log = true
+	return c
+}
+
+// UnLogging set log http.Request
+func (c *Client) UnLogging() *Client {
+	c.Conf.Log = false
+	return c
+}
+
 // Transport specifies the mechanism by which individual
 // HTTP requests are made.
 // If nil, DefaultTransport is used.
 func (c *Client) Transport(transport http.RoundTripper) *Client {
-	c.settings.Transport = transport
+	c.Conf.Transport = transport
 	return c
 }
 
@@ -111,19 +133,19 @@ func NewTransport() *http.Transport {
 // Settings set settings
 // If nil, DefaultSettings is used.
 func (c *Client) Settings(settings Settings) *Client {
-	c.settings = settings
+	c.Conf = settings
 	return c
 }
 
 // Retries  maximum retries count
 func (c *Client) Retries(retries int) *Client {
-	c.settings.Retry = retries
+	c.Conf.Retry = retries
 	return c
 }
 
 // EnableCookie set enable cookie jar
 func (c *Client) EnableCookie(enableCookie bool) *Client {
-	c.settings.EnableCookie = enableCookie
+	c.Conf.EnableCookie = enableCookie
 	return c
 }
 
@@ -165,7 +187,7 @@ func (c *Client) CheckRedirect(checkRedirect func(req *http.Request, via []*http
 func (c *Client) Jar(jar http.CookieJar) *Client {
 	c.client.Jar = jar
 	if jar != nil {
-		c.settings.EnableCookie = true
+		c.Conf.EnableCookie = true
 	}
 	return c
 }
@@ -174,7 +196,7 @@ func (c *Client) Jar(jar http.CookieJar) *Client {
 func (c *Client) Header(key, value string) *Client {
 	c.Req.Header.Set(key, value)
 	if key == "Cookie" {
-		c.settings.EnableCookie = true
+		c.Conf.EnableCookie = true
 	}
 	return c
 }
@@ -183,7 +205,7 @@ func (c *Client) Header(key, value string) *Client {
 func (c *Client) Cookie(cookie *http.Cookie) *Client {
 	c.Req.AddCookie(cookie)
 	if cookie != nil {
-		c.settings.EnableCookie = true
+		c.Conf.EnableCookie = true
 	}
 	return c
 }
@@ -592,7 +614,23 @@ func (c *Client) Do() (resp *http.Response, err error) {
 	if err != nil {
 		return
 	}
-	for i := 0; c.settings.Retry == -1 || i <= c.settings.Retry; i++ {
+	title := "httpc access"
+	if c.Conf.Title != "" {
+		title = c.Conf.Title
+	}
+	if c.Conf.Log {
+		logs.Info(title,
+			zap.String("module", "httpc"),
+			zap.String("stage", "start"),
+			zap.String("url", c.Req.URL.String()),
+			zap.String("method", c.Req.Method),
+			zap.String("tag", c.Tag),
+		)
+	}
+
+	st := time.Now()
+	rc := 0
+	for ; c.Conf.Retry == -1 || rc <= c.Conf.Retry; rc++ {
 		resp, err = c.client.Do(c.Req)
 		if err == nil {
 			break
@@ -600,16 +638,35 @@ func (c *Client) Do() (resp *http.Response, err error) {
 	}
 	c.resp = resp
 	callAfter(c)
+	if c.Conf.Log {
+		statusCode := 0
+		statusText := ""
+		if c.resp != nil {
+			statusCode = c.resp.StatusCode
+			statusText = c.resp.Status
+		}
+		logs.Info(title,
+			zap.String("module", "httpc"),
+			zap.String("stage", "finish"),
+			zap.String("url", c.Req.URL.String()),
+			zap.String("method", c.Req.Method),
+			zap.Int("retries", rc),
+			zap.String("cost", time.Since(st).String()),
+			zap.Int("statusCode", statusCode),
+			zap.String("statusText", statusText),
+			zap.String("tag", c.Tag),
+		)
+	}
 	return
 }
 
 func (c *Client) build() error {
-	if c.settings.EnableCookie && c.client.Jar == nil {
+	if c.Conf.EnableCookie && c.client.Jar == nil {
 		c.client.Jar = DefaultCookieJar
 	}
 
-	if c.settings.Transport != nil {
-		c.client.Transport = c.settings.Transport
+	if c.Conf.Transport != nil {
+		c.client.Transport = c.Conf.Transport
 	} else {
 		c.client.Transport = defaultTransport
 	}
@@ -691,7 +748,7 @@ func (c *Client) Clear() *Client {
 	c.err = nil
 	c.files = map[string]string{}
 	c.params = url.Values{}
-	c.settings = Settings{}
+	c.Conf = Settings{}
 	c.Tag = ""
 	return c
 }

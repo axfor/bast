@@ -30,6 +30,7 @@ import (
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -379,8 +380,10 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
+					recoverCaller := zapcore.NewEntryCaller(runtime.Caller(4)).FullPath()
 					logs.Error("access-error",
 						zap.Any("error", err),
+						zap.Any("recoverCaller", recoverCaller),
 						zap.String("url", r.RequestURI),
 						zap.String("method", r.Method),
 						zap.String("cost", time.Since(st).String()),
