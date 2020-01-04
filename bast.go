@@ -1018,7 +1018,7 @@ func GUID() string {
 
 //RegistConf handler  conf
 func RegistConf(handle conf.ConfingHandle, finish ...conf.FinishHandle) {
-	conf.RegistConf(handle, finish...)
+	conf.Register(handle, finish...)
 }
 
 //Conf returns the current app config
