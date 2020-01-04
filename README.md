@@ -1,6 +1,7 @@
-# bast
+# bast ![Build Status](https://api.travis-ci.org/aixiaoxiang/bast.svg?branch=master)
 
 # A lightweight RESTful  for Golang
+
 
 
 > Install
