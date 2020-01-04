@@ -116,14 +116,14 @@ func Test_Lang(t *testing.T) {
 	}
 	vr := Validator{"en"}
 	err := vr.Request(v4, "t@required")
-	if err != nil {
-		t.Error(err)
+	if err == nil {
+		t.Error("The t field is required")
 	}
 
 	vr2 := Validator{"zh-cn"}
 	err = vr2.Request(v4, "t@required")
-	if err != nil {
-		t.Error(err)
+	if err == nil {
+		t.Error("The t field is required")
 	}
 }
 

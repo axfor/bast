@@ -2,13 +2,15 @@ language: go
 
 go:
   - "1.13.x" 
-  
-env: 
- 
-install: 
 
-before_script: 
- 
+env: 
+  
+install:
+    - go get -v .
+    - go get -v golang.org/x/lint/golint
+    
 script:
-  - go test -v ./... 
-  - golint ./... 
+    - diff <(gofmt -d .) <(echo -n)
+    - go vet -x ./...
+    - golint -set_exit_status ./...
+    - go test -v -race ./...
