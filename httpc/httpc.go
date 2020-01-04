@@ -86,20 +86,20 @@ func (c *Client) Request(request *http.Request) *Client {
 	return c
 }
 
-// Title set log http.Request
+// Title set title
 func (c *Client) Title(title string) *Client {
 	c.Conf.Title = title
 	return c
 }
 
-// Logging set log http.Request
+// Logging set log
 func (c *Client) Logging() *Client {
 	c.Conf.Log = true
 	return c
 }
 
-// UnLogging set log http.Request
-func (c *Client) UnLogging() *Client {
+// Unlogging unset log
+func (c *Client) Unlogging() *Client {
 	c.Conf.Log = false
 	return c
 }
@@ -779,12 +779,8 @@ func After(f func(*Client)) {
 //init
 func init() {
 	DefaultCookieJar, _ = cookiejar.New(nil)
-	if t, ok := http.DefaultTransport.(*http.Transport); ok {
-		// dereference it to get a copy of the struct that the pointer points to
-		defaultTransport = &(*t)
-		defaultTransport.MaxIdleConns = 100
-		defaultTransport.MaxIdleConnsPerHost = 100
-	}
-	// dereference it to get a copy of the struct that the pointer points to
-	defaultClient = &(*http.DefaultClient)
+
+	defaultTransport = NewTransport()
+
+	defaultClient = &http.Client{}
 }

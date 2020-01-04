@@ -144,33 +144,6 @@ func (c *Context) DataWithCodeMsg(v interface{}, code int, msg string) {
 	c.DataResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
-//Pagination output pagination data data to client
-//v data
-//page is page
-//total is total row count
-func (c *Context) Pagination(v interface{}, page, total int) {
-	c.PaginationCodeMsg(v, page, total, SerOK, "")
-}
-
-//PaginationCode output pagination  data to client
-//v data
-//page is page
-//total is total row count
-//code is message code
-func (c *Context) PaginationCode(v interface{}, page, total, code int) {
-	c.PaginationCodeMsg(v, page, total, code, "")
-}
-
-//PaginationCodeMsg output pagination  data to client
-//v data
-//page is page
-//total is total row count
-//code is message code
-//msg is string message
-func (c *Context) PaginationCodeMsg(v interface{}, page, total, code int, msg string) {
-	c.DataResult(c.ObjWithPaginationCodeMsg(v, page, total, code, msg))
-}
-
 //DataResult output Data data to client
 func (c *Context) DataResult(v interface{}) {
 	switch c.KindAccept {
@@ -187,6 +160,37 @@ func (c *Context) DataResult(v interface{}) {
 }
 
 /**********data  end**********/
+
+/**********page  start**********/
+
+//Page output pagination data data to client
+//v data
+//page is page
+//total is total row count
+func (c *Context) Page(v interface{}, page, total int) {
+	c.PageWithCodeMsg(v, page, total, SerOK, "")
+}
+
+//PageWithCode output pagination  data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+func (c *Context) PageWithCode(v interface{}, page, total, code int) {
+	c.PageWithCodeMsg(v, page, total, code, "")
+}
+
+//PageWithCodeMsg output pagination  data to client
+//v data
+//page is page
+//total is total row count
+//code is message code
+//msg is string message
+func (c *Context) PageWithCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.DataResult(c.ObjWithPageCodeMsg(v, page, total, code, msg))
+}
+
+/**********page  end**********/
 
 /**********json  start**********/
 
@@ -218,31 +222,31 @@ func (c *Context) JSONWithCodeMsg(v interface{}, code int, msg string) {
 	c.JSONResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
-//JSONWithPagination output pagination JSON data to client
+//JSONWithPage output pagination JSON data to client
 //v data
 //page is page
 //total is total row count
-func (c *Context) JSONWithPagination(v interface{}, page, total int) {
-	c.JSONWithPaginationCodeMsg(v, page, total, SerOK, "")
+func (c *Context) JSONWithPage(v interface{}, page, total int) {
+	c.JSONWithPageCodeMsg(v, page, total, SerOK, "")
 }
 
-//JSONWithPaginationCode output pagination JSON data to client
+//JSONWithPageCode output pagination JSON data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
-func (c *Context) JSONWithPaginationCode(v interface{}, page, total, code int) {
-	c.JSONWithPaginationCodeMsg(v, page, total, code, "")
+func (c *Context) JSONWithPageCode(v interface{}, page, total, code int) {
+	c.JSONWithPageCodeMsg(v, page, total, code, "")
 }
 
-//JSONWithPaginationCodeMsg output pagination JSON data to client
+//JSONWithPageCodeMsg output pagination JSON data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
 //msg is string message
-func (c *Context) JSONWithPaginationCodeMsg(v interface{}, page, total, code int, msg string) {
-	c.JSONResult(c.ObjWithPaginationCodeMsg(v, page, total, code, msg))
+func (c *Context) JSONWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.JSONResult(c.ObjWithPageCodeMsg(v, page, total, code, msg))
 }
 
 //JSONResult output json data to client
@@ -290,31 +294,31 @@ func (c *Context) XMLWithCodeMsg(v interface{}, code int, msg string) {
 	c.XMLResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
-//XMLWithPagination output pagination XML data to client
+//XMLWithPage output pagination XML data to client
 //v data
 //page is page
 //total is total row count
-func (c *Context) XMLWithPagination(v interface{}, page, total int) {
-	c.XMLWithPaginationCodeMsg(v, page, total, SerOK, "")
+func (c *Context) XMLWithPage(v interface{}, page, total int) {
+	c.XMLWithPageCodeMsg(v, page, total, SerOK, "")
 }
 
-//XMLWithPaginationCode output pagination XML data to client
+//XMLWithPageCode output pagination XML data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
-func (c *Context) XMLWithPaginationCode(v interface{}, page, total, code int) {
-	c.XMLWithPaginationCodeMsg(v, page, total, code, "")
+func (c *Context) XMLWithPageCode(v interface{}, page, total, code int) {
+	c.XMLWithPageCodeMsg(v, page, total, code, "")
 }
 
-//XMLWithPaginationCodeMsg output pagination XML data to client
+//XMLWithPageCodeMsg output pagination XML data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
 //msg is string message
-func (c *Context) XMLWithPaginationCodeMsg(v interface{}, page, total, code int, msg string) {
-	c.XMLResult(c.ObjWithPaginationCodeMsg(v, page, total, code, msg))
+func (c *Context) XMLWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.XMLResult(c.ObjWithPageCodeMsg(v, page, total, code, msg))
 }
 
 //XMLResult output xml data to client
@@ -362,31 +366,31 @@ func (c *Context) YAMLWithCodeMsg(v interface{}, code int, msg string) {
 	c.YAMLResult(c.ObjWithCodeMsg(v, code, msg))
 }
 
-//YAMLWithPagination output pagination YAML data to client
+//YAMLWithPage output pagination YAML data to client
 //v data
 //page is page
 //total is total row count
-func (c *Context) YAMLWithPagination(v interface{}, page, total int) {
-	c.YAMLWithPaginationCodeMsg(v, page, total, SerOK, "")
+func (c *Context) YAMLWithPage(v interface{}, page, total int) {
+	c.YAMLWithPageCodeMsg(v, page, total, SerOK, "")
 }
 
-//YAMLWithPaginationCode output pagination YAML data to client
+//YAMLWithPageCode output pagination YAML data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
-func (c *Context) YAMLWithPaginationCode(v interface{}, page, total, code int) {
-	c.YAMLWithPaginationCodeMsg(v, page, total, code, "")
+func (c *Context) YAMLWithPageCode(v interface{}, page, total, code int) {
+	c.YAMLWithPageCodeMsg(v, page, total, code, "")
 }
 
-//YAMLWithPaginationCodeMsg output pagination YAML data to client
+//YAMLWithPageCodeMsg output pagination YAML data to client
 //v data
 //page is page
 //total is total row count
 //code is message code
 //msg is string message
-func (c *Context) YAMLWithPaginationCodeMsg(v interface{}, page, total, code int, msg string) {
-	c.YAMLResult(c.ObjWithPaginationCodeMsg(v, page, total, code, msg))
+func (c *Context) YAMLWithPageCodeMsg(v interface{}, page, total, code int, msg string) {
+	c.YAMLResult(c.ObjWithPageCodeMsg(v, page, total, code, msg))
 }
 
 //YAMLResult output yaml data to client
@@ -447,18 +451,18 @@ func isMessageDetailType(v interface{}) bool {
 	return ok
 }
 
-//ObjWithPaginationCodeMsg return pagination obj data
+//ObjWithPageCodeMsg return pagination obj data
 //v data
 //page is page
 //total is total row count
 //code is message code
 //msg is string message
-func (c *Context) ObjWithPaginationCodeMsg(v interface{}, page, total, code int, msg string) interface{} {
+func (c *Context) ObjWithPageCodeMsg(v interface{}, page, total, code int, msg string) interface{} {
 	if !app.wrap {
 		return v
 	}
 	d := &InvalidPagination{}
-	_, _total, pageRow := c.Page()
+	_, _total, pageRow := c.GetPage()
 	if _total == 0 {
 		last := int(math.Ceil(float64(total) / float64(pageRow)))
 		if page >= last {
@@ -945,12 +949,12 @@ func (c *Context) Query() url.Values {
 	return c.In.URL.Query()
 }
 
-//Page get pages param from the current request
+//GetPage get page param from the current request and check last page
 //param:
 //	page 	current page index(start 1)
 //	total 	all data total count(cache total count for first service return)
 //  pageRow page maximum size(default is 100 row)
-func (c *Context) Page() (page int, total int, pageRow int) {
+func (c *Context) GetPage() (page int, total int, pageRow int) {
 	page = c.GetIntValue("page", 0)
 	total = c.GetIntValue("total", 0)
 	pageRow = c.GetIntValue("pageRow", 100)
@@ -962,16 +966,6 @@ func (c *Context) Page() (page int, total int, pageRow int) {
 	} else if pageRow <= 0 {
 		pageRow = 100
 	}
-	return page, total, pageRow
-}
-
-//Pages get pages param from the current request and check last page
-//param:
-//	page 	 current page index(start 1)
-//	total 	 all data total count(cache total count for first service return)
-//  pageRow  page maximum size(default is 100 row)
-func (c *Context) Pages() (page, total, pageRow int) {
-	page, total, pageRow = c.Page()
 	if total > 0 {
 		last := int(math.Ceil(float64(total) / float64(pageRow)))
 		if page >= last {
@@ -985,7 +979,7 @@ func (c *Context) Pages() (page, total, pageRow int) {
 //param:
 //	total 	all data total count(cache total count for first service return)
 func (c *Context) Offset(total int) int {
-	page, _total, pageRow := c.Page()
+	page, _total, pageRow := c.GetPage()
 	if _total == 0 {
 		last := int(math.Ceil(float64(total) / float64(pageRow)))
 		if page >= last {

@@ -380,10 +380,10 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
-					recoverCaller := zapcore.NewEntryCaller(runtime.Caller(4)).FullPath()
-					logs.Error("access-error",
+					panicCaller := zapcore.NewEntryCaller(runtime.Caller(4)).TrimmedPath()
+					logs.ErrorWithCaller("access-panic",
 						zap.Any("error", err),
-						zap.Any("recoverCaller", recoverCaller),
+						zap.Any("caller", panicCaller),
 						zap.String("url", r.RequestURI),
 						zap.String("method", r.Method),
 						zap.String("cost", time.Since(st).String()),

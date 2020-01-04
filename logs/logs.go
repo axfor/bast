@@ -174,6 +174,19 @@ func Error(msg string, fields ...zap.Field) {
 	}
 }
 
+// ErrorWithCaller logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func ErrorWithCaller(msg string, caller zap.Field, fields ...zap.Field) {
+	if logger != nil && msg != "" {
+		if fields != nil {
+			fields = append(fields, caller)
+			logger.Error(msg, fields...)
+		} else {
+			logger.Error(msg, caller)
+		}
+	}
+}
+
 // Errors logs a message at ErrorLevel. The message includes any fields passed
 // at the log site, as well as any fields accumulated on the logger.
 func Errors(msg string, err error) {
