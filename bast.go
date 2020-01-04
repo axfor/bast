@@ -382,8 +382,8 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
 					panicCaller := zapcore.NewEntryCaller(runtime.Caller(4)).TrimmedPath()
 					logs.ErrorWithCaller("access-panic",
+						zap.String("caller", panicCaller),
 						zap.Any("error", err),
-						zap.Any("caller", panicCaller),
 						zap.String("url", r.RequestURI),
 						zap.String("method", r.Method),
 						zap.String("cost", time.Since(st).String()),
