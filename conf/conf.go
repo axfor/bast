@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
@@ -45,18 +46,18 @@ type AppConf struct {
 	Debug           bool        `json:"debug"`
 	BaseURL         string      `json:"baseUrl"`
 	IDNode          uint8       `json:"idNode"`          //id node
-	Log             *logs.Conf  `json:"log"`             //log conf
-	Conf            interface{} `json:"conf"`            //user conf
-	Extend          string      `json:"extend"`          //user extend
 	SessionEnable   bool        `json:"sessionEnable"`   //false
 	SessionLifeTime int         `json:"sessionLifeTime"` //20 (min)
 	SessionName     string      `json:"sessionName"`     //_sid
 	SessionEngine   string      `json:"sessionEngine"`   //memory
 	SessionSource   string      `json:"sessionSource"`   //url|header|cookie
-	SameSite        string      `json:"sameSite"`        //strict|lax|none
 	Lang            string      `json:"lang"`            //lang
-	CORS            *CORS       `json:"cors"`            //CORS
+	SameSite        string      `json:"sameSite"`        //strict|lax|none
 	Wrap            *bool       `json:"wrap"`            //wrap response body
+	Log             *logs.Conf  `json:"log"`             //log conf
+	CORS            *CORS       `json:"cors"`            //CORS
+	Conf            interface{} `json:"conf"`            //user conf
+	Extend          string      `json:"extend"`          //user extend
 	ConfHandle      bool        `json:"-"`
 }
 
@@ -87,6 +88,15 @@ func Manager() *AppConfMgr {
 		data, err := ioutil.ReadFile(Path())
 		if err != nil {
 			return nil
+		}
+		s := strings.TrimSpace(string(data))
+		isAdd := (s[0] != '[')
+		if isAdd && s[0] != '{' {
+			s = "{" + s + "}"
+		}
+		if isAdd {
+			s = "[" + s + "]"
+			data = []byte(s)
 		}
 		appConf := []AppConf{}
 		err = json.Unmarshal(data, &appConf)
@@ -163,6 +173,12 @@ func Conf() *AppConf {
 		}
 	}
 	return nil
+}
+
+//WithPath returns the current app config
+func WithPath(filePath string) *AppConf {
+	flagConf = filePath
+	return Conf()
 }
 
 //FileDir if app config configuration fileDir return it，orherwise return app exec path
@@ -256,6 +272,12 @@ func Confs() []AppConf {
 	return nil
 }
 
+//ConfsWithPath returns the all app config
+func ConfsWithPath(path string) []AppConf {
+	flagConf = path
+	return Confs()
+}
+
 //UserConf  returns the current user config
 func UserConf() interface{} {
 	appConf := Conf()
@@ -313,6 +335,11 @@ func Wrap() bool {
 //Path  returns the current config path
 func Path() string {
 	return flagConf
+}
+
+//SetPath  set the current config path
+func SetPath(confPath string) {
+	flagConf = confPath
 }
 
 //Parse parse config path

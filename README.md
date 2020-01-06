@@ -411,9 +411,16 @@ bast.Run(":9999")
         "addr":":9999",
         "fileDir":"./file/",//(default is ./file/)
         "debug":false,
-        "baseUrl":"",
+        "baseUrl":"", 
+        "idNode":0, 
+        "sessionEnable":false,
+        "sessionLifeTime":20,
+        "sessionName":"_sid",
+        "sessionEngine":"memory",
+        "sessionSource":"cookie",
         "lang":"en",//en,zh-cn
-        "sameSite":"none",//cookie sameSite strict、lax、none
+        "sameSite":"none",//cookie sameSite strict、lax、none 
+        "wrap":true,//wrap response body
         "log":{
             "outPath":"./logs/logs.log", //(default is ./logs/logs.log)
             "level":"debug",
@@ -421,7 +428,7 @@ bast.Run(":9999")
             "maxBackups":3,
             "maxAge":28,
             "debug":false,
-            "logSelect":false,
+            "logSelect":false
         },
         "cors":{//CORS https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS
             "allowOrigin":"",
@@ -430,7 +437,6 @@ bast.Run(":9999")
             "maxAge":"1728000",
             "allowCredentials":"true"
         },
-        "wrap":true,//wrap response body
         "conf":{//user config(non bast framework)
             "key":"app",
             "name":"xxx",
@@ -440,7 +446,8 @@ bast.Run(":9999")
             "dbPwd":"******",
             "dbServer":"localhost"
             //..more field..//
-        }
+        },
+        "extend":""//user extend
     }
     //..more instances..//
 ]
