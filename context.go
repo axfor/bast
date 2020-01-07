@@ -20,7 +20,7 @@ import (
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
-	"github.com/aixiaoxiang/bast/session"
+	"github.com/aixiaoxiang/bast/session/engine"
 	"github.com/aixiaoxiang/bast/validate"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
@@ -72,7 +72,7 @@ type Context struct {
 	//IsAuthorization is authorization finish?
 	IsAuthorization bool
 	//Session is session
-	Session session.Store
+	Session engine.Store
 }
 
 //Message is response message

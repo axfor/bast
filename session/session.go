@@ -8,47 +8,24 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aixiaoxiang/bast/conf"
+	"github.com/aixiaoxiang/bast/session/memory"
+	"github.com/aixiaoxiang/bast/session/redis"
+
 	"github.com/aixiaoxiang/bast/ids"
-	"github.com/aixiaoxiang/bast/logs"
+	"github.com/aixiaoxiang/bast/session/conf"
+	"github.com/aixiaoxiang/bast/session/engine"
 )
 
-//Store is store interface
-type Store interface {
-	Set(key string, value interface{}) error //set session value by key
-	Get(key string) interface{}              //get session value by key
-	Delete(key string) error                 //delete session value by key
-	ID() string                              //return current session id
-	Clear() error                            //clear all data
-}
-
-//Engine is store engine interface
-type Engine interface {
-	Init(lifeTime int) error      //set session value by key
-	Get(id string) (Store, error) //get session value by key
-	Exist(id string) bool         //get session value by key
-	Delete(d string) error        //delete session value by key
-	GC()                          //clean expired sessions
-}
-
-var engines = map[string]Engine{}
-
-//Register a session provide by the engine name
-func Register(name string, engine Engine) {
-	if _, ok := engines[name]; !ok {
-		engines[name] = engine
-	}
-}
+var cf *conf.Conf = conf.DefaultConf
 
 // Start generate or read the session id from http request.
 // if session id exists, return SessionStore with this id.
-func Start(w http.ResponseWriter, r *http.Request) (Store, error) {
-	if !conf.SessionEnable() {
+func Start(w http.ResponseWriter, r *http.Request) (engine.Store, error) {
+	if !cf.Enable {
 		return nil, nil
 	}
-
-	sessionEngine := conf.SessionEngine()
-	engine, ok := engines[sessionEngine]
+	sessionEngine := cf.Engine
+	engine, ok := engine.Engines[sessionEngine]
 	if !ok {
 		return nil, nil
 	}
@@ -61,7 +38,7 @@ func Start(w http.ResponseWriter, r *http.Request) (Store, error) {
 		return engine.Get(id)
 	}
 
-	// Generate a new session
+	// Generate a new session id
 	id = strconv.FormatInt(ids.ID(), 10)
 	if errs != nil {
 		return nil, errs
@@ -70,51 +47,46 @@ func Start(w http.ResponseWriter, r *http.Request) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	sessionName := conf.SessionName()
-	lifeTime := conf.SessionLifeTime()
-	sessionSource := conf.SessionSource()
 
 	cookie := &http.Cookie{
-		Name:     sessionName,
+		Name:     cf.Name,
 		Value:    url.QueryEscape(id),
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   isSecure(r),
-		SameSite: conf.SameSite(),
+		SameSite: cf.SameSite,
 		// Domain:   "",
 	}
-	if lifeTime > 0 {
-		cookie.MaxAge = lifeTime
-		cookie.Expires = time.Now().Add(time.Duration(lifeTime) * time.Second)
+	if cf.LifeTime > 0 {
+		cookie.MaxAge = cf.LifeTime
+		cookie.Expires = time.Now().Add(time.Duration(cf.LifeTime) * time.Second)
 	}
-	if sessionSource == "cookie" {
+	if cf.Source == "cookie" {
 		http.SetCookie(w, cookie)
 	}
 	r.AddCookie(cookie)
-	if sessionSource == "header" {
-		r.Header.Set(sessionName, id)
-		w.Header().Set(sessionName, id)
+	if cf.Source == "header" {
+		r.Header.Set(cf.Name, id)
+		w.Header().Set(cf.Name, id)
 	}
 	return store, nil
 }
 
 func getSid(r *http.Request) (string, error) {
-	sessionName := conf.SessionName()
-	sessionSource := conf.SessionSource()
-	cookie, errs := r.Cookie(sessionName)
+	cookie, errs := r.Cookie(cf.Name)
 	if errs != nil || cookie.Value == "" {
 		var id string
-		if sessionSource == "url" {
+		if cf.Source == "url" {
 			errs := r.ParseForm()
 			if errs != nil {
 				return "", errs
 			}
-			id = r.FormValue(sessionName)
+			id = r.FormValue(cf.Name)
 		}
 
 		// if not found in Cookie / param, then read it from request headers
-		if sessionSource == "header" && id == "" {
-			sids, isFound := r.Header[sessionName]
+		if cf.Source == "header" && id == "" {
+			sids, isFound := r.Header[cf.Name]
 			if isFound && len(sids) != 0 {
 				return sids[0], nil
 			}
@@ -122,25 +94,24 @@ func getSid(r *http.Request) (string, error) {
 		return id, nil
 	}
 
-	// HTTP Request contains cookie for sessionid info.
 	return url.QueryUnescape(cookie.Value)
 }
 
-// GC Start session gc process.
-// it can do gc in times after gc lifetime.
-func GC() {
-	logs.Debug("start session gc")
-	lt := conf.SessionLifeTime()
-	for _, v := range engines {
-		v.GC()
+// Recycle session data
+func recycle() {
+	if !cf.Enable {
+		return
 	}
-	time.AfterFunc(time.Duration(lt)*time.Second, func() {
-		if !conf.SessionEnable() {
-			return
+	needRecycle := false
+	for _, v := range engine.Engines {
+		if v.NeedRecycle() {
+			needRecycle = true
+			v.Recycle()
 		}
-		GC()
-	})
-	logs.Debug("end session gc")
+	}
+	if needRecycle {
+		time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
+	}
 }
 
 func isSecure(req *http.Request) bool {
@@ -153,6 +124,21 @@ func isSecure(req *http.Request) bool {
 	return true
 }
 
-func init() {
-	GC()
+//Init session
+func Init(c *conf.Conf) error {
+	cf = c
+	err := memory.Init(c)
+	if err != nil {
+		return err
+	}
+	err = redis.Init(c)
+	if err != nil {
+		return err
+	}
+	if cf.Enable {
+		go func() {
+			time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
+		}()
+	}
+	return nil
 }

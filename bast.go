@@ -95,9 +95,10 @@ func init() {
 	app.pool.New = func() interface{} {
 		return &Context{}
 	}
-	//init config
+	//init module config
 	if conf.OK() {
 		logs.Init(conf.LogConf())
+		session.Init(conf.SessionConf())
 	}
 	app.cors = conf.CORSConf()
 
@@ -376,6 +377,10 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			ctx.Reset()
 			// defer app.pool.Put(ctx)
 			defer func() {
+				if ctx.Session != nil {
+					//commit session data
+					go ctx.Session.Commit()
+				}
 				app.pool.Put(ctx)
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)

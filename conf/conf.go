@@ -14,6 +14,7 @@ import (
 
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
+	sessionConf "github.com/aixiaoxiang/bast/session/conf"
 )
 
 var (
@@ -39,26 +40,23 @@ type AppConfMgr struct {
 
 //AppConf  app config item
 type AppConf struct {
-	Key             string      `json:"key"`
-	Name            string      `json:"name"`
-	Addr            string      `json:"addr"`
-	FileDir         string      `json:"fileDir"`
-	Debug           bool        `json:"debug"`
-	BaseURL         string      `json:"baseUrl"`
-	IDNode          uint8       `json:"idNode"`          //id node
-	SessionEnable   bool        `json:"sessionEnable"`   //false
-	SessionLifeTime int         `json:"sessionLifeTime"` //20 (min)
-	SessionName     string      `json:"sessionName"`     //_sid
-	SessionEngine   string      `json:"sessionEngine"`   //memory
-	SessionSource   string      `json:"sessionSource"`   //url|header|cookie
-	Lang            string      `json:"lang"`            //lang
-	SameSite        string      `json:"sameSite"`        //strict|lax|none
-	Wrap            *bool       `json:"wrap"`            //wrap response body
-	Log             *logs.Conf  `json:"log"`             //log conf
-	CORS            *CORS       `json:"cors"`            //CORS
-	Conf            interface{} `json:"conf"`            //user conf
-	Extend          string      `json:"extend"`          //user extend
-	ConfHandle      bool        `json:"-"`
+	Key          string            `json:"key"`
+	Name         string            `json:"name"`
+	Addr         string            `json:"addr"`
+	FileDir      string            `json:"fileDir"`
+	Debug        bool              `json:"debug"`
+	BaseURL      string            `json:"baseUrl"`
+	IDNode       uint8             `json:"idNode"`   //id node
+	Lang         string            `json:"lang"`     //lang
+	SameSiteText string            `json:"sameSite"` //strict|lax|none
+	Wrap         *bool             `json:"wrap"`     //wrap response body
+	Session      *sessionConf.Conf `json:"session"`  //session
+	Log          *logs.Conf        `json:"log"`      //log conf
+	CORS         *CORS             `json:"cors"`     //CORS
+	Conf         interface{}       `json:"conf"`     //user conf
+	Extend       string            `json:"extend"`   //user extend
+	ConfHandle   bool              `json:"-"`
+	SameSite     http.SameSite
 }
 
 //Item default db config
@@ -73,7 +71,7 @@ type Item struct {
 	Loc       string `json:"dbLoc"`
 }
 
-//CORS default CORS config
+//CORS  config
 type CORS struct {
 	AllowOrigin      string `json:"allowOrigin"`
 	AllowMethods     string `json:"allowMethods"`
@@ -122,6 +120,21 @@ func Init(appConf []AppConf) {
 		confObj.Confs = make(map[string]*AppConf)
 		for i := 0; i < lg; i++ {
 			c := &appConf[i]
+			c.SameSite = sameSite(c.SameSiteText)
+			if c.Session == nil {
+				c.Session = sessionConf.NewDefault()
+			} else {
+				if c.Session.LifeTime <= 0 {
+					c.Session.LifeTime = 60 * 20
+				}
+				if c.Session.Name == "" {
+					c.Session.Name = "_sid"
+				}
+				if c.Session.Engine == "" {
+					c.Session.Engine = "memory"
+				}
+			}
+			c.Session.SameSite = c.SameSite
 			if c.FileDir != "" {
 				if c.FileDir[len(c.FileDir)-1] != '/' {
 					c.FileDir += "/"
@@ -190,56 +203,24 @@ func FileDir() string {
 	return filepath.Dir(os.Args[0])
 }
 
-//SessionLifeTime if app config configuration sessionLifeTime return it，orherwise return 20min
-func SessionLifeTime() int {
+//SessionConf return session conf
+func SessionConf() *sessionConf.Conf {
 	c := Conf()
-	if c != nil && c.SessionLifeTime > 0 {
-		return c.SessionLifeTime
+	if c == nil {
+		return sessionConf.DefaultConf
 	}
-	return 60 * 20
-}
-
-//SessionName if app config configuration sessionName return it，orherwise return '_sid'
-func SessionName() string {
-	c := Conf()
-	if c != nil && c.SessionName != "" {
-		return c.SessionName
-	}
-	return "_sid"
-}
-
-//SessionEngine if app config configuration sessionEngine return it，orherwise return 'memory'
-func SessionEngine() string {
-	c := Conf()
-	if c != nil && c.SessionEngine != "" {
-		return c.SessionEngine
-	}
-	return "memory"
-}
-
-//SessionEnable if app config configuration sessionEnable return it，orherwise return false
-func SessionEnable() bool {
-	c := Conf()
-	if c != nil {
-		return c.SessionEnable
-	}
-	return false
-}
-
-//SessionSource if app config configuration sessionSource return it，orherwise return 'cookie'
-func SessionSource() string {
-	c := Conf()
-	if c != nil && c.SessionSource != "" {
-		return c.SessionSource
-	}
-	return "cookie"
+	return sessionConf.DefaultConf
 }
 
 //SameSite if app config configuration cookie sameSite return it，orherwise return 'None'
 func SameSite() http.SameSite {
 	c := Conf()
-	if c != nil && c.SameSite != "" {
-		switch c.SameSite {
+	return c.SameSite
+}
+
+func sameSite(same string) http.SameSite {
+	if same != "" {
+		switch same {
 		case "lax":
 			return http.SameSiteLaxMode //Lax
 		case "strict":

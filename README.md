@@ -412,15 +412,22 @@ bast.Run(":9999")
         "fileDir":"./file/",//(default is ./file/)
         "debug":false,
         "baseUrl":"", 
-        "idNode":0, 
-        "sessionEnable":false,
-        "sessionLifeTime":20,
-        "sessionName":"_sid",
-        "sessionEngine":"memory",
-        "sessionSource":"cookie",
+        "idNode":0,  
         "lang":"en",//en,zh-cn
         "sameSite":"none",//cookie sameSite strict、lax、none 
-        "wrap":true,//wrap response body
+        "wrap":true,//wrap response body 
+        "session":{//session conf
+            "enable":false,
+            "lifeTime":20,
+            "name":"_sid",//session id
+            "engine":"memory",//session engine memory、redis、redis-cluster 
+            "source":"cookie",//cookie、header
+            "redis":{//if source eq redis or redis-cluster
+               "addrs":"ip:port,ip2:port2",
+               "password":"",
+               "poolSize":0
+            }
+        },
         "log":{
             "outPath":"./logs/logs.log", //(default is ./logs/logs.log)
             "level":"debug",
