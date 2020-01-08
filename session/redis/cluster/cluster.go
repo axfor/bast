@@ -18,7 +18,7 @@ var sengine = &sessionEngine{}
 
 //store is redis engine interface
 type sessionStore struct {
-	lock sync.RWMutex
+	lock *sync.RWMutex
 	en   *sessionEngine
 	id   string                 //session id
 	data map[string]interface{} //data
@@ -26,16 +26,20 @@ type sessionStore struct {
 
 //Set session set value by key
 func (s *sessionStore) Set(key string, value interface{}) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	if s.lock != nil {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+	}
 	s.data[key] = value
 	return nil
 }
 
 //set session value by key
 func (s *sessionStore) Get(key string) interface{} {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	if s.lock != nil {
+		s.lock.RLock()
+		defer s.lock.RUnlock()
+	}
 	if v, ok := s.data[key]; ok {
 		return v
 	}
@@ -44,8 +48,10 @@ func (s *sessionStore) Get(key string) interface{} {
 
 //delete session value by key
 func (s *sessionStore) Delete(key string) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	if s.lock != nil {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+	}
 	delete(s.data, key)
 	return nil
 }
@@ -57,8 +63,10 @@ func (s *sessionStore) ID() string {
 
 //clear all data
 func (s *sessionStore) Clear() error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	if s.lock != nil {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+	}
 	s.data = nil
 	s.data = map[string]interface{}{}
 	return nil
@@ -119,6 +127,9 @@ func (en *sessionEngine) Get(id string) (engine.Store, error) {
 		}
 	}
 	s := &sessionStore{en: en, id: id, data: data}
+	if en.cf != nil && en.cf.SessionLock {
+		s.lock = &sync.RWMutex{}
+	}
 	return s, nil
 }
 
