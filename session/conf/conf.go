@@ -12,6 +12,7 @@ type Conf struct {
 	Enable   bool          `json:"enable"`   //false
 	LifeTime int           `json:"lifeTime"` //20 (min)
 	Name     string        `json:"name"`     //_sid
+	Prefix   string        `json:"prefix"`   //session id prefix
 	Engine   string        `json:"engine"`   //memory
 	Source   string        `json:"source"`   //header|cookie
 	SameSite http.SameSite `json:"sameSite"` //strict|lax|none

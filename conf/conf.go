@@ -157,7 +157,7 @@ func Init(appConf []AppConf) {
 		}
 		//set default current id node
 		if confObj.frist != nil {
-			ids.SetCurrentIDNode(confObj.frist.IDNode)
+			ids.SetIDNode(confObj.frist.IDNode)
 		}
 		if confHandle != nil {
 			confObj.confHandle = true

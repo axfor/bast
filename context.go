@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/aixiaoxiang/bast/guid"
-	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/session/engine"
 	"github.com/aixiaoxiang/bast/validate"
@@ -1292,7 +1291,10 @@ func (c *Context) Reset() {
 
 //ID return a ID
 func (c *Context) ID() int64 {
-	return ids.ID()
+	if app.id != nil {
+		return app.id.GenerateWithInt64()
+	}
+	return 0
 }
 
 //GUID return a GUID

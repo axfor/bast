@@ -3,20 +3,23 @@
 package session
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/session/memory"
 	"github.com/aixiaoxiang/bast/session/redis"
+	"github.com/aixiaoxiang/bast/snowflake"
 
-	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/session/conf"
 	"github.com/aixiaoxiang/bast/session/engine"
 )
 
 var cf *conf.Conf = conf.DefaultConf
+var idNode *snowflake.Node
 
 // Start generate or read the session id from http request.
 // if session id exists, return SessionStore with this id.
@@ -29,32 +32,38 @@ func Start(w http.ResponseWriter, r *http.Request) (engine.Store, error) {
 	if !ok {
 		return nil, nil
 	}
-	id, errs := getSid(r)
+	sid, errs := getSid(r)
 	if errs != nil {
 		return nil, errs
 	}
 
-	if id != "" && engine.Exist(id) {
-		return engine.Get(id)
+	if sid != "" && engine.Exist(sid) {
+		return engine.Get(sid)
 	}
-
+	if idNode == nil {
+		idNode = ids.New()
+		if idNode == nil {
+			return nil, errors.New("generate session id error")
+		}
+	}
 	// Generate a new session id
-	id = strconv.FormatInt(ids.ID(), 10)
+	sid = cf.Prefix + strconv.FormatInt(idNode.GenerateWithInt64(), 10)
 	if errs != nil {
 		return nil, errs
 	}
-	store, err := engine.Get(id)
+	store, err := engine.Get(sid)
 	if err != nil {
 		return nil, err
 	}
 
 	cookie := &http.Cookie{
 		Name:     cf.Name,
-		Value:    url.QueryEscape(id),
+		Value:    url.QueryEscape(sid),
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   isSecure(r),
 		SameSite: cf.SameSite,
+		MaxAge:   cf.LifeTime * 60,
 		// Domain:   "",
 	}
 	if cf.LifeTime > 0 {
@@ -66,8 +75,8 @@ func Start(w http.ResponseWriter, r *http.Request) (engine.Store, error) {
 	}
 	r.AddCookie(cookie)
 	if cf.Source == "header" {
-		r.Header.Set(cf.Name, id)
-		w.Header().Set(cf.Name, id)
+		r.Header.Set(cf.Name, sid)
+		w.Header().Set(cf.Name, sid)
 	}
 	return store, nil
 }
@@ -126,6 +135,7 @@ func isSecure(req *http.Request) bool {
 
 //Init session
 func Init(c *conf.Conf) error {
+	idNode = ids.New()
 	cf = c
 	err := memory.Init(c)
 	if err != nil {

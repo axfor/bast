@@ -5,14 +5,13 @@ package snowflake
 import (
 	"errors"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 )
 
 var (
-	// Epoch is set to the twitter snowflake epoch of Nov 04 2010 01:42:54 UTC
+	// Epoch is set to the twitter snowflake epoch of Nov 04 2010 01:42:54 UTC in milliseconds
 	// You may customize this to set a different epoch for your application.
 	Epoch = int64(1288834974657)
 
@@ -49,36 +48,34 @@ type nodeItem struct {
 // attach methods onto the ID.
 type ID int64
 
-var gmux sync.Mutex
-var gNode *Node
+//var gmux sync.Mutex
+//var gNode *Node
 
 // NewNode returns a new snowflake node that can be used to generate snowflake
 func NewNode(node uint8) (*Node, error) {
-	if gNode == nil {
-		gmux.Lock()
-		defer gmux.Unlock()
-		if gNode != nil {
-			return gNode, nil
-		}
-		if node < 0 || int64(node) > nodeMax {
-			return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
-		}
-		n := nodeItem{}
-		var curTime = time.Now()
-		gNode = &Node{
-			node: int64(node),
-			ni:   unsafe.Pointer(&n),
-			// add time.Duration to curTime to make sure we use the monotonic clock if available
-			epoch: curTime.Add(time.Unix(Epoch/1000, (Epoch%1000)*1000000).Sub(curTime)),
-		}
-		gNode.nodeVal = gNode.node << nodeShift
+	if node < 0 || int64(node) > nodeMax {
+		return nil, errors.New("Node number must be between 0 and " + strconv.FormatInt(nodeMax, 10))
 	}
-	return gNode, nil
+	n := nodeItem{}
+	var curTime = time.Now()
+	ne := &Node{
+		node: int64(node),
+		ni:   unsafe.Pointer(&n),
+		// add time.Duration to curTime to make sure we use the monotonic clock if available
+		epoch: curTime.Add(time.Unix(Epoch/1000, (Epoch%1000)*1000000).Sub(curTime)),
+	}
+	ne.nodeVal = ne.node << nodeShift
+	return ne, nil
 }
 
 // Generate creates and returns a unique snowflake ID
 func (n *Node) Generate() ID {
 	return ID(n.GenerateWithInt64())
+}
+
+// ID creates and returns a unique snowflake ID
+func (n *Node) ID() int64 {
+	return n.GenerateWithInt64()
 }
 
 // GenerateWithInt64 creates and returns a unique snowflake ID
@@ -91,21 +88,12 @@ func (n *Node) GenerateWithInt64() int64 {
 	for {
 		p = atomic.LoadPointer(&n.ni)
 		ni = (*nodeItem)(p)
-		// newItem.time = ni.time
-		// newItem.step = ni.step
-		//non-monotonic clock
-		//now = time.Now().UnixNano() / 1000000
-		//monotonic clock
 		now = time.Since(n.epoch).Nanoseconds() / 1000000
 		if ni.time == now {
 			newItem.step = (ni.step + 1) & stepMask
 			if newItem.step == 0 {
 				for now <= ni.time {
-					//non-monotonic clock
-					// now = time.Now().UnixNano() / 1000000
-					//monotonic clock
 					now = time.Since(n.epoch).Nanoseconds() / 1000000
-
 				}
 			}
 		} else {
@@ -115,9 +103,6 @@ func (n *Node) GenerateWithInt64() int64 {
 		stop = newItem.step
 		ok = atomic.CompareAndSwapPointer(&n.ni, p, unsafe.Pointer(newItem))
 		if ok {
-			//non-monotonic clock
-			// return int64(((now-Epoch)<<timeShift | (n.node << nodeShift) | stop))
-			//monotonic clock
 			return int64(now<<timeShift | n.nodeVal | stop)
 		}
 	}
@@ -146,11 +131,4 @@ func (f ID) Node() int64 {
 // Step returns an int64 of the snowflake step (or sequence) number
 func (f ID) Step() int64 {
 	return int64(f) & stepMask
-}
-
-//Clear gNode
-func Clear() {
-	if gNode != nil {
-		gNode = nil
-	}
 }

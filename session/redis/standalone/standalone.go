@@ -88,10 +88,10 @@ type sessionEngine struct {
 
 //set session value by key
 func (en *sessionEngine) Init(cf *conf.Conf) error {
-	en.cf = cf
 	if cf.Redis == nil {
 		return errors.New("not fond redis conf")
 	}
+	en.cf = cf
 	en.c = redis.NewClient(&redis.Options{
 		Addr:     cf.Redis.Addrs,
 		Password: cf.Redis.Password,

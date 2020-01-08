@@ -8,18 +8,19 @@ import (
 
 func Benchmark_ID(b *testing.B) {
 	b.ReportAllocs()
+	id := New()
 	for n := 0; n < b.N; n++ {
-		ID()
+		id.GenerateWithInt64()
 	}
-
 }
 
 func Benchmark_Parallel_ID(t *testing.B) {
 	t.ReportAllocs()
-	// t.ResetTimer()
+	id := New()
+	t.ResetTimer()
 	t.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ID()
+			id.GenerateWithInt64()
 		}
 	})
 }

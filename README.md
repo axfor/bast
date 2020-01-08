@@ -407,7 +407,7 @@ bast.Run(":9999")
 [
     {//a instance
         "key":"xxx-conf",
-        "name":"xx",
+        "name":"xx",  
         "addr":":9999",
         "fileDir":"./file/",//(default is ./file/)
         "debug":false,
@@ -419,7 +419,8 @@ bast.Run(":9999")
         "session":{//session conf
             "enable":false,
             "lifeTime":20,
-            "name":"_sid",//session id
+            "name":"_sid",//session name
+            "prefix":"",//session id prefix
             "engine":"memory",//session engine memory、redis、redis-cluster 
             "source":"cookie",//cookie、header
             "redis":{//if source eq redis or redis-cluster

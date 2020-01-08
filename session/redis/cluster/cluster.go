@@ -89,10 +89,10 @@ type sessionEngine struct {
 
 //set session value by key
 func (en *sessionEngine) Init(cf *conf.Conf) error {
-	en.cf = cf
 	if cf.Redis == nil {
 		return errors.New("not fond redis cluster conf")
 	}
+	en.cf = cf
 	addrs := strings.Split(cf.Redis.Addrs, ",")
 	en.c = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    addrs,

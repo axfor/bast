@@ -8,34 +8,25 @@ import "github.com/aixiaoxiang/bast/snowflake"
 
 var currentIDNode uint8
 
-//ID cenerate id
-func ID() int64 {
-	n, _ := snowflake.NewNode(currentIDNode)
-	return n.GenerateWithInt64()
-}
-
-//SetCurrentIDNode set  current id node
-func SetCurrentIDNode(idNode uint8) {
-	currentIDNode = idNode
-}
-
-//IDWithNode  cenerate id
-func IDWithNode(node uint8) int64 {
-	n, _ := snowflake.NewNode(node)
-	return n.GenerateWithInt64()
-}
-
-//IDStr  cenerate id
-func IDStr(node ...uint8) string {
-	if node != nil {
-		n, _ := snowflake.NewNode(node[0])
-		return n.Generate().String()
+//New new id node
+func New() *snowflake.Node {
+	id, err := snowflake.NewNode(currentIDNode)
+	if err != nil {
+		return nil
 	}
-	n, _ := snowflake.NewNode(currentIDNode)
-	return n.Generate().String()
+	return id
 }
 
-//Clear clear all
-func Clear() {
-	snowflake.Clear()
+//NewWithIDNode new id node
+func NewWithIDNode(idNode uint8) *snowflake.Node {
+	id, err := snowflake.NewNode(idNode)
+	if err != nil {
+		return nil
+	}
+	return id
+}
+
+//SetIDNode set  current id node
+func SetIDNode(idNode uint8) {
+	currentIDNode = idNode
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/session"
+	"github.com/aixiaoxiang/bast/snowflake"
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
@@ -66,6 +67,7 @@ type App struct {
 	cmd                                  []work
 	cors                                 *conf.CORS
 	wrap                                 bool
+	id                                   *snowflake.Node
 }
 
 type work struct {
@@ -103,6 +105,8 @@ func init() {
 	app.cors = conf.CORSConf()
 
 	app.wrap = conf.Wrap()
+
+	app.id = ids.New()
 
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
@@ -1011,7 +1015,10 @@ func String(s string) *string {
 
 //ID create Unique ID
 func ID() int64 {
-	return ids.ID()
+	if app.id != nil {
+		return app.id.GenerateWithInt64()
+	}
+	return 0
 }
 
 //GUID create GUID
@@ -1048,6 +1055,5 @@ func clear() {
 	}
 	isClear = true
 	logs.Clear()
-	ids.Clear()
 	removePid()
 }
