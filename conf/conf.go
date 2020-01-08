@@ -125,7 +125,7 @@ func Init(appConf []AppConf) {
 				c.Session = sessionConf.NewDefault()
 			} else {
 				if c.Session.LifeTime <= 0 {
-					c.Session.LifeTime = 60 * 20
+					c.Session.LifeTime = 20
 				}
 				if c.Session.Name == "" {
 					c.Session.Name = "_sid"
@@ -133,6 +133,7 @@ func Init(appConf []AppConf) {
 				if c.Session.Engine == "" {
 					c.Session.Engine = "memory"
 				}
+				c.Session.LifeTime *= 60
 			}
 			c.Session.SameSite = c.SameSite
 			if c.FileDir != "" {
