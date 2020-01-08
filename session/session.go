@@ -146,9 +146,7 @@ func Init(c *conf.Conf) error {
 		return err
 	}
 	if cf.Enable {
-		go func() {
-			time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
-		}()
+		time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
 	}
 	return nil
 }
