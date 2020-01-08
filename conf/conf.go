@@ -206,8 +206,8 @@ func FileDir() string {
 //SessionConf return session conf
 func SessionConf() *sessionConf.Conf {
 	c := Conf()
-	if c == nil {
-		return sessionConf.DefaultConf
+	if c != nil {
+		return c.Session
 	}
 	return sessionConf.DefaultConf
 }

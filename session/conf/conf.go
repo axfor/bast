@@ -13,6 +13,7 @@ type Conf struct {
 	LifeTime int           `json:"lifeTime"` //20 (min)
 	Name     string        `json:"name"`     //_sid
 	Prefix   string        `json:"prefix"`   //session id prefix
+	Suffix   string        `json:"suffix"`   //session id suffix
 	Engine   string        `json:"engine"`   //memory
 	Source   string        `json:"source"`   //header|cookie
 	SameSite http.SameSite `json:"sameSite"` //strict|lax|none

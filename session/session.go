@@ -47,7 +47,7 @@ func Start(w http.ResponseWriter, r *http.Request) (engine.Store, error) {
 		}
 	}
 	// Generate a new session id
-	sid = cf.Prefix + strconv.FormatInt(idNode.GenerateWithInt64(), 10)
+	sid = cf.Prefix + strconv.FormatInt(idNode.GenerateWithInt64(), 10) + cf.Suffix
 	if errs != nil {
 		return nil, errs
 	}

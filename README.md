@@ -420,7 +420,8 @@ bast.Run(":9999")
             "enable":false,
             "lifeTime":20,
             "name":"_sid",//session name
-            "prefix":"",//session id prefix
+            "prefix":"",//session id prefix 
+            "suffix":"",//session id suffix 
             "engine":"memory",//session engine memory、redis、redis-cluster 
             "source":"cookie",//cookie、header
             "redis":{//if source eq redis or redis-cluster
