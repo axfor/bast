@@ -17,7 +17,7 @@ type Conf struct {
 	Engine      string        `json:"engine"`      //memory
 	Source      string        `json:"source"`      //header|cookie
 	SameSite    http.SameSite `json:"sameSite"`    //strict|lax|none
-	SessionLock bool          `json:"sessionLock"` //every session a lock(default is false)
+	SessionLock bool          `json:"sessionLock"` //each session a lock(default is false)
 	Redis       *RedisConf    `json:"redis"`       //redis
 }
 

@@ -423,7 +423,8 @@ bast.Run(":9999")
             "prefix":"",//session id prefix 
             "suffix":"",//session id suffix 
             "engine":"memory",//session engine memory、redis、redis-cluster 
-            "source":"cookie",//cookie、header
+            "source":"cookie",//cookie、header 
+            "sessionLock":false,///each session a lock(default is false)
             "redis":{//if source eq redis or redis-cluster
                "addrs":"ip:port,ip2:port2",
                "password":"",
