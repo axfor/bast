@@ -447,7 +447,7 @@ bast.Run(":9999")
             "maxAge":"1728000",
             "allowCredentials":"true"
         },
-        "conf":{//user config(non bast framework)
+        "conf":{//user config(non bast framework) such as db config
             "key":"app",
             "name":"xxx",
             "dbTitle":"xxx app",

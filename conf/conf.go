@@ -60,18 +60,6 @@ type AppConf struct {
 	initTag      bool
 }
 
-//Item default db config
-type Item struct {
-	Name      string `json:"name"`
-	Title     string `json:"dbTitle"`
-	User      string `json:"dbUser"`
-	Pwd       string `json:"dbPwd"`
-	Server    string `json:"dbServer"`
-	Charset   string `json:"dbCharset"`
-	ParseTime *bool  `json:"dbParseTime"`
-	Loc       string `json:"dbLoc"`
-}
-
 //CORS  config
 type CORS struct {
 	AllowOrigin      string `json:"allowOrigin"`
@@ -180,9 +168,9 @@ func callbackHandle() {
 	if lg == 0 {
 		return
 	}
-	for i := 0; i < lg; i++ {
-		c := &confObj.rawConfs[i]
-		if confHandle != nil {
+	if confHandle != nil {
+		for i := 0; i < lg; i++ {
+			c := &confObj.rawConfs[i]
 			err := confHandle(c)
 			if err != nil {
 				logs.Errors("callback conf handle error", err)
