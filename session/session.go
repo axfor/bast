@@ -123,6 +123,10 @@ func recycle() {
 	}
 }
 
+func startRecycle() {
+	time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
+}
+
 func isSecure(req *http.Request) bool {
 	if req.URL.Scheme != "" {
 		return req.URL.Scheme == "https"
@@ -146,7 +150,7 @@ func Init(c *conf.Conf) error {
 		return err
 	}
 	if cf.Enable {
-		time.AfterFunc(time.Duration(cf.LifeTime)*time.Second, recycle)
+		go startRecycle()
 	}
 	return nil
 }

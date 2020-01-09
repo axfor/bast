@@ -245,7 +245,8 @@ func LoggerGorm() *GormLogger {
 	return &GormLogger{}
 }
 
-//Sync sync log
+// Sync calls the underlying Core's Sync method, flushing any buffered log
+// entries. Applications should take care to call Sync before exiting.
 func Sync() {
 	if logger != nil {
 		logger.Sync()
@@ -263,6 +264,9 @@ func callerWithIndex(skip int) string {
 
 //Print Gorm log
 func (*GormLogger) Print(v ...interface{}) {
+	if logger == nil {
+		return
+	}
 	if logger.logConf.Stdout {
 		msg := gromLogFormatterDebug(v...)
 		if msg != nil {
@@ -474,20 +478,21 @@ func isPrintable(s string) bool {
 }
 
 func logLevel(text string) zapcore.Level {
+	text = strings.ToLower(text)
 	switch text {
-	case "debug", "DEBUG":
+	case "debug":
 		return zapcore.DebugLevel
-	case "info", "INFO", "": // make the zero value useful
+	case "info", "": // make the zero value useful
 		return zapcore.InfoLevel
-	case "warn", "WARN":
+	case "warn":
 		return zapcore.WarnLevel
-	case "error", "ERROR":
+	case "error":
 		return zapcore.ErrorLevel
-	case "dpanic", "DPANIC":
+	case "dpanic":
 		return zapcore.DPanicLevel
-	case "panic", "PANIC":
+	case "panic":
 		return zapcore.PanicLevel
-	case "fatal", "FATAL":
+	case "fatal":
 		return zapcore.FatalLevel
 	}
 	return zapcore.ErrorLevel
@@ -495,6 +500,7 @@ func logLevel(text string) zapcore.Level {
 
 //Clear clear all logs
 func Clear() {
+	Sync()
 	logger = nil
 	gromDebugLogger = nil
 	gromLogFormatter = nil

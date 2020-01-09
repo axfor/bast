@@ -8,11 +8,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/session/conf"
 	"github.com/aixiaoxiang/bast/session/engine"
 	"github.com/aixiaoxiang/bast/session/serde"
 	"github.com/go-redis/redis"
 )
+
+//ErrorConn connection  error
+var ErrorConn = errors.New("connection to redis cluster error")
+
+//ErrorNotFondRedisConf not fond redis conf
+var ErrorNotFondRedisConf = errors.New("not fond redis cluster conf")
 
 var sengine = &sessionEngine{}
 
@@ -75,7 +82,8 @@ func (s *sessionStore) Clear() error {
 //commit data to session store
 func (s *sessionStore) Commit() error {
 	if s.en.c == nil {
-		return errors.New("connection to redis error")
+		logs.Errors("connection error", ErrorConn)
+		return ErrorConn
 	}
 	be, err := serde.Encode(s.data)
 	if err != nil {
@@ -98,7 +106,8 @@ type sessionEngine struct {
 //set session value by key
 func (en *sessionEngine) Init(cf *conf.Conf) error {
 	if cf.Redis == nil {
-		return errors.New("not fond redis cluster conf")
+		logs.Errors("init error", ErrorNotFondRedisConf)
+		return ErrorNotFondRedisConf
 	}
 	en.cf = cf
 	addrs := strings.Split(cf.Redis.Addrs, ",")
@@ -107,12 +116,17 @@ func (en *sessionEngine) Init(cf *conf.Conf) error {
 		Password: cf.Redis.Password,
 		PoolSize: cf.Redis.PoolSize,
 	})
-	return en.c.Ping().Err()
+	err := en.c.Ping().Err()
+	if err != nil {
+		logs.Errors("connection error", err)
+	}
+	return err
 }
 
 func (en *sessionEngine) Get(id string) (engine.Store, error) {
 	if en.c == nil {
-		return nil, errors.New("connection to redis cluster error")
+		logs.Errors("connection error", ErrorConn)
+		return nil, ErrorConn
 	}
 	var data map[string]interface{}
 	values, err := en.c.Get(id).Result()
@@ -145,7 +159,8 @@ func (en *sessionEngine) Exist(id string) bool {
 
 func (en *sessionEngine) Delete(id string) error {
 	if en.c == nil {
-		return errors.New("connection to redis cluster error")
+		logs.Errors("connection error", ErrorConn)
+		return ErrorConn
 	}
 	_, err := en.c.Del(id).Result()
 	return err

@@ -55,19 +55,19 @@ var (
 
 //App is application major data
 type App struct {
-	pool                                 sync.Pool
-	Router                               *httprouter.Router
-	Addr, pipeName                       string
-	Server                               *http.Server
-	Before                               BeforeHandle
-	After                                AfterHandle
-	Authorization                        AuthorizationHandle
-	Migration                            MigrationHandle
-	Debug, Daemon, isCallCommand, runing bool
-	cmd                                  []work
-	cors                                 *conf.CORS
-	wrap                                 bool
-	id                                   *snowflake.Node
+	pool                                      sync.Pool
+	Router                                    *httprouter.Router
+	Addr, pipeName, CertFile, KeyFile         string
+	Server                                    *http.Server
+	Before                                    BeforeHandle
+	After                                     AfterHandle
+	Authorization                             AuthorizationHandle
+	Migration                                 MigrationHandle
+	Debug, Daemon, isCallCommand, runing, tls bool
+	cmd                                       []work
+	cors                                      *conf.CORS
+	wrap                                      bool
+	id                                        *snowflake.Node
 }
 
 type work struct {
@@ -197,6 +197,13 @@ func (app *App) ListenAndServe() error {
 	app.Server.Addr = app.Addr
 	app.Server.Handler = app.Router
 	return app.Server.ListenAndServe()
+}
+
+// ListenAndServeTLS see net/http ListenAndServeTLS
+func (app *App) ListenAndServeTLS() error {
+	app.Server.Addr = app.Addr
+	app.Server.Handler = app.Router
+	return app.Server.ListenAndServeTLS(app.CertFile, app.KeyFile)
 }
 
 // All registers the handler function for the given pattern
@@ -449,35 +456,49 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 	})
 }
 
-//IsRuning return app is runing
-func IsRuning() bool {
-	return app.runing
-}
-
-//Run use addr to start app
-func Run(addr string) {
-	if !app.isCallCommand && !Command() {
-		return
-	}
-	defer clear()
-	doRun(addr)
-}
-
-//Serve use config to start app
+//Serve use config(auto TLS) to start app
 func Serve() bool {
-	c := conf.Conf()
-	if !app.isCallCommand && !Command() || c == nil {
+	c := startServe()
+	if c == nil {
 		return false
 	}
-	defer clear()
+	if c.CertFile == "" {
+		Run(c.Addr)
+	} else {
+		RunWithTLS(c.Addr, c.CertFile, c.KeyFile)
+	}
+	return true
+}
+
+//ServeWithAddr use addr to start app
+func ServeWithAddr(addr string) bool {
+	c := startServe()
+	if c == nil {
+		return false
+	}
+	Run(addr)
+	return true
+}
+
+//ServeTLSWithAddr use addr and certFile, keyFile to start app
+func ServeTLSWithAddr(addr, certFile, keyFile string) bool {
+	startServe()
+	RunWithTLS(addr, certFile, keyFile)
+	return true
+}
+
+func startServe() *conf.AppConf {
+	c := conf.Conf()
+	if !app.isCallCommand && !Command() || c == nil {
+		return nil
+	}
 	//seting validate lang
 	if c.Lang == "" {
 		c.Lang = "en"
 	}
 	valid.Lang = c.Lang
 	Debug(c.Debug)
-	Run(c.Addr)
-	return true
+	return c
 }
 
 // TryServe try to check the configuration can be turned on
@@ -496,33 +517,77 @@ func TryServe() bool {
 			}
 		}
 	}
-
-	// defer func() {
-	// 	fmt.Printf("finish=%v\r\n", ok)
-	// }()
 	return ok
 }
 
-//Debug set app debug status
-func Debug(debug bool) {
-	app.Debug = debug
+//IsRuning return app is runing
+func IsRuning() bool {
+	return app.runing
+}
+
+//Run use addr to start app
+func Run(addr string) {
+	if addr == "" {
+		logs.Error("run addr is empty",
+			zap.String("address", addr))
+		logs.Sync()
+		os.Exit(-1)
+	}
+	if !app.isCallCommand && !Command() {
+		return
+	}
+	doRun(addr, "", "")
+}
+
+//RunWithTLS use addr and cert to start app
+func RunWithTLS(addr, certFile, keyFile string) {
+	if certFile == "" {
+		logs.Error("run with TLS certFile is empty",
+			zap.String("address", addr),
+			zap.String("certFile", certFile),
+			zap.String("keyFile", keyFile))
+		logs.Sync()
+		os.Exit(-1)
+	}
+	if !app.isCallCommand && !Command() {
+		return
+	}
+	app.tls = true
+	doRun(addr, certFile, keyFile)
 }
 
 //doRun real run app
-func doRun(addr string) {
+func doRun(addr, certFile, keyFile string) {
+	defer clear()
 	app.Addr = addr
+	app.CertFile = certFile
+	app.KeyFile = keyFile
 	err := tryRun()
 	if err == nil {
-		logs.Info("run", zap.String("address", app.Addr))
-		err = app.ListenAndServe()
+		logs.Info("run",
+			zap.String("address", app.Addr))
+		errMsg := ""
+		if certFile == "" {
+			err = app.ListenAndServe()
+			errMsg = "listenAndServe"
+		} else {
+			err = app.ListenAndServeTLS()
+			errMsg = "ListenAndServeTLS"
+		}
 		if err != nil {
-			fmt.Println("listenAndServe error=" + err.Error())
-			logs.Errors("listenAndServe", err)
+			fmt.Println(errMsg + " error=" + err.Error())
+			logs.Errors(errMsg, err)
+			logs.Sync()
 			os.Exit(0)
 		}
 		logs.Info("finish")
 	} else {
-		logs.Errors("listen", err)
+		logs.Error("listen",
+			zap.Error(err),
+			zap.String("address", app.Addr),
+			zap.String("certFile", app.CertFile),
+			zap.String("keyFile", app.KeyFile))
+		logs.Sync()
 		os.Exit(-1)
 	}
 }
@@ -532,7 +597,9 @@ func tryRun() error {
 	for i := 0; i < 500; i++ {
 		err = doTryRun(app.Addr)
 		if err != nil {
-			if i <= 50 {
+			if i <= 10 {
+				time.Sleep(2 * time.Microsecond)
+			} else if i <= 50 {
 				time.Sleep(20 * time.Microsecond)
 			} else if i > 50 && i <= 100 {
 				time.Sleep(1 * time.Millisecond)
@@ -606,6 +673,11 @@ func Command() bool {
 	return r
 }
 
+//Debug set app debug status
+func Debug(debug bool) {
+	app.Debug = debug
+}
+
 func start() (bool, error) {
 	if isMaster {
 		doStart()
@@ -617,7 +689,6 @@ func start() (bool, error) {
 	cmd.Dir = AppDir()
 	cmd.Start()
 	// time.Sleep(200 * time.Millisecond)
-	// os.Exit(0)
 	return false, nil
 }
 

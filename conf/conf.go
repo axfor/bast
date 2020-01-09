@@ -32,10 +32,9 @@ type FinishHandle func(appConf *AppConf) error
 
 //AppConfMgr app config
 type AppConfMgr struct {
-	frist      *AppConf
-	rawConfs   []AppConf
-	confHandle bool
-	Confs      map[string]*AppConf
+	frist    *AppConf
+	rawConfs []AppConf
+	Confs    map[string]*AppConf
 }
 
 //AppConf  app config item
@@ -43,6 +42,8 @@ type AppConf struct {
 	Key          string            `json:"key"`
 	Name         string            `json:"name"`
 	Addr         string            `json:"addr"`
+	CertFile     string            `json:"certFile"` //tls cert file
+	KeyFile      string            `json:"keyFile"`  //tls cert key file
 	FileDir      string            `json:"fileDir"`
 	Debug        bool              `json:"debug"`
 	BaseURL      string            `json:"baseUrl"`
@@ -55,8 +56,8 @@ type AppConf struct {
 	CORS         *CORS             `json:"cors"`     //CORS
 	Conf         interface{}       `json:"conf"`     //user conf
 	Extend       string            `json:"extend"`   //user extend
-	ConfHandle   bool              `json:"-"`
-	SameSite     http.SameSite
+	SameSite     http.SameSite     `json:"-"`
+	initTag      bool
 }
 
 //Item default db config
@@ -80,12 +81,12 @@ type CORS struct {
 	MaxAge           string `json:"maxAge"`
 }
 
-//Manager is manager all config objects
-func Manager() *AppConfMgr {
+//Init data
+func Init() {
 	if confObj == nil {
 		data, err := ioutil.ReadFile(Path())
 		if err != nil {
-			return nil
+			return
 		}
 		s := strings.TrimSpace(string(data))
 		isAdd := (s[0] != '[')
@@ -99,72 +100,96 @@ func Manager() *AppConfMgr {
 		appConf := []AppConf{}
 		err = json.Unmarshal(data, &appConf)
 		if err != nil {
-			logs.Errors("conf mgr init error", err)
-			fmt.Println("conf mgr init error:" + err.Error())
-			return nil
+			logs.Errors("conf manager init error", err)
+			fmt.Println("conf manager init error:" + err.Error())
+			return
 		}
-		Init(appConf)
+		if confObj != nil {
+			return
+		}
+		confObj = &AppConfMgr{}
+		confObj.rawConfs = appConf
+		confObj.Confs = make(map[string]*AppConf)
+		lg := len(appConf)
+		if lg > 0 {
+			for i := 0; i < lg; i++ {
+				c := &appConf[i]
+				appConfWithInit(c)
+				if c.Key == flagAppKey && confObj.frist == nil {
+					confObj.frist = c
+				}
+				confObj.Confs[c.Key] = c
+			}
+			if confObj.frist == nil {
+				confObj.frist = &appConf[0]
+			}
+			//set default current id node
+			if confObj.frist != nil {
+				ids.SetIDNode(confObj.frist.IDNode)
+			}
+			callbackHandle()
+		}
+	}
+}
+
+//Manager is manager all config objects
+func Manager() *AppConfMgr {
+	if confObj == nil {
+		Init()
 	}
 	return confObj
 }
 
-//Init  config
-func Init(appConf []AppConf) {
-	lg := len(appConf)
+func appConfWithInit(c *AppConf) {
+	if c.initTag {
+		return
+	}
+	c.initTag = true
+	if c.Lang == "" {
+		c.Lang = "en"
+	}
+	c.SameSite = sameSite(c.SameSiteText)
+	if c.Session == nil {
+		c.Session = sessionConf.NewDefault()
+	} else {
+		if c.Session.LifeTime <= 0 {
+			c.Session.LifeTime = 20
+		}
+		if c.Session.Name == "" {
+			c.Session.Name = "_sid"
+		}
+		if c.Session.Engine == "" {
+			c.Session.Engine = "memory"
+		}
+		c.Session.LifeTime *= 60
+	}
+	c.Session.SameSite = c.SameSite
+	if c.FileDir != "" {
+		if c.FileDir[len(c.FileDir)-1] != '/' {
+			c.FileDir += "/"
+		}
+	}
+}
+
+//callback all handle
+func callbackHandle() {
+	if confObj == nil {
+		return
+	}
+	lg := len(confObj.rawConfs)
 	if lg == 0 {
 		return
 	}
-	if confObj == nil {
-		confObj = &AppConfMgr{}
-		confObj.rawConfs = appConf
-		confObj.Confs = make(map[string]*AppConf)
-		for i := 0; i < lg; i++ {
-			c := &appConf[i]
-			c.SameSite = sameSite(c.SameSiteText)
-			if c.Session == nil {
-				c.Session = sessionConf.NewDefault()
-			} else {
-				if c.Session.LifeTime <= 0 {
-					c.Session.LifeTime = 20
-				}
-				if c.Session.Name == "" {
-					c.Session.Name = "_sid"
-				}
-				if c.Session.Engine == "" {
-					c.Session.Engine = "memory"
-				}
-				c.Session.LifeTime *= 60
-			}
-			c.Session.SameSite = c.SameSite
-			if c.FileDir != "" {
-				if c.FileDir[len(c.FileDir)-1] != '/' {
-					c.FileDir += "/"
-				}
-			}
-			if confHandle != nil {
-				err := confHandle(c)
-				if err != nil {
-					continue
-				}
-				c.ConfHandle = true
-			}
-			if c.Key == flagAppKey && confObj.frist == nil {
-				confObj.frist = c
-			}
-			confObj.Confs[c.Key] = c
-		}
-		if confObj.frist == nil {
-			confObj.frist = &appConf[0]
-		}
-		//set default current id node
-		if confObj.frist != nil {
-			ids.SetIDNode(confObj.frist.IDNode)
-		}
+	for i := 0; i < lg; i++ {
+		c := &confObj.rawConfs[i]
 		if confHandle != nil {
-			confObj.confHandle = true
+			err := confHandle(c)
+			if err != nil {
+				logs.Errors("callback conf handle error", err)
+			}
 		}
 	}
-	if confFinishHandle != nil && confObj != nil {
+	if confFinishHandle != nil {
 		confFinishHandle(confObj.frist)
 	}
 }
@@ -348,16 +373,5 @@ func Register(handle ConfingHandle, finish ...FinishHandle) {
 	if finish != nil {
 		confFinishHandle = finish[0]
 	}
-	if confObj == nil || confObj.confHandle {
-		return
-	}
-	cf := confObj.rawConfs
-	if cf == nil {
-		return
-	}
-	lg := len(cf)
-	if lg > 0 {
-		confObj = nil
-		Init(cf)
-	}
+	callbackHandle()
 }
