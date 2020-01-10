@@ -3,8 +3,10 @@
 package bast
 
 import (
+	"bufio"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -493,6 +495,31 @@ func (c *Context) ObjWithPageCodeMsg(v interface{}, page, total, code int, msg s
 		return d
 	}
 	return d.Pagination
+}
+
+// Pusher is the interface implemented by ResponseWriters that support
+// HTTP/2 server push. For more background, see
+// https://tools.ietf.org/html/rfc7540#section-8.2.
+func (c *Context) Pusher() http.Pusher {
+	if per, ok := c.Out.(http.Pusher); ok {
+		return per
+	}
+	return nil
+}
+
+// Flush sends any buffered data to the client
+func (c *Context) Flush() {
+	if puser, ok := c.Out.(http.Flusher); ok {
+		puser.Flush()
+	}
+}
+
+// Hijack implements the http.Hijacker interface.
+func (c *Context) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijer, ok := c.Out.(http.Hijacker); ok {
+		return hijer.Hijack()
+	}
+	return nil, nil, errors.New("not support http hijacker")
 }
 
 //Success output success result to client
