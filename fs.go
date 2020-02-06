@@ -14,33 +14,42 @@ import (
 	"github.com/aixiaoxiang/bast/logs"
 )
 
-//FileInfo struct
-type FileInfo struct {
+//Fs struct
+type Fs struct {
 	FileName string `json:"fileName"`
 	RawName  string `json:"rawName"`
 	Chunks   int    `json:"chunks"`
 }
 
-//FileDefault default file router
-func FileDefault(dir string) {
-	//get
-	FileServer("/f/", dir)
-	//upload
-	Post("/files/upload", FileUploadHandle(dir))
-	//merge
-	Post("/files/merge", MergeHandle(dir))
+//Default default file router
+func Default(dir string) {
+	Router(dir, "/f/", "/files/upload", "/files/merge")
 }
 
-//FileUploadHandle return a upload handle
-func FileUploadHandle(dir string) func(ctx *Context) {
+//Router file router
+func Router(dir, access, upload, merge string) {
+	access2 := access
+	if access != "" && access[0] == '/' {
+		access2 = access[1:]
+	}
+	//get
+	FileServer(access, dir)
+	//upload
+	Post(upload, UploadHandle(dir, access2))
+	//merge
+	Post(merge, MergeHandle(dir))
+}
+
+//UploadHandle return a upload handle
+func UploadHandle(dir, access string) func(ctx *Context) {
 	return func(ctx *Context) {
-		FileUpload(ctx, dir)
+		Upload(ctx, dir, access)
 	}
 }
 
-//FileUpload real upload handle
-func FileUpload(ctx *Context, dir string) {
-	realFiles, err := FileHandleUpload(ctx, dir, false)
+//Upload real upload handle
+func Upload(ctx *Context, dir, access string) {
+	realFiles, err := DoUpload(ctx, dir, access, false)
 	if err != nil {
 		ctx.JSONWithCode(err.Error(), SerError)
 	} else {
@@ -48,23 +57,22 @@ func FileUpload(ctx *Context, dir string) {
 	}
 }
 
-//FileHandleUpload real upload handle and returns file info
-func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo, error) {
-	//ctx.ParseForm()
+//DoUpload real upload handle and returns file info
+func DoUpload(ctx *Context, dir, access string, returnRealFile bool) ([]Fs, error) {
 	err := ctx.ParseMultipartForm(32 << 40) //maximum 64M
 	if err != nil {
 		logs.Errors("parseMultipartForm error", err)
-		return nil, errors.New("Invalid file format")
+		return nil, errors.New("invalid file format")
 	}
 	mp := ctx.In.MultipartForm
 	if mp == nil {
-		return nil, errors.New("Invalid file format")
+		return nil, errors.New("invalid file format")
 	}
 	if mp.File == nil || len(mp.File) == 0 {
-		return nil, errors.New("Not to upload files")
+		return nil, errors.New("not to upload files")
 	}
 	//m5 := md5.New()
-	var realFiles []FileInfo
+	var realFiles []Fs
 	for _, v := range mp.File {
 		for _, f := range v {
 			fn := ctx.GetTrimString("fn") //fn
@@ -78,7 +86,6 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 			fn += id
 			chunk, err := ctx.GetInt("chunk")   //chunk
 			chunks, err := ctx.GetInt("chunks") //chunks
-			// fmt.Printf("chunk=%d,chunks=%d", chunk, chunks)
 			fileName := f.Filename
 			//m5.Write([]byte(fileName))
 			//m5FileName := hex.EncodeToString(m5.Sum(nil))
@@ -90,32 +97,28 @@ func FileHandleUpload(ctx *Context, dir string, returnRealFile bool) ([]FileInfo
 				return nil, errors.New("upload error")
 			}
 			defer file.Close()
-			//fn += m5FileName
 			fn += path.Ext(fileName)
 			rfn := fn
 			if chunks > 0 {
 				fn += "." + strconv.Itoa(chunk)
 			}
-			//fp := config.FileDir() + fn
 			fp := dir + fn
 			if returnRealFile {
-				realFiles = append(realFiles, FileInfo{FileName: fp, RawName: fileName, Chunks: chunks})
+				realFiles = append(realFiles, Fs{FileName: fp, RawName: fileName, Chunks: chunks})
 			} else {
-				realFiles = append(realFiles, FileInfo{FileName: "f/" + rfn, RawName: fileName, Chunks: chunks})
+				realFiles = append(realFiles, Fs{FileName: access + rfn, RawName: fileName, Chunks: chunks})
 			}
-			exist := PathExist(dir)
-			if !exist {
-				err := os.Mkdir(dir, os.ModePerm)
-				if err != nil {
-					return nil, errors.New("Directory does not exist")
-				}
+			err = ExistAndAutoMkdir(dir)
+			if err != nil {
+				return nil, err
 			}
 			writer, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0666)
 			if err != nil {
-				return nil, errors.New("Failed to create file")
+				return nil, errors.New("failed to create file")
 			}
 			defer writer.Close()
 			io.Copy(writer, file)
+			//
 		}
 	}
 	return realFiles, nil
@@ -130,25 +133,25 @@ func MergeHandle(dir string) func(ctx *Context) {
 
 //Merge files
 func Merge(ctx *Context, dir string) {
-	var data []FileInfo
+	var data []Fs
 	err := ctx.JSONObj(&data)
 	if err != nil {
-		ctx.Failed("Invalid merge files info")
+		ctx.Failed("invalid merge files info")
 		return
 	}
 	lg := len(data)
-	files := make([]FileInfo, 0, lg)
+	files := make([]Fs, 0, lg)
 	for i := 0; i < lg; i++ {
 		o := &data[i]
-		if err := mergeFile(o, dir); err == nil {
+		if err := DoMerge(o, dir); err == nil {
 			files = append(files, *o)
 		}
 	}
 	ctx.JSON(files)
 }
 
-//real merge files and delete invalid files
-func mergeFile(fObj *FileInfo, dir string) error {
+//DoMerge real merge files and delete invalid files
+func DoMerge(fObj *Fs, dir string) error {
 	fileName := fObj.FileName
 	chunks := fObj.Chunks
 	if chunks <= 0 {
@@ -164,14 +167,14 @@ func mergeFile(fObj *FileInfo, dir string) error {
 		f := dir + fileName
 		writer, err := os.OpenFile(f, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			return errors.New("Failed to create file")
+			return errors.New("failed to create file")
 		}
 		defer writer.Close()
 		for i := 0; i < chunks; i++ {
 			fp := f + "." + strconv.Itoa(i)
 			file, err := os.Open(fp)
 			if err != nil {
-				return errors.New("Failed to Merge files")
+				return errors.New("failed to Merge files")
 			}
 			defer file.Close()
 			_, err = io.Copy(writer, file)
@@ -181,14 +184,14 @@ func mergeFile(fObj *FileInfo, dir string) error {
 		}
 		return nil
 	}
-	return errors.New("Invalid files info")
+	return errors.New("invalid files info")
 }
 
-// PathExist returns a boolean indicating whether the error is known to
+// Exist returns a boolean indicating whether the error is known to
 // report that a file or directory does not exist. It is satisfied by
 // ErrNotExist as well as some syscall errors.
-func PathExist(path string) bool {
-	_, err := os.Stat(path)
+func Exist(filename string) bool {
+	_, err := os.Stat(filename)
 	if err == nil {
 		return true
 	}
@@ -196,4 +199,20 @@ func PathExist(path string) bool {
 		return false
 	}
 	return false
+}
+
+//ExistAndAutoMkdir Check that the file directory exists, there is no automatically created
+func ExistAndAutoMkdir(filename string) (err error) {
+	filename = path.Dir(filename)
+	_, err = os.Stat(filename)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(filename, os.ModePerm)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }

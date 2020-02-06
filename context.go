@@ -1332,6 +1332,6 @@ func (c *Context) GUID() string {
 // Exist returns a boolean indicating whether the error is known to
 // report that a file or directory does not exist. It is satisfied by
 // ErrNotExist as well as some syscall errors.
-func (c *Context) Exist(path string) bool {
-	return PathExist(path)
+func (c *Context) Exist(filename string) bool {
+	return Exist(filename)
 }
