@@ -25,24 +25,28 @@ func New() Any {
 
 //URL returns k1=v1&k2=v2
 func (c *Any) URL() string {
+	return c.Join("&")
+}
+
+//Join returns e.g k1=v1&k2=v2
+func (c *Any) Join(sep string) string {
+	if sep == "" {
+		sep = "&"
+	}
 	var s []string
 	ks, vs := "", ""
-	var ser Stringer
-	ok := false
 	for k, v := range *c {
 		if k != nil && v != nil {
 			ks, vs = "", ""
-			ser, ok = k.(Stringer)
-			if !ok {
-				ks = ser.String()
+			if tv, ok := k.(Stringer); ok {
+				ks = tv.String()
 			} else {
 				ks = fmt.Sprintf("%v", k)
 			}
-			ser, ok = v.(Stringer)
-			if !ok {
-				vs = ser.String()
+			if tv, ok := v.(Stringer); ok {
+				vs = tv.String()
 			} else {
-				vs = fmt.Sprintf("%v", k)
+				vs = fmt.Sprintf("%v", v)
 			}
 			s = append(s, ks+"="+vs)
 		}
@@ -50,7 +54,7 @@ func (c *Any) URL() string {
 	if s != nil {
 		sort.Sort(sort.StringSlice(s))
 	}
-	return strings.Join(s, "&")
+	return strings.Join(s, sep)
 }
 
 //String KV for string
@@ -64,6 +68,14 @@ func NewString() String {
 
 //URL returns k1=v1&k2=v2
 func (c *String) URL() string {
+	return c.Join("&")
+}
+
+//Join returns e.g k1=v1&k2=v2
+func (c *String) Join(sep string) string {
+	if sep == "" {
+		sep = "&"
+	}
 	var s []string
 	for k, v := range *c {
 		if k != "" && v != "" {
@@ -73,5 +85,5 @@ func (c *String) URL() string {
 	if s != nil {
 		sort.Sort(sort.StringSlice(s))
 	}
-	return strings.Join(s, "&")
+	return strings.Join(s, sep)
 }
