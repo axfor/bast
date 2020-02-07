@@ -2,7 +2,7 @@
 
 package lang
 
-//zh-cn
+//zh-cn or zh_cn
 var zhCn = map[string]string{
 	"v.required":   "{0}不能空",
 	"v.date":       "{0}必须为有效日期类型",
@@ -18,4 +18,5 @@ var zhCn = map[string]string{
 
 func init() {
 	Register("zh-cn", zhCn)
+	Register("zh_cn", zhCn)
 }
