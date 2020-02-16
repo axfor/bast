@@ -12,7 +12,7 @@ var trans = map[string]*translator{}
 var keyTrans = map[string]string{}
 
 type translator struct {
-	Item []item
+	Item []*item
 	Cap  int
 }
 
@@ -64,7 +64,7 @@ func Register(lang string, ts map[string]string) {
 		//if _, ok := trans[vs]; !ok {
 		vv := v
 		lg := len(v)
-		trs := []item{}
+		trs := []*item{}
 		refCap := lg
 		for {
 			i := strings.Index(vv, "{")
@@ -73,7 +73,7 @@ func Register(lang string, ts map[string]string) {
 				break
 			}
 			if i > 0 {
-				trs = append(trs, item{vv[0:i], -1})
+				trs = append(trs, &item{vv[0:i], -1})
 			}
 			i++
 			p := vv[i:j]
@@ -82,7 +82,7 @@ func Register(lang string, ts map[string]string) {
 				break
 			}
 			rp := "{" + p + "}"
-			trs = append(trs, item{rp, pi})
+			trs = append(trs, &item{rp, pi})
 			j++
 			if j < lg {
 				vv = vv[j:]
@@ -92,7 +92,7 @@ func Register(lang string, ts map[string]string) {
 			break
 		}
 		if vv != "" {
-			trs = append(trs, item{vv, -1})
+			trs = append(trs, &item{vv, -1})
 		}
 		lg = len(trs)
 		if lg > 0 {
