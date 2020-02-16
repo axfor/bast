@@ -2,7 +2,7 @@
 
 package cmap
 
-import "github.com/aixiaoxiang/bast/cmap/concurrent_map"
+import "github.com/easierway/concurrent_map"
 
 // CMap is a thread safe map collection with better performance.
 // The backend map entries are separated into the different partitions.
