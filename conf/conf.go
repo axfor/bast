@@ -56,6 +56,7 @@ type AppConf struct {
 	CORS         *CORS             `json:"cors"`     //CORS
 	Conf         interface{}       `json:"conf"`     //user conf
 	Extend       string            `json:"extend"`   //user extend
+	Page         *Pagination       `json:"page"`     //pagination conf
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
@@ -67,6 +68,13 @@ type CORS struct {
 	AllowHeaders     string `json:"allowHeaders"`
 	AllowCredentials string `json:"allowCredentials"`
 	MaxAge           string `json:"maxAge"`
+}
+
+//Pagination  config
+type Pagination struct {
+	Page    string `json:"page"`
+	Total   string `json:"total"`
+	PageRow string `json:"pageRow"`
 }
 
 //Init data
@@ -224,6 +232,32 @@ func SessionConf() *sessionConf.Conf {
 		return c.Session
 	}
 	return sessionConf.DefaultConf
+}
+
+//PageConf return Pagination conf
+func PageConf() *Pagination {
+	var p *Pagination
+	c := Conf()
+	if c != nil && c.Page != nil {
+		p = c.Page
+	}
+	if p == nil {
+		p = &Pagination{
+			Page:    "page",
+			Total:   "total",
+			PageRow: "pageRow",
+		}
+	}
+	if p.Page == "" {
+		p.Page = "page"
+	}
+	if p.Total == "" {
+		p.Total = "total"
+	}
+	if p.PageRow == "" {
+		p.PageRow = "pageRow"
+	}
+	return p
 }
 
 //SameSite if app config configuration cookie sameSite return it，orherwise return 'None'

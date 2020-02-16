@@ -981,9 +981,9 @@ func (c *Context) Query() url.Values {
 //	total 	all data total count(cache total count for first service return)
 //  pageRow page maximum size(default is 100 row)
 func (c *Context) GetPage() (page int, total int, pageRow int) {
-	page = c.GetIntValue("page", 0)
-	total = c.GetIntValue("total", 0)
-	pageRow = c.GetIntValue("pageRow", 100)
+	page = c.GetIntValue(app.page.Page, 0)
+	total = c.GetIntValue(app.page.Total, 0)
+	pageRow = c.GetIntValue(app.page.PageRow, 100)
 	if page > 0 {
 		page--
 	}

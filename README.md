@@ -447,6 +447,11 @@ bast.Run(":9999")
             "maxAge":"1728000",
             "allowCredentials":"true"
         },
+        "page":{
+            "page":"page name",
+            "total":"total name",
+            "pageRow":"pageRow name"
+        },
         "conf":{//user config(non bast framework) such as db config
             "key":"app",
             "name":"xxx",

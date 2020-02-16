@@ -68,6 +68,7 @@ type App struct {
 	cors                                      *conf.CORS
 	wrap                                      bool
 	id                                        *snowflake.Node
+	page                                      *conf.Pagination
 }
 
 type work struct {
@@ -108,6 +109,8 @@ func init() {
 
 	app.id = ids.New()
 
+	app.page = conf.PageConf()
+
 	//register http OPTIONS of router
 	doHandle("OPTIONS", "/*filepath", nil)
 	//register not found handler of router
@@ -116,60 +119,6 @@ func init() {
 	app.Router.MethodNotAllowed = MethodNotAllowedHandler{}
 	//register options handler of router
 	app.Router.GlobalOPTIONS = MethodOptionsHandler{}
-}
-
-//parseCommandLine parse commandLine
-func parseCommandLine() {
-	f := flag.NewFlagSet("bast", flag.ContinueOnError)
-	f.Usage = func() {
-		fmt.Println(usageline)
-		os.Exit(0)
-	}
-	if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
-		f.Usage()
-	}
-	f.BoolVar(&flagDevelop, "develop", false, "")
-	f.BoolVar(&flagStart, "start", false, "")
-	f.BoolVar(&flagStop, "stop", false, "")
-	f.BoolVar(&flagReload, "reload", false, "")
-	f.BoolVar(&flagDaemon, "daemon", false, "")
-	f.BoolVar(&isUninstall, "uninstall", false, "")
-	f.BoolVar(&isForce, "force", false, "")
-	f.BoolVar(&isInstall, "install", false, "")
-	f.BoolVar(&flagService, "service", false, "")
-	f.BoolVar(&isMaster, "master", false, "")
-	f.BoolVar(&isMigration, "migration", false, "")
-	f.StringVar(&flagName, "name", "", "")
-	f.StringVar(&flagConf, "conf", "", "")
-	f.StringVar(&flagAppKey, "appkey", "", "")
-	f.StringVar(&flagPipe, "pipe", "", "")
-	f.IntVar(&flagPPid, "pid", 0, "")
-
-	f.Parse(os.Args[1:])
-	if len(os.Args) == 1 {
-		//flagStart = true
-	}
-	if flagName != "" {
-		isInstall = true
-	}
-	if !isInstall {
-		for _, k := range os.Args[1:] {
-			if strings.HasPrefix(k, "-install") {
-				isInstall = true
-				break
-			}
-		}
-	}
-	if isInstall {
-		flagDaemon = false
-	}
-	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
-		flagStart = false
-	}
-	if flagService {
-		isMaster = flagService
-	}
-	conf.Parse(f)
 }
 
 //Before set the request 'before' handle
@@ -1127,4 +1076,58 @@ func clear() {
 	isClear = true
 	logs.Clear()
 	removePid()
+}
+
+//parseCommandLine parse commandLine
+func parseCommandLine() {
+	f := flag.NewFlagSet("bast", flag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Println(usageline)
+		os.Exit(0)
+	}
+	if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
+		f.Usage()
+	}
+	f.BoolVar(&flagDevelop, "develop", false, "")
+	f.BoolVar(&flagStart, "start", false, "")
+	f.BoolVar(&flagStop, "stop", false, "")
+	f.BoolVar(&flagReload, "reload", false, "")
+	f.BoolVar(&flagDaemon, "daemon", false, "")
+	f.BoolVar(&isUninstall, "uninstall", false, "")
+	f.BoolVar(&isForce, "force", false, "")
+	f.BoolVar(&isInstall, "install", false, "")
+	f.BoolVar(&flagService, "service", false, "")
+	f.BoolVar(&isMaster, "master", false, "")
+	f.BoolVar(&isMigration, "migration", false, "")
+	f.StringVar(&flagName, "name", "", "")
+	f.StringVar(&flagConf, "conf", "", "")
+	f.StringVar(&flagAppKey, "appkey", "", "")
+	f.StringVar(&flagPipe, "pipe", "", "")
+	f.IntVar(&flagPPid, "pid", 0, "")
+
+	f.Parse(os.Args[1:])
+	if len(os.Args) == 1 {
+		//flagStart = true
+	}
+	if flagName != "" {
+		isInstall = true
+	}
+	if !isInstall {
+		for _, k := range os.Args[1:] {
+			if strings.HasPrefix(k, "-install") {
+				isInstall = true
+				break
+			}
+		}
+	}
+	if isInstall {
+		flagDaemon = false
+	}
+	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
+		flagStart = false
+	}
+	if flagService {
+		isMaster = flagService
+	}
+	conf.Parse(f)
 }
