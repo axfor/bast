@@ -79,6 +79,14 @@ bast.Post("/xxx", func(ctx *bast.Context) {
 })
     
 ``` 
+
+## For More
+
+``` golang 
+
+bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Auth().Param("test xxx data")
+
+``` 
 ---
 
 # Validate

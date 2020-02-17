@@ -47,16 +47,18 @@ type AppConf struct {
 	FileDir      string            `json:"fileDir"`
 	Debug        bool              `json:"debug"`
 	BaseURL      string            `json:"baseUrl"`
-	IDNode       uint8             `json:"idNode"`   //id node
-	Lang         string            `json:"lang"`     //lang
-	SameSiteText string            `json:"sameSite"` //strict|lax|none
-	Wrap         *bool             `json:"wrap"`     //wrap response body
-	Session      *sessionConf.Conf `json:"session"`  //session
-	Log          *logs.Conf        `json:"log"`      //log conf
-	CORS         *CORS             `json:"cors"`     //CORS
-	Conf         interface{}       `json:"conf"`     //user conf
-	Extend       string            `json:"extend"`   //user extend
-	Page         *Pagination       `json:"page"`     //pagination conf
+	IDNode       uint8             `json:"idNode"`    //id node
+	Lang         string            `json:"lang"`      //lang
+	SameSiteText string            `json:"sameSite"`  //strict|lax|none
+	Wrap         *bool             `json:"wrap"`      //wrap response body
+	Session      *sessionConf.Conf `json:"session"`   //session
+	Log          *logs.Conf        `json:"log"`       //log conf
+	CORS         *CORS             `json:"cors"`      //CORS
+	Conf         interface{}       `json:"conf"`      //user conf
+	Extend       string            `json:"extend"`    //user extend
+	Page         *Pagination       `json:"page"`      //pagination conf
+	Discovery    bool              `json:"discovery"` //
+	ETCD         *ETCD             `json:"etcd"`      //
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
@@ -75,6 +77,12 @@ type Pagination struct {
 	Page    string `json:"page"`
 	Total   string `json:"total"`
 	PageRow string `json:"pageRow"`
+}
+
+//ETCD  config
+type ETCD struct {
+	Endpoints   string `json:"endpoints"` //localhost:2379,localhost:22379
+	DialTimeout string `json:"timeout"`   //second
 }
 
 //Init data
@@ -258,6 +266,15 @@ func PageConf() *Pagination {
 		p.PageRow = "pageRow"
 	}
 	return p
+}
+
+//ETCDConf return ETCD conf
+func ETCDConf() *ETCD {
+	c := Conf()
+	if c != nil {
+		return c.ETCD
+	}
+	return nil
 }
 
 //SameSite if app config configuration cookie sameSite return it，orherwise return 'None'

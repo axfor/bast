@@ -57,6 +57,7 @@ var (
 type App struct {
 	pool                                      sync.Pool
 	Router                                    *httprouter.Router
+	pattern                                   map[string]*Pattern
 	Addr, pipeName, CertFile, KeyFile         string
 	Server                                    *http.Server
 	Before                                    BeforeHandle
@@ -93,7 +94,7 @@ type MigrationHandle func() error
 //init application
 func init() {
 	os.Chdir(AppDir())
-	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true, wrap: true}
+	app = &App{Server: &http.Server{}, Router: httprouter.New(), runing: true, wrap: true, pattern: map[string]*Pattern{}}
 	parseCommandLine()
 	app.pool.New = func() interface{} {
 		return &Context{}
@@ -111,8 +112,6 @@ func init() {
 
 	app.page = conf.PageConf()
 
-	//register http OPTIONS of router
-	doHandle("OPTIONS", "/*filepath", nil)
 	//register not found handler of router
 	app.Router.NotFound = NotFoundHandler{}
 	//register not allowed handler of router
@@ -158,59 +157,78 @@ func (app *App) ListenAndServeTLS() error {
 // All registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func All(pattern string, f func(ctx *Context), authorization ...bool) {
-	for _, v := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions} {
-		doHandle(v+"", pattern, f, authorization...)
+func All(pattern string, f func(ctx *Context)) {
+	for _, m := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodHead, http.MethodOptions} {
+		routerHandle(m, pattern, f)
 	}
 }
 
 // Get registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Get(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodGet, pattern, f, authorization...)
+func Get(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodGet, pattern, f)
 }
 
 // Post registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Post(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodPost, pattern, f, authorization...)
+func Post(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodPost, pattern, f)
 }
 
 // Put registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Put(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodPut, pattern, f, authorization...)
+func Put(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodPut, pattern, f)
 }
 
 // Delete registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Delete(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodDelete, pattern, f, authorization...)
+func Delete(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodDelete, pattern, f)
 }
 
 // Head registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Head(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodHead, pattern, f, authorization...)
+func Head(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodHead, pattern, f)
 }
 
 // Patch registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Patch(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodPatch, pattern, f, authorization...)
+func Patch(pattern string, f func(ctx *Context)) *Pattern {
+	return routerHandle(http.MethodPatch, pattern, f)
 }
 
 // Options registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func Options(pattern string, f func(ctx *Context), authorization ...bool) {
-	doHandle(http.MethodOptions, pattern, f, authorization...)
+func Options(pattern string, f func(ctx *Context)) *Pattern {
+	// doHandle(http.MethodOptions, pattern, f)
+	return routerHandle(http.MethodOptions, pattern, f)
+}
+
+func routerHandle(method, pattern string, fn func(ctx *Context)) *Pattern {
+	r := &Pattern{
+		Method:  method,
+		Pattern: pattern,
+		Fn:      fn,
+	}
+	app.pattern[method+pattern] = r
+	return r
+}
+
+//Router register to httpRouter
+func Router() {
+	for _, p := range app.pattern {
+		pp := p
+		pp.Router()
+	}
 }
 
 // FileServer registers the handler function for the given pattern
@@ -303,16 +321,12 @@ func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // doHandle registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
-func doHandle(method, pattern string, f func(ctx *Context), authorization ...bool) {
-	if f == nil {
+func doHandle(pattern *Pattern) {
+	if pattern.Fn == nil {
 		return
 	}
-	auth := false
-	if authorization != nil {
-		auth = authorization[0]
-	}
 	//app.Router.HandlerFunc(method,pattern)
-	app.Router.Handle(method, pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	app.Router.Handle(pattern.Method, pattern.Pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		logs.Info("access-start",
 			zap.String("url", r.RequestURI),
 			zap.String("method", r.Method),
@@ -327,7 +341,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			w.Header().Set("Vary", allowOrigin)
 		}
 		w.Header().Set("Access-Control-Allow-Credentials", app.cors.AllowCredentials)
-		if pattern == "/" && r.URL.Path != pattern {
+		if pattern.Pattern == "/" && r.URL.Path != pattern.Pattern {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, http.StatusText(http.StatusNotFound))
 			goto end
@@ -356,6 +370,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				}
 			}()
 
+			ctx.Router = pattern
 			ctx.In = r
 			ctx.Accept = r.Header.Get("Accept")
 			if ctx.Accept == "" || strings.HasPrefix(ctx.Accept, "application/json") {
@@ -367,14 +382,14 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 			}
 			ctx.Out = w
 			ctx.Params = ps
-			ctx.NeedAuthorization = auth
+			ctx.NeedAuthorization = pattern.authorization
 
 			s, err := session.Start(w, r)
 			if err == nil && s != nil {
 				ctx.Session = s
 			}
 
-			if auth && app.Authorization != nil && app.Authorization(ctx) != nil {
+			if pattern.authorization && app.Authorization != nil && app.Authorization(ctx) != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprint(w, http.StatusText(http.StatusUnauthorized))
 				goto end
@@ -390,7 +405,7 @@ func doHandle(method, pattern string, f func(ctx *Context), authorization ...boo
 				goto end
 			}
 
-			f(ctx)
+			pattern.Fn(ctx)
 
 			if app.After != nil {
 				app.After(ctx)
@@ -508,6 +523,7 @@ func RunWithTLS(addr, certFile, keyFile string) {
 //doRun real run app
 func doRun(addr, certFile, keyFile string) {
 	defer clear()
+	Router()
 	app.Addr = addr
 	app.CertFile = certFile
 	app.KeyFile = keyFile

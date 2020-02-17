@@ -74,6 +74,8 @@ type Context struct {
 	IsAuthorization bool
 	//Session is session
 	Session engine.Store
+	//Router
+	Router *Pattern
 }
 
 //Message is response message
@@ -1314,6 +1316,7 @@ func (c *Context) Reset() {
 	c.Session = nil
 	c.Accept = ""
 	c.KindAccept = 0
+	c.Router = nil
 }
 
 //ID return a ID
