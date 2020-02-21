@@ -1096,6 +1096,31 @@ func clear() {
 
 //parseCommandLine parse commandLine
 func parseCommandLine() {
+	doParseCommandLine()
+	if flagName != "" {
+		isInstall = true
+	}
+	if !isInstall {
+		for _, k := range os.Args[1:] {
+			if strings.HasPrefix(k, "-install") {
+				isInstall = true
+				break
+			}
+		}
+	}
+	if isInstall {
+		flagDaemon = false
+	}
+	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
+		flagStart = false
+	}
+	if flagService {
+		isMaster = flagService
+	}
+
+}
+
+func doParseCommandLine() {
 	f := flag.NewFlagSet("bast", flag.ContinueOnError)
 	f.Usage = func() {
 		fmt.Println(usageline)
@@ -1120,30 +1145,13 @@ func parseCommandLine() {
 	f.StringVar(&flagAppKey, "appkey", "", "")
 	f.StringVar(&flagPipe, "pipe", "", "")
 	f.IntVar(&flagPPid, "pid", 0, "")
-
 	f.Parse(os.Args[1:])
-	if len(os.Args) == 1 {
-		//flagStart = true
-	}
-	if flagName != "" {
-		isInstall = true
-	}
-	if !isInstall {
-		for _, k := range os.Args[1:] {
-			if strings.HasPrefix(k, "-install") {
-				isInstall = true
-				break
-			}
-		}
-	}
-	if isInstall {
-		flagDaemon = false
-	}
-	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
-		flagStart = false
-	}
-	if flagService {
-		isMaster = flagService
-	}
 	conf.Parse(f)
+}
+
+func flagBoolVar(f *flag.FlagSet, p *bool, name string, value bool, usage string) {
+	fs := f.Lookup(name)
+	if fs != nil {
+		flagConf = fs.Value.String()
+	}
 }

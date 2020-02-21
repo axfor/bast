@@ -12,3 +12,4 @@
 *.out
 .DS_Store
 go.sum
+bast_test.go

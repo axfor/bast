@@ -123,7 +123,6 @@ func NewTransport() *http.Transport {
 		}).DialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
@@ -212,12 +211,18 @@ func (c *Client) Cookie(cookie *http.Cookie) *Client {
 
 // File add file into request.
 func (c *Client) File(fileName, path string) *Client {
+	if c.files == nil {
+		c.files = map[string]string{}
+	}
 	c.files[fileName] = path
 	return c
 }
 
 // Files add files into request.
 func (c *Client) Files(paths map[string]string) *Client {
+	if c.files == nil {
+		c.files = map[string]string{}
+	}
 	for k, v := range paths {
 		c.files[k] = v
 	}
@@ -595,7 +600,8 @@ func createRequest(uri, method string) *Client {
 			ProtoMajor: 1,
 			ProtoMinor: 1,
 		},
-		err: nil,
+		files: map[string]string{},
+		err:   nil,
 	}
 	return c
 }
@@ -666,9 +672,13 @@ func (c *Client) build() error {
 	}
 
 	if c.Conf.Transport != nil {
-		c.client.Transport = c.Conf.Transport
+		if c.client.Transport != c.Conf.Transport {
+			c.client.Transport = c.Conf.Transport
+		}
 	} else {
-		c.client.Transport = defaultTransport
+		if c.client.Transport != defaultTransport {
+			c.client.Transport = defaultTransport
+		}
 	}
 	var urlParam string
 	var buf bytes.Buffer
@@ -783,4 +793,6 @@ func init() {
 	defaultTransport = NewTransport()
 
 	defaultClient = &http.Client{}
+
+	defaultClient.Transport = defaultTransport
 }
