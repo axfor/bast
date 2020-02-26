@@ -298,11 +298,11 @@ bast.Run(":9999")
 
 # CommandLine
 
-` Like nginx commandline `
+` like nginx commandline `
 
 ### If Your program name is ``` Ai ```
 
-#### -h | -help
+#### -h | --help
 
 ``` bash
 
@@ -310,78 +310,78 @@ bast.Run(":9999")
 
 ```
 
-#### -start   
+#### --start   
 
 ` Run in background  `
 
 ``` bash
 
-    ./Ai -start
+    ./Ai --start
 
 ```
 
-#### -stop 
+#### --stop 
 
 ` stop program `
 
 ``` bash
 
-    ./Ai -stop
+    ./Ai --stop
 
 ```
 
-#### -reload    
+#### --reload    
 
 `graceful restart. stop and start`
 
 ``` bash
 
-    ./Ai -reload
+    ./Ai --reload
 
 ```
 
-#### -conf 
+#### --conf 
 
 ` seting config files.(default is ./config.conf)`
 
 ``` bash
 
-    ./Ai -conf=your path/config.conf 
+    ./Ai --conf=your path/config.conf 
 
 ```
 
 
-#### -install 
+#### --install 
 
 `installed as service.(daemon) `
 
 
 ``` bash
 
-    ./Ai -install
+    ./Ai --install
 
 ```
 
 
-#### -uninstall 
+#### --uninstall 
 
 `uninstall a service.(daemon) `
 
 
 ``` bash
 
-    ./Ai -uninstall
+    ./Ai --uninstall
 
 ```
  
 
-#### -migration 
+#### --migration 
  
 ` migration or initial system(handle sql script ...) `
 
 ``` bash
 
-    ./Ai -migration
+    ./Ai --migration
 
 ```
  
@@ -392,7 +392,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./Ai -start -conf=./config.conf 
+    ./Ai --start --conf=./config.conf 
 
 ```
 
@@ -402,7 +402,7 @@ bast.Run(":9999")
 
 ``` bash  
 
-    ./Ai -install
+    ./Ai --install
 
 ```
 
