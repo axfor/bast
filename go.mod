@@ -7,10 +7,10 @@ require (
 	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/onsi/ginkgo v1.11.0 // indirect
-	github.com/onsi/gomega v1.8.1 // indirect
-	github.com/pkg/errors v0.8.1
-	go.etcd.io/etcd v3.3.18+incompatible
+	github.com/onsi/ginkgo v1.12.0 // indirect
+	github.com/onsi/gomega v1.9.0 // indirect
+	github.com/spf13/cobra v0.0.6
+	go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738
 	go.uber.org/zap v1.13.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.2.4

@@ -5,7 +5,6 @@ package bast
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -26,30 +25,21 @@ import (
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/logs"
+	"github.com/aixiaoxiang/bast/registry"
 	"github.com/aixiaoxiang/bast/session"
 	"github.com/aixiaoxiang/bast/snowflake"
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
+	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var (
-	usageline = `help:
-	-h | -help                    show help
-	-develop                      run in develop(develop environment)
-	-start                        run in background
-	-stop                         graceful for stop
-	-reload                       graceful for reload
-	-migration                    migration or initial system
-	-conf=your path/config.conf   config path(default is ./config.conf)
-	-install                      install to service
-	-uninstall                    uninstall for service
-	`
 	flagDevelop, flagStart, flagStop, flagReload, flagDaemon                     bool
 	isInstall, isUninstall, isForce, flagService, isMaster, isClear, isMigration bool
 	flagConf, flagName, flagAppKey, flagPipe                                     string
-	flagPPid                                                                     int
+	flagPid                                                                      int
 	app                                                                          *App
 )
 
@@ -58,6 +48,7 @@ type App struct {
 	pool                                      sync.Pool
 	Router                                    *httprouter.Router
 	pattern                                   map[string]*Pattern
+	registry                                  *registry.Service
 	Addr, pipeName, CertFile, KeyFile         string
 	Server                                    *http.Server
 	Before                                    BeforeHandle
@@ -229,6 +220,44 @@ func Router() {
 		pp := p
 		pp.Router()
 	}
+	go Publish()
+}
+
+//Publish publish to Registry
+func Publish() error {
+	var err error
+	rc := conf.RegistryConf()
+	if rc != nil && rc.Publish {
+		if app.pattern == nil {
+			return nil
+		}
+		if app.registry == nil {
+			app.registry, err = registry.New(rc)
+			if err != nil {
+				return err
+			}
+		}
+		pubs := 0
+		ctx := context.Background()
+		for _, p := range app.pattern {
+			pp := p
+			if !pp.publish {
+				continue
+			}
+			_, err = app.registry.Put(ctx, rc.Prefix+pp.ServerName, rc.Prefix+pp.Pattern)
+			if err != nil {
+				continue
+			}
+			pp.publishFinish = err == nil
+			pubs++
+		}
+		if pubs > 0 {
+			app.registry.StopKeepAlive()
+			app.registry.StartKeepAlive()
+		}
+	}
+	return nil
+
 }
 
 // FileServer registers the handler function for the given pattern
@@ -650,7 +679,7 @@ func start() (bool, error) {
 		return false, nil
 	}
 	path := conf.Path()
-	cmd := exec.Command(os.Args[0], "-master", "-start", "-conf="+path)
+	cmd := exec.Command(os.Args[0], "--master", "--start", "--conf="+path)
 	cmd.Dir = AppDir()
 	cmd.Start()
 	// time.Sleep(200 * time.Millisecond)
@@ -661,7 +690,7 @@ func service() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	service, err := sdaemon.New(flagName, flagName+" service")
+	service, err := sdaemon.New(flagName, flagName+" --service")
 	if err != nil {
 		logs.Errors("service failed", err)
 		return
@@ -693,7 +722,7 @@ func doStart() error {
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
-		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
+		cmd := exec.Command(os.Args[0], "--daemon", "--appkey="+c.Key, "--pipe="+app.pipeName, "--conf="+path)
 		// cmd.Stdout = os.Stdout
 		// cmd.Stderr = os.Stderr
 		cmd.Dir = AppDir()
@@ -719,7 +748,7 @@ func startWork(index int) *exec.Cmd {
 	if c != nil {
 		path := conf.Path()
 		// pid := strconv.Itoa(os.Getpid())
-		cmd := exec.Command(os.Args[0], "-daemon", "-appkey="+c.Key, "-pipe="+app.pipeName, "-conf="+path)
+		cmd := exec.Command(os.Args[0], "--daemon", "--appkey="+c.Key, "--pipe="+app.pipeName, "--conf="+path)
 		// cmd.StdinPipe()
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -857,7 +886,7 @@ func install() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	var agrs = []string{"-service", "-force", "-conf=" + flagConf}
+	var agrs = []string{"--service", "--force", "--conf=" + flagConf}
 
 	service, err := sdaemon.New(flagName, flagName+" service")
 	if err != nil {
@@ -1092,6 +1121,9 @@ func clear() {
 	isClear = true
 	logs.Clear()
 	removePid()
+	if app.registry != nil {
+		app.registry.StopKeepAlive()
+	}
 }
 
 //parseCommandLine parse commandLine
@@ -1102,7 +1134,7 @@ func parseCommandLine() {
 	}
 	if !isInstall {
 		for _, k := range os.Args[1:] {
-			if strings.HasPrefix(k, "-install") {
+			if strings.HasPrefix(k, "--install") || strings.HasPrefix(k, "-i") {
 				isInstall = true
 				break
 			}
@@ -1121,37 +1153,96 @@ func parseCommandLine() {
 }
 
 func doParseCommandLine() {
-	f := flag.NewFlagSet("bast", flag.ContinueOnError)
-	f.Usage = func() {
-		fmt.Println(usageline)
+	usageTemplate := `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}} 
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+	var cmd = &cobra.Command{
+		Use:                   "app command args",
+		Short:                 "",
+		Long:                  "",
+		SilenceErrors:         true,
+		Example:               "app --start",
+		DisableAutoGenTag:     true,
+		DisableFlagsInUseLine: true,
+		DisableSuggestions:    true,
+		TraverseChildren:      true,
+		Run: func(cmd *cobra.Command, args []string) {
+		},
+	}
+	cmd.Flags().BoolVarP(&flagDevelop, "develop", "d", flagDevelop, "run in develop(develop environment)")
+	cmd.Flags().BoolVarP(&flagStart, "start", "s", flagStart, "run in background")
+	cmd.Flags().BoolVarP(&flagStop, "stop", "e", flagStop, "graceful for stop")
+	cmd.Flags().BoolVarP(&flagReload, "reload", "r", flagReload, "graceful for reload")
+	cmd.Flags().BoolVarP(&isMigration, "migration", "m", isMigration, "migration or initial system")
+	cmd.Flags().StringVarP(&flagConf, "conf", "c", flagConf, "config path(default is ./config.conf)")
+	cmd.Flags().BoolVarP(&isInstall, "install", "i", isInstall, "install to service")
+	cmd.Flags().BoolVarP(&isUninstall, "uninstall", "u", isUninstall, "uninstall for service")
+	cmd.Flags().BoolVar(&flagDaemon, "daemon", flagDaemon, "")
+	cmd.Flags().BoolVarP(&isForce, "force", "f", isForce, "")
+	cmd.Flags().BoolVar(&flagService, "service", flagService, "")
+	cmd.Flags().BoolVar(&isMaster, "master", isMaster, "")
+	cmd.Flags().StringVarP(&flagName, "name", "n", flagName, "")
+	cmd.Flags().StringVarP(&flagAppKey, "appkey", "k", flagAppKey, "app key")
+	cmd.Flags().StringVarP(&flagPipe, "pipe", "p", flagPipe, "pipe name")
+	cmd.Flags().IntVar(&flagPid, "pid", flagPid, "")
+	cmd.SetUsageTemplate(usageTemplate)
+	err := cmd.Execute()
+	if err != nil {
 		os.Exit(0)
 	}
-	if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
-		f.Usage()
-	}
-	f.BoolVar(&flagDevelop, "develop", false, "")
-	f.BoolVar(&flagStart, "start", false, "")
-	f.BoolVar(&flagStop, "stop", false, "")
-	f.BoolVar(&flagReload, "reload", false, "")
-	f.BoolVar(&flagDaemon, "daemon", false, "")
-	f.BoolVar(&isUninstall, "uninstall", false, "")
-	f.BoolVar(&isForce, "force", false, "")
-	f.BoolVar(&isInstall, "install", false, "")
-	f.BoolVar(&flagService, "service", false, "")
-	f.BoolVar(&isMaster, "master", false, "")
-	f.BoolVar(&isMigration, "migration", false, "")
-	f.StringVar(&flagName, "name", "", "")
-	f.StringVar(&flagConf, "conf", "", "")
-	f.StringVar(&flagAppKey, "appkey", "", "")
-	f.StringVar(&flagPipe, "pipe", "", "")
-	f.IntVar(&flagPPid, "pid", 0, "")
-	f.Parse(os.Args[1:])
-	conf.Parse(f)
-}
+	conf.Command(&flagConf, &flagAppKey)
 
-func flagBoolVar(f *flag.FlagSet, p *bool, name string, value bool, usage string) {
-	fs := f.Lookup(name)
-	if fs != nil {
-		flagConf = fs.Value.String()
-	}
+	// usage := `help:
+	// -h | -help                    show help
+	// -develop                      run in develop(develop environment)
+	// -start                        run in background
+	// -stop                         graceful for stop
+	// -reload                       graceful for reload
+	// -migration                    migration or initial system
+	// -conf=your path/config.conf   config path(default is ./config.conf)
+	// -install                      install to service
+	// -uninstall                    uninstall for service
+	// `
+	// f := flag.NewFlagSet("bast", flag.ContinueOnError)
+	// f.Usage = func() {
+	// 	fmt.Println(usageline)
+	// 	os.Exit(0)
+	// }
+	// if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
+	// 	//f.Usage()
+	// }
+
+	// f.BoolVar(&flagDevelop, "develop", false, "")
+	// f.BoolVar(&flagStart, "start", false, "")
+	// f.BoolVar(&flagStop, "stop", false, "")
+	// f.BoolVar(&flagReload, "reload", false, "")
+	// f.BoolVar(&flagDaemon, "daemon", false, "")
+	// f.BoolVar(&isUninstall, "uninstall", false, "")
+	// f.BoolVar(&isForce, "force", false, "")
+	// f.BoolVar(&isInstall, "install", false, "")
+	// f.BoolVar(&flagService, "service", false, "")
+	// f.BoolVar(&isMaster, "master", false, "")
+	// f.BoolVar(&isMigration, "migration", false, "")
+	// f.StringVar(&flagName, "name", "", "")
+	// f.StringVar(&flagConf, "conf", "", "")
+	// f.StringVar(&flagAppKey, "appkey", "", "")
+	// f.StringVar(&flagPipe, "pipe", "", "")
+	// f.IntVar(&flagPPid, "pid", 0, "")
+	//f.Parse(os.Args[1:])
 }

@@ -7,7 +7,7 @@ package pipe
 import (
 	"net"
 
-	"github.com/microsoft/go-winio"
+	"github.com/Microsoft/go-winio"
 )
 
 // Pipe creates a listener on a Windows named pipe path

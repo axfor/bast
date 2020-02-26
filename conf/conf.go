@@ -4,7 +4,6 @@ package conf
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -47,18 +46,17 @@ type AppConf struct {
 	FileDir      string            `json:"fileDir"`
 	Debug        bool              `json:"debug"`
 	BaseURL      string            `json:"baseUrl"`
-	IDNode       uint8             `json:"idNode"`    //id node
-	Lang         string            `json:"lang"`      //lang
-	SameSiteText string            `json:"sameSite"`  //strict|lax|none
-	Wrap         *bool             `json:"wrap"`      //wrap response body
-	Session      *sessionConf.Conf `json:"session"`   //session
-	Log          *logs.Conf        `json:"log"`       //log conf
-	CORS         *CORS             `json:"cors"`      //CORS
-	Conf         interface{}       `json:"conf"`      //user conf
-	Extend       string            `json:"extend"`    //user extend
-	Page         *Pagination       `json:"page"`      //pagination conf
-	Discovery    bool              `json:"discovery"` //
-	ETCD         *ETCD             `json:"etcd"`      //
+	IDNode       uint8             `json:"idNode"`   //id node
+	Lang         string            `json:"lang"`     //lang
+	SameSiteText string            `json:"sameSite"` //strict|lax|none
+	Wrap         *bool             `json:"wrap"`     //wrap response body
+	Session      *sessionConf.Conf `json:"session"`  //session
+	Log          *logs.Conf        `json:"log"`      //log conf
+	CORS         *CORS             `json:"cors"`     //CORS
+	Conf         interface{}       `json:"conf"`     //user conf
+	Extend       string            `json:"extend"`   //user extend
+	Page         *Pagination       `json:"page"`     //pagination conf
+	Registry     *Registry         `json:"registry"` //
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
@@ -79,10 +77,14 @@ type Pagination struct {
 	PageRow string `json:"pageRow"`
 }
 
-//ETCD  config
-type ETCD struct {
+//Registry  config
+type Registry struct {
+	Publish     bool   `json:"publish"`   //
+	BaseURL     string `json:"baseUrl"`   //
+	Prefix      string `json:"prefix"`    //
 	Endpoints   string `json:"endpoints"` //localhost:2379,localhost:22379
-	DialTimeout string `json:"timeout"`   //second
+	DialTimeout int64  `json:"timeout"`   //second default 5s
+	TTL         int64  `json:"ttl"`
 }
 
 //Init data
@@ -268,11 +270,11 @@ func PageConf() *Pagination {
 	return p
 }
 
-//ETCDConf return ETCD conf
-func ETCDConf() *ETCD {
+//RegistryConf return Registry conf
+func RegistryConf() *Registry {
 	c := Conf()
 	if c != nil {
-		return c.ETCD
+		return c.Registry
 	}
 	return nil
 }
@@ -388,22 +390,14 @@ func SetPath(confPath string) {
 	flagConf = confPath
 }
 
-//Parse parse config path
-func Parse(f *flag.FlagSet) string {
+//Command command
+func Command(conf, appkey *string) {
 	exPath := filepath.Dir(os.Args[0])
-	fs := f.Lookup("conf")
-	if fs != nil {
-		flagConf = fs.Value.String()
+	if *conf == "" {
+		*conf = exPath + "/config.conf"
 	}
-	fs = f.Lookup("appkey")
-	if fs != nil {
-		flagAppKey = fs.Value.String()
-	}
-	if flagConf == "" {
-		cf := exPath + "/config.conf"
-		flagConf = cf
-	}
-	return flagConf
+	flagConf = *conf
+	flagAppKey = *appkey
 }
 
 //Register regist handler of conf

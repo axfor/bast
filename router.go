@@ -9,7 +9,8 @@ type Pattern struct {
 	Name          string
 	ServerName    string
 	authorization bool
-	discovery     bool
+	publish       bool
+	publishFinish bool
 	toRouter      bool
 }
 
@@ -19,16 +20,35 @@ func (c *Pattern) Authorization() *Pattern {
 	return c
 }
 
+//Unauthorization not need api authorization
+func (c *Pattern) Unauthorization() *Pattern {
+	c.authorization = false
+	return c
+}
+
 //Auth need api authorization
 //eq Authorization
 func (c *Pattern) Auth() *Pattern {
 	return c.Authorization()
 }
 
-//Discover register to etcd etc.
-func (c *Pattern) Discover(serverName string) *Pattern {
-	c.discovery = true
+//Unauth need api Unauthorization
+//eq Unauthorization
+func (c *Pattern) Unauth() *Pattern {
+	return c.Unauthorization()
+}
+
+//Publish register to etcd etc.
+func (c *Pattern) Publish(serverName string) *Pattern {
+	c.publish = true
 	c.ServerName = serverName
+	return c
+}
+
+//Unpublish unregister to etcd etc.
+func (c *Pattern) Unpublish() *Pattern {
+	c.publish = false
+	c.ServerName = ""
 	return c
 }
 
