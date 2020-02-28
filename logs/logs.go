@@ -400,8 +400,8 @@ var gromLogFormatter = func(values ...interface{}) (messages []zap.Field, levels
 
 		if level == "sql" {
 			levels = "sql"
-			timeCost := strconv.FormatFloat(float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0, 'f', 0, 64) + "ms"
-			messages = append(messages, zap.String("timeCost", timeCost))
+			cost := strconv.FormatFloat(float64(values[2].(time.Duration).Nanoseconds()/1e4)/100.0, 'f', 0, 64) + "ms"
+			messages = append(messages, zap.String("cost", cost))
 
 			// sql
 			vs := values[4].([]interface{})
