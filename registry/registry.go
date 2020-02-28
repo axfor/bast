@@ -9,7 +9,6 @@ import (
 	"github.com/aixiaoxiang/bast/conf"
 	"github.com/aixiaoxiang/bast/logs"
 	"go.etcd.io/etcd/clientv3"
-	"go.uber.org/zap"
 )
 
 //Service inwrap for clientv3 of etcd
@@ -146,12 +145,12 @@ func (s *Service) StartKeepAlive() error {
 			return nil
 		case <-s.Client.Ctx().Done():
 			s.keepAliveing = false
-			logs.Error("registry-start", zap.String("server", "server closed"))
+			logs.Error("registry-start", logs.String("server", "server closed"))
 			return errors.New("server closed")
 		case _, ok := <-ch:
 			if !ok {
 				s.keepAliveing = false
-				logs.Error("registry-start", zap.String("keepAlive", "keep alive channel closed"))
+				logs.Error("registry-start", logs.String("keepAlive", "keep alive channel closed"))
 				s.revoke()
 				return nil
 			}

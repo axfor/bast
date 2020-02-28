@@ -31,7 +31,6 @@ import (
 	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -292,10 +291,10 @@ type NotFoundHandler struct {
 func (NotFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	logs.Error("not-found",
-		zap.String("url", r.RequestURI),
-		zap.String("method", r.Method),
-		zap.Int("status code", http.StatusNotFound),
-		zap.String("status text", http.StatusText(http.StatusNotFound)),
+		logs.String("url", r.RequestURI),
+		logs.String("method", r.Method),
+		logs.Int("status code", http.StatusNotFound),
+		logs.String("status text", http.StatusText(http.StatusNotFound)),
 	)
 }
 
@@ -307,10 +306,10 @@ type MethodNotAllowedHandler struct {
 func (MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	logs.Error("method-not-allowed",
-		zap.String("url", r.RequestURI),
-		zap.String("method", r.Method),
-		zap.Int("status code", http.StatusMethodNotAllowed),
-		zap.String("status text", http.StatusText(http.StatusMethodNotAllowed)),
+		logs.String("url", r.RequestURI),
+		logs.String("method", r.Method),
+		logs.Int("status code", http.StatusMethodNotAllowed),
+		logs.String("status text", http.StatusText(http.StatusMethodNotAllowed)),
 	)
 }
 
@@ -323,10 +322,10 @@ func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	allowOrigin := r.Header.Get("Origin")
 	allowHeaders := r.Header.Get("Access-Control-Request-Headers")
 	logs.Info("options",
-		zap.String("url", r.RequestURI),
-		zap.String("origin", allowOrigin),
-		zap.String("host", r.Host),
-		zap.String("referer", r.Referer()),
+		logs.String("url", r.RequestURI),
+		logs.String("origin", allowOrigin),
+		logs.String("host", r.Host),
+		logs.String("referer", r.Referer()),
 	)
 	if app.cors.AllowHeaders != "" || allowHeaders == "" {
 		w.Header().Set("Access-Control-Allow-Headers", app.cors.AllowHeaders)
@@ -357,8 +356,8 @@ func doHandle(pattern *Pattern) {
 	//app.Router.HandlerFunc(method,pattern)
 	app.Router.Handle(pattern.Method, pattern.Pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		logs.Info("access-start",
-			zap.String("url", r.RequestURI),
-			zap.String("method", r.Method),
+			logs.String("url", r.RequestURI),
+			logs.String("method", r.Method),
 		)
 		st := time.Now()
 		allowOrigin := r.Header.Get("Origin")
@@ -390,11 +389,11 @@ func doHandle(pattern *Pattern) {
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
 					panicCaller := zapcore.NewEntryCaller(runtime.Caller(4)).TrimmedPath()
 					logs.ErrorWithCaller("access-panic",
-						zap.String("caller", panicCaller),
-						zap.Any("error", err),
-						zap.String("url", r.RequestURI),
-						zap.String("method", r.Method),
-						zap.String("cost", time.Since(st).String()),
+						logs.String("caller", panicCaller),
+						logs.Any("error", err),
+						logs.String("url", r.RequestURI),
+						logs.String("method", r.Method),
+						logs.String("cost", time.Since(st).String()),
 					)
 				}
 			}()
@@ -442,9 +441,9 @@ func doHandle(pattern *Pattern) {
 		}
 	end:
 		logs.Info("access-end",
-			zap.String("url", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.String("cost", time.Since(st).String()),
+			logs.String("url", r.RequestURI),
+			logs.String("method", r.Method),
+			logs.String("cost", time.Since(st).String()),
 		)
 	})
 }
@@ -522,7 +521,7 @@ func IsRuning() bool {
 func Run(addr string) {
 	if addr == "" {
 		logs.Error("run addr is empty",
-			zap.String("address", addr))
+			logs.String("address", addr))
 		logs.Sync()
 		os.Exit(-1)
 	}
@@ -536,9 +535,9 @@ func Run(addr string) {
 func RunWithTLS(addr, certFile, keyFile string) {
 	if certFile == "" {
 		logs.Error("run with TLS certFile is empty",
-			zap.String("address", addr),
-			zap.String("certFile", certFile),
-			zap.String("keyFile", keyFile))
+			logs.String("address", addr),
+			logs.String("certFile", certFile),
+			logs.String("keyFile", keyFile))
 		logs.Sync()
 		os.Exit(-1)
 	}
@@ -559,7 +558,7 @@ func doRun(addr, certFile, keyFile string) {
 	err := tryRun()
 	if err == nil {
 		logs.Info("run",
-			zap.String("address", app.Addr))
+			logs.String("address", app.Addr))
 		errMsg := ""
 		if certFile == "" {
 			err = app.ListenAndServe()
@@ -577,10 +576,10 @@ func doRun(addr, certFile, keyFile string) {
 		logs.Info("finish")
 	} else {
 		logs.Error("listen",
-			zap.Error(err),
-			zap.String("address", app.Addr),
-			zap.String("certFile", app.CertFile),
-			zap.String("keyFile", app.KeyFile))
+			logs.Err(err),
+			logs.String("address", app.Addr),
+			logs.String("certFile", app.CertFile),
+			logs.String("keyFile", app.KeyFile))
 		logs.Sync()
 		os.Exit(-1)
 	}
@@ -700,7 +699,7 @@ func service() {
 		logs.Errors("service failed", err)
 		return
 	}
-	logs.Info("service status", zap.String("status", status))
+	logs.Info("service status", logs.String("status", status))
 }
 
 func doService() {
@@ -718,7 +717,7 @@ func doStart() error {
 	pid := strconv.Itoa(os.Getpid())
 	app.pipeName = pid
 	if flagService {
-		logs.Info("service info", zap.String("path", path), zap.String("masterPid", pid))
+		logs.Info("service info", logs.String("path", path), logs.String("masterPid", pid))
 	}
 	app.cmd = []work{}
 	for _, c := range appConfs {
@@ -788,7 +787,7 @@ func checkWorkProcess() {
 			exitCode = strconv.Itoa(w.cmd.ProcessState.ExitCode())
 		}
 		if flagService {
-			logs.Error("has work process exited", zap.String("exitCode", exitCode))
+			logs.Error("has work process exited", logs.String("exitCode", exitCode))
 		} else {
 			fmt.Println("has work process exited,exit code=" + exitCode)
 		}
@@ -925,7 +924,7 @@ func signalListen() {
 	for {
 		s := <-c
 		if s == syscall.SIGINT || (runtime.GOOS == "windows" && s == os.Interrupt) {
-			logs.Info("signal", zap.String("signalText", s.String()))
+			logs.Info("signal", logs.String("signalText", s.String()))
 			signal.Stop(c)
 			err := Shutdown(nil)
 			if err != nil {

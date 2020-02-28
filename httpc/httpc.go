@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/aixiaoxiang/bast/logs"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -626,11 +625,11 @@ func (c *Client) Do() (resp *http.Response, err error) {
 	}
 	if c.Conf.Log {
 		logs.Info(title,
-			zap.String("module", "httpc"),
-			zap.String("stage", "start"),
-			zap.String("url", c.Req.URL.String()),
-			zap.String("method", c.Req.Method),
-			zap.String("tag", c.Tag),
+			logs.String("module", "httpc"),
+			logs.String("stage", "start"),
+			logs.String("url", c.Req.URL.String()),
+			logs.String("method", c.Req.Method),
+			logs.String("tag", c.Tag),
 		)
 	}
 
@@ -652,15 +651,15 @@ func (c *Client) Do() (resp *http.Response, err error) {
 			statusText = c.resp.Status
 		}
 		logs.Info(title,
-			zap.String("module", "httpc"),
-			zap.String("stage", "finish"),
-			zap.String("url", c.Req.URL.String()),
-			zap.String("method", c.Req.Method),
-			zap.Int("retries", rc),
-			zap.String("cost", time.Since(st).String()),
-			zap.Int("statusCode", statusCode),
-			zap.String("statusText", statusText),
-			zap.String("tag", c.Tag),
+			logs.String("module", "httpc"),
+			logs.String("stage", "finish"),
+			logs.String("url", c.Req.URL.String()),
+			logs.String("method", c.Req.Method),
+			logs.Int("retries", rc),
+			logs.String("cost", time.Since(st).String()),
+			logs.Int("statusCode", statusCode),
+			logs.String("statusText", statusText),
+			logs.String("tag", c.Tag),
 		)
 	}
 	return

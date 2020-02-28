@@ -24,7 +24,6 @@ import (
 	"github.com/aixiaoxiang/bast/session/engine"
 	"github.com/aixiaoxiang/bast/validate"
 	"github.com/julienschmidt/httprouter"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1055,7 +1054,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
 	if app.Debug {
 		body, err := ioutil.ReadAll(r)
 		if err != nil {
-			logs.Debug("JSONDecode error", zap.Error(err), zap.ByteString("detail", body))
+			logs.Debug("JSONDecode error", logs.Err(err), logs.ByteString("detail", body))
 			return err
 		}
 		err = json.Unmarshal(body, obj)
@@ -1064,7 +1063,7 @@ func (c *Context) JSONDecode(r io.Reader, obj interface{}) (err error) {
 		err = json.NewDecoder(r).Decode(obj)
 	}
 	if err != nil {
-		logs.Debug("JSONDecode error", zap.Error(err))
+		logs.Debug("JSONDecode error", logs.Err(err))
 	}
 	return err
 }
@@ -1089,7 +1088,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
 	if app.Debug {
 		body, err := ioutil.ReadAll(r)
 		if err != nil {
-			logs.Debug("XMLDecode error", zap.Error(err), zap.ByteString("detail", body))
+			logs.Debug("XMLDecode error", logs.Err(err), logs.ByteString("detail", body))
 			return err
 		}
 		err = xml.Unmarshal(body, obj)
@@ -1098,7 +1097,7 @@ func (c *Context) XMLDecode(r io.Reader, obj interface{}) (err error) {
 		err = xml.NewDecoder(r).Decode(obj)
 	}
 	if err != nil {
-		logs.Debug("XMLDecode error", zap.Error(err))
+		logs.Debug("XMLDecode error", logs.Err(err))
 	}
 	return err
 }
@@ -1123,7 +1122,7 @@ func (c *Context) YAMLDecode(r io.Reader, obj interface{}) (err error) {
 	if app.Debug {
 		body, err := ioutil.ReadAll(r)
 		if err != nil {
-			logs.Debug("YAMLDecode error", zap.Error(err), zap.ByteString("detail", body))
+			logs.Debug("YAMLDecode error", logs.Err(err), logs.ByteString("detail", body))
 			return err
 		}
 		err = yaml.Unmarshal(body, obj)
@@ -1132,7 +1131,7 @@ func (c *Context) YAMLDecode(r io.Reader, obj interface{}) (err error) {
 		err = yaml.NewDecoder(r).Decode(obj)
 	}
 	if err != nil {
-		logs.Debug("YAMLDecode error", zap.Error(err))
+		logs.Debug("YAMLDecode error", logs.Err(err))
 	}
 	return err
 }
@@ -1142,7 +1141,7 @@ func (c *Context) MapObj() map[string]interface{} {
 	result := make(map[string]interface{})
 	err := c.Obj(result)
 	if err != nil {
-		logs.Debug("MapObj error", zap.Error(err))
+		logs.Debug("MapObj error", logs.Err(err))
 		return nil
 	}
 	return result
