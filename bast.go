@@ -34,12 +34,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// var
 var (
 	flagDevelop, flagStart, flagStop, flagReload, flagDaemon                     bool
 	isInstall, isUninstall, isForce, flagService, isMaster, isClear, isMigration bool
 	flagConf, flagName, flagAppKey, flagPipe                                     string
 	flagPid                                                                      int
 	app                                                                          *App
+	Log                                                                          *logs.Log
 )
 
 //App is application major data
@@ -91,8 +93,10 @@ func init() {
 	}
 	//init module config
 	if conf.OK() {
-		logs.Init(conf.LogConf())
+		Log = logs.Init(conf.LogConf())
 		session.Init(conf.SessionConf())
+	} else {
+		Log = logs.Init(nil)
 	}
 	app.cors = conf.CORSConf()
 

@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	logger                       *XLogger
+	logger                       *Log
 	gromDebugLogger              = log.New(os.Stdout, "\r\n", 0)
 	gromSQLRegexp                = regexp.MustCompile(`\?`)
 	gromNumericPlaceHolderRegexp = regexp.MustCompile(`\$\d+`)
@@ -39,95 +39,107 @@ type Conf struct {
 	Stdout     bool   `json:"-"`
 }
 
-//XLogger log
-type XLogger struct {
+//Log log
+type Log struct {
 	zap.Logger
 	logConf *Conf
 }
 
-//GormLogger Gorm loger
-type GormLogger struct {
+//GormLog Gorm loger
+type GormLog struct {
 }
 
 //Init init log
-func Init(conf *Conf) *XLogger {
+func Init(conf *Conf) *Log {
 	if logger == nil {
-		if conf == nil {
-			conf = &Conf{
-				OutPath:    "./logs/logs.log",
-				Level:      "info",
-				MaxSize:    10,
-				MaxBackups: 5,
-				MaxAge:     28,
-				Debug:      false,
-			}
-		} else {
-			if conf.OutPath == "" {
-				conf.Stdout = true
-			}
-		}
-		if conf.MaxSize <= 0 {
-			conf.MaxSize = 10
-		}
-		if conf.MaxBackups <= 0 {
-			conf.MaxSize = 5
-		}
-		if conf.MaxAge <= 0 {
-			conf.MaxAge = 28
-		}
-
-		l := logLevel(conf.Level)
-		var w zapcore.WriteSyncer
-		var core zapcore.Core
-		if !conf.Stdout {
-			encoderConfig := zap.NewProductionEncoderConfig()
-			//encoderConfig.LineEnding = zapcore.DefaultLineEnding
-			encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-				enc.AppendString(t.Format("2006-01-02 15:04:05"))
-			}
-			w = zapcore.AddSync(&lumberjack.Logger{
-				Filename:   conf.OutPath,
-				MaxSize:    conf.MaxSize, // megabytes
-				MaxBackups: conf.MaxBackups,
-				MaxAge:     conf.MaxAge, // days
-			})
-			core = zapcore.NewCore(
-				zapcore.NewJSONEncoder(encoderConfig),
-				w,
-				l,
-			)
-		} else {
-			encoderConfig := zap.NewDevelopmentEncoderConfig()
-			encoderConfig.LineEnding = zapcore.DefaultLineEnding
-			encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-				enc.AppendString(t.Format("2006-01-02 15:04:05"))
-			}
-
-			//jsonDebugging := zapcore.AddSync(ioutil.Discard)
-			//jsonErrors := zapcore.AddSync(ioutil.Discard)
-			consoleDebugging := zapcore.Lock(os.Stdout)
-			consoleErrors := zapcore.Lock(os.Stderr)
-
-			//jsonEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
-			consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
-
-			core = zapcore.NewTee(
-				//zapcore.NewCore(jsonEncoder, jsonErrors, highPriority),
-				zapcore.NewCore(consoleEncoder, consoleErrors, zapcore.FatalLevel),
-				//zapcore.NewCore(jsonEncoder, jsonDebugging, lowPriority),
-				zapcore.NewCore(consoleEncoder, consoleDebugging, zapcore.DebugLevel),
-			)
-
-			// w, _, _ = zap.Open("stdout")
-			// core = zapcore.NewCore(
-			// 	zapcore.NewConsoleEncoder(encoderConfig),
-			// 	w,
-			// 	l,
-			// )
-		}
-		logger = &XLogger{Logger: *zap.New(core), logConf: conf}
+		logger = newLog(conf)
 	}
 	return logger
+}
+
+func newLog(conf *Conf) *Log {
+	if conf == nil {
+		conf = &Conf{
+			OutPath:    "./logs/logs.log",
+			Level:      "info",
+			MaxSize:    10,
+			MaxBackups: 5,
+			MaxAge:     28,
+			Debug:      false,
+		}
+	} else {
+		if conf.OutPath == "" {
+			conf.Stdout = true
+		}
+	}
+	if conf.MaxSize <= 0 {
+		conf.MaxSize = 10
+	}
+	if conf.MaxBackups <= 0 {
+		conf.MaxSize = 5
+	}
+	if conf.MaxAge <= 0 {
+		conf.MaxAge = 28
+	}
+
+	l := logLevel(conf.Level)
+	var w zapcore.WriteSyncer
+	var core zapcore.Core
+	if !conf.Stdout {
+		encoderConfig := zap.NewProductionEncoderConfig()
+		//encoderConfig.LineEnding = zapcore.DefaultLineEnding
+		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+			enc.AppendString(t.Format("2006-01-02 15:04:05"))
+		}
+		w = zapcore.AddSync(&lumberjack.Logger{
+			Filename:   conf.OutPath,
+			MaxSize:    conf.MaxSize, // megabytes
+			MaxBackups: conf.MaxBackups,
+			MaxAge:     conf.MaxAge, // days
+		})
+		core = zapcore.NewCore(
+			zapcore.NewJSONEncoder(encoderConfig),
+			w,
+			l,
+		)
+	} else {
+		encoderConfig := zap.NewDevelopmentEncoderConfig()
+		encoderConfig.LineEnding = zapcore.DefaultLineEnding
+		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+			enc.AppendString(t.Format("2006-01-02 15:04:05"))
+		}
+
+		//jsonDebugging := zapcore.AddSync(ioutil.Discard)
+		//jsonErrors := zapcore.AddSync(ioutil.Discard)
+		consoleDebugging := zapcore.Lock(os.Stdout)
+		consoleErrors := zapcore.Lock(os.Stderr)
+
+		//jsonEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+		consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+
+		core = zapcore.NewTee(
+			//zapcore.NewCore(jsonEncoder, jsonErrors, highPriority),
+			zapcore.NewCore(consoleEncoder, consoleErrors, zapcore.FatalLevel),
+			//zapcore.NewCore(jsonEncoder, jsonDebugging, lowPriority),
+			zapcore.NewCore(consoleEncoder, consoleDebugging, zapcore.DebugLevel),
+		)
+
+		// w, _, _ = zap.Open("stdout")
+		// core = zapcore.NewCore(
+		// 	zapcore.NewConsoleEncoder(encoderConfig),
+		// 	w,
+		// 	l,
+		// )
+	}
+	return &Log{Logger: *zap.New(core), logConf: conf}
+}
+
+// Info logs a message at InfoLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func (l *Log) Info(msg string, fields ...zap.Field) {
+	if msg != "" {
+		l.Logger.Info(msg, fields...)
+	}
 }
 
 // Info logs a message at InfoLevel. The message includes any fields passed
@@ -135,6 +147,14 @@ func Init(conf *Conf) *XLogger {
 func Info(msg string, fields ...zap.Field) {
 	if logger != nil && msg != "" {
 		logger.Info(msg, fields...)
+	}
+}
+
+// Warn logs a message at WarnLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func (l *Log) Warn(msg string, fields ...zap.Field) {
+	if msg != "" {
+		l.Logger.Warn(msg, fields...)
 	}
 }
 
@@ -148,14 +168,36 @@ func Warn(msg string, fields ...zap.Field) {
 
 // Debug logs a message at DebugLevel. The message includes any fields passed
 // at the log site, as well as any fields accumulated on the logger.
-func Debug(msg string, fields ...zap.Field) {
-	if logger != nil && msg != "" {
+func (l *Log) Debug(msg string, fields ...zap.Field) {
+	if msg != "" {
 		c := caller()
 		if fields != nil {
 			fields = append(fields, c)
-			logger.Debug(msg, fields...)
+			l.Logger.Debug(msg, fields...)
 		} else {
-			logger.Debug(msg, c)
+			l.Logger.Debug(msg, c)
+		}
+	}
+}
+
+// Debug logs a message at DebugLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func Debug(msg string, fields ...zap.Field) {
+	if logger != nil && msg != "" {
+		logger.Debug(msg, fields...)
+	}
+}
+
+// Error logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func (l *Log) Error(msg string, fields ...zap.Field) {
+	if msg != "" {
+		c := caller()
+		if fields != nil {
+			fields = append(fields, c)
+			l.Logger.Error(msg, fields...)
+		} else {
+			l.Logger.Error(msg, c)
 		}
 	}
 }
@@ -164,12 +206,19 @@ func Debug(msg string, fields ...zap.Field) {
 // at the log site, as well as any fields accumulated on the logger.
 func Error(msg string, fields ...zap.Field) {
 	if logger != nil && msg != "" {
-		c := caller()
+		logger.Error(msg, fields...)
+	}
+}
+
+// ErrorWithCaller logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func (l *Log) ErrorWithCaller(msg string, caller zap.Field, fields ...zap.Field) {
+	if msg != "" {
 		if fields != nil {
-			fields = append(fields, c)
-			logger.Error(msg, fields...)
+			fields = append(fields, caller)
+			l.Logger.Error(msg, fields...)
 		} else {
-			logger.Error(msg, c)
+			l.Logger.Error(msg, caller)
 		}
 	}
 }
@@ -178,11 +227,19 @@ func Error(msg string, fields ...zap.Field) {
 // at the log site, as well as any fields accumulated on the logger.
 func ErrorWithCaller(msg string, caller zap.Field, fields ...zap.Field) {
 	if logger != nil && msg != "" {
-		if fields != nil {
-			fields = append(fields, caller)
-			logger.Error(msg, fields...)
+		logger.ErrorWithCaller(msg, caller, fields...)
+	}
+}
+
+// Errors logs a message at ErrorLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+func (l *Log) Errors(msg string, err error) {
+	if msg != "" {
+		c := caller()
+		if err != nil {
+			l.Logger.Error(msg, c, zap.Error(err))
 		} else {
-			logger.Error(msg, caller)
+			l.Logger.Error(msg, c)
 		}
 	}
 }
@@ -191,13 +248,25 @@ func ErrorWithCaller(msg string, caller zap.Field, fields ...zap.Field) {
 // at the log site, as well as any fields accumulated on the logger.
 func Errors(msg string, err error) {
 	if logger != nil && msg != "" {
+		logger.Errors(msg, err)
+	}
+}
+
+// DPanic logs a message at DPanicLevel. The message includes any fields
+// passed at the log site, as well as any fields accumulated on the logger.
+//
+// If the logger is in development mode, it then panics (DPanic means
+// "development panic"). This is useful for catching errors that are
+// recoverable, but shouldn't ever happen.
+func (l *Log) DPanic(msg string, fields ...zap.Field) {
+	if msg != "" {
 		c := caller()
-		if err != nil {
-			logger.Error(msg, c, zap.Error(err))
+		if fields != nil {
+			fields = append(fields, c)
+			l.Logger.DPanic(msg, fields...)
 		} else {
-			logger.Error(msg, c)
+			l.Logger.DPanic(msg, c)
 		}
-		//fields = append(fields, zap.ByteString("stack", debug.Stack()))
 	}
 }
 
@@ -209,12 +278,22 @@ func Errors(msg string, err error) {
 // recoverable, but shouldn't ever happen.
 func DPanic(msg string, fields ...zap.Field) {
 	if logger != nil && msg != "" {
+		logger.DPanic(msg, fields...)
+	}
+}
+
+// Panic logs a message at PanicLevel. The message includes any fields passed
+// at the log site, as well as any fields accumulated on the logger.
+//
+// The logger then panics, even if logging at PanicLevel is disabled.
+func (l *Log) Panic(msg string, fields ...zap.Field) {
+	if msg != "" {
 		c := caller()
 		if fields != nil {
 			fields = append(fields, c)
-			logger.DPanic(msg, fields...)
+			l.Logger.Panic(msg, fields...)
 		} else {
-			logger.DPanic(msg, c)
+			l.Logger.Panic(msg, c)
 		}
 	}
 }
@@ -225,24 +304,14 @@ func DPanic(msg string, fields ...zap.Field) {
 // The logger then panics, even if logging at PanicLevel is disabled.
 func Panic(msg string, fields ...zap.Field) {
 	if logger != nil && msg != "" {
-		c := caller()
-		if fields != nil {
-			fields = append(fields, c)
-			logger.Panic(msg, fields...)
-		} else {
-			logger.Panic(msg, c)
-		}
+		logger.Panic(msg, fields...)
 	}
 }
 
-//Logger rew logger object
-func Logger() *XLogger {
-	return logger
-}
-
-//LoggerGorm Gorm logger object
-func LoggerGorm() *GormLogger {
-	return &GormLogger{}
+// Sync calls the underlying Core's Sync method, flushing any buffered log
+// entries. Applications should take care to call Sync before exiting.
+func (l *Log) Sync() {
+	l.Logger.Sync()
 }
 
 // Sync calls the underlying Core's Sync method, flushing any buffered log
@@ -251,6 +320,21 @@ func Sync() {
 	if logger != nil {
 		logger.Sync()
 	}
+}
+
+//Default rew logger object
+func Default() *Log {
+	return logger
+}
+
+//New rew logger object
+func New(conf *Conf) *Log {
+	return newLog(conf)
+}
+
+//Gorm Gorm logger object
+func Gorm() *GormLog {
+	return &GormLog{}
 }
 
 func caller() zap.Field {
@@ -263,7 +347,7 @@ func callerWithIndex(skip int) string {
 }
 
 //Print Gorm log
-func (*GormLogger) Print(v ...interface{}) {
+func (*GormLog) Print(v ...interface{}) {
 	if logger == nil {
 		return
 	}
