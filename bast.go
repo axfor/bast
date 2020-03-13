@@ -24,6 +24,7 @@ import (
 	"github.com/aixiaoxiang/bast/conf"
 	"github.com/aixiaoxiang/bast/guid"
 	"github.com/aixiaoxiang/bast/ids"
+	"github.com/aixiaoxiang/bast/lang"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/registry"
 	"github.com/aixiaoxiang/bast/session"
@@ -95,6 +96,7 @@ func init() {
 	if conf.OK() {
 		Log = logs.Init(conf.LogConf())
 		session.Init(conf.SessionConf())
+		lang.TransFile(conf.Trans())
 	} else {
 		Log = logs.Init(nil)
 	}
@@ -1114,6 +1116,33 @@ func UserConf() interface{} {
 //FileDir if app config configuration fileDir return it，orherwise return app exec path
 func FileDir() string {
 	return conf.FileDir()
+}
+
+//Trans translator
+func Trans(language, key string, param ...string) string {
+	return lang.Trans(language, key, param...)
+}
+
+//Transf translator
+func Transf(language, key string, param ...interface{}) string {
+	var ps []string
+	if param != nil {
+		ps = make([]string, 0, len(param))
+		for _, v := range param {
+			ps = append(ps, fmt.Sprint(v))
+		}
+	}
+	return lang.Trans(language, key, ps...)
+}
+
+//LangFile translator file
+func LangFile(file string) error {
+	return lang.File(file)
+}
+
+//LangDir translator dir
+func LangDir(dir string) error {
+	return lang.Dir(dir)
 }
 
 //clear res

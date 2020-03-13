@@ -3,8 +3,13 @@
 package lang
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 var trans = map[string]*translator{}
@@ -26,8 +31,8 @@ func Trans(lang, key string, param ...string) string {
 	if lang == "" {
 		lang = "en"
 	}
-	key = lang + "." + key
-	if t, ok := trans[key]; ok {
+	k := lang + "." + key
+	if t, ok := trans[k]; ok {
 		lg := 0
 		if param != nil {
 			lg = len(param)
@@ -43,11 +48,11 @@ func Trans(lang, key string, param ...string) string {
 		}
 		return s.String()
 	}
-	return ""
+	return key
 }
 
-//Key translator of key
-func Key(lang, key string) string {
+//Transk translator of key
+func Transk(lang, key string) string {
 	if lang == "" {
 		lang = "en"
 	}
@@ -58,7 +63,7 @@ func Key(lang, key string) string {
 }
 
 //Register a translator provide by the trans name
-func Register(lang string, ts map[string]string) {
+func Register(lang string, ts map[string]string) error {
 	for k, v := range ts {
 		vs := lang + "." + k
 		//if _, ok := trans[vs]; !ok {
@@ -104,6 +109,74 @@ func Register(lang string, ts map[string]string) {
 		}
 		//}
 	}
+	return nil
+}
+
+//File translator file
+func File(file string) error {
+	if file == "" {
+		return nil
+	}
+	lang := "en"
+	fn := path.Base(file)
+	i := strings.LastIndex(fn, ".")
+	if i > 0 {
+		j := strings.LastIndex(fn[0:i], ".")
+		if j >= 0 {
+			j++
+			lang = fn[j:i]
+		} else {
+			lang = fn[0:i]
+		}
+	}
+	if lang == "" {
+		lang = "en"
+	}
+	data, err := ioutil.ReadFile(file)
+	if len(data) <= 0 || err != nil {
+		return err
+	}
+	t := map[string]string{}
+	err = yaml.Unmarshal([]byte(data), &t)
+	if err != nil {
+		return err
+	}
+	return Register(lang, t)
+}
+
+//Dir translator dir
+func Dir(dir string) error {
+	if dir == "" {
+		return nil
+	}
+	f, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !f.IsDir() {
+		return File(dir)
+	}
+	fs, err := ioutil.ReadDir(dir)
+	if len(fs) <= 0 || err != nil {
+		return err
+	}
+	for _, f := range fs {
+		if !f.IsDir() {
+			err = File(dir + "/" + f.Name())
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+//TransFile translator dir or file
+func TransFile(f string) error {
+	if f == "" {
+		return nil
+	}
+	return Dir(f)
 }
 
 //RegisterKeys a translator provide by the key trans name

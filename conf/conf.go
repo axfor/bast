@@ -48,6 +48,7 @@ type AppConf struct {
 	BaseURL      string            `json:"baseUrl"`
 	IDNode       uint8             `json:"idNode"`   //id node
 	Lang         string            `json:"lang"`     //lang
+	Trans        string            `json:"trans"`    //trans
 	SameSiteText string            `json:"sameSite"` //strict|lax|none
 	Wrap         *bool             `json:"wrap"`     //wrap response body
 	Session      *sessionConf.Conf `json:"session"`  //session
@@ -203,6 +204,24 @@ func callbackHandle() {
 //OK check conf
 func OK() bool {
 	return Manager() != nil
+}
+
+//Lang returns lang
+func Lang() string {
+	c := Conf()
+	if c != nil {
+		return c.Lang
+	}
+	return ""
+}
+
+//Trans returns Trans conf
+func Trans() string {
+	c := Conf()
+	if c != nil {
+		return c.Trans
+	}
+	return ""
 }
 
 //Conf returns the current app config

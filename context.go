@@ -19,7 +19,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aixiaoxiang/bast/conf"
 	"github.com/aixiaoxiang/bast/guid"
+	"github.com/aixiaoxiang/bast/lang"
 	"github.com/aixiaoxiang/bast/logs"
 	"github.com/aixiaoxiang/bast/session/engine"
 	"github.com/aixiaoxiang/bast/validate"
@@ -696,6 +698,16 @@ func (c *Context) String2JSON(str string, obj interface{}) error {
 // 	key2/key2_translator@required|string|min:1
 //	key3@sometimes|required|data
 func (c *Context) Verify(rules ...string) error {
+	return c.Validate(rules...)
+}
+
+//Validate verify current request
+//param:
+//rules is validate rule such as:
+// 	key1@required|int|min:1
+// 	key2/key2_translator@required|string|min:1
+//	key3@sometimes|required|data
+func (c *Context) Validate(rules ...string) error {
 	c.In.ParseForm()
 	return valid.Request(c.In.Form, rules...)
 }
@@ -726,6 +738,18 @@ func (c *Context) GetString(key string) string {
 		return d[0]
 	}
 	return ""
+}
+
+//GetStringValue  gets a string value from  the current request  based on the key
+//param:
+//	key is key name
+//  def is default value
+func (c *Context) GetStringValue(key string, def string) string {
+	d := c.GetString(key)
+	if d != "" {
+		return d
+	}
+	return def
 }
 
 //GetTrimString  Use the key to get a non-space string value from the current request
@@ -947,6 +971,11 @@ func (c *Context) GetFloatValue(key string, def float64) float64 {
 		v = def
 	}
 	return v
+}
+
+//GetLang return
+func (c *Context) GetLang() string {
+	return c.GetStringValue("lang", conf.Lang())
 }
 
 //HasParam has a param from the current request based on the key(May not have a value)
@@ -1336,4 +1365,21 @@ func (c *Context) GUID() string {
 // ErrNotExist as well as some syscall errors.
 func (c *Context) Exist(filename string) bool {
 	return Exist(filename)
+}
+
+//Trans translator
+func (c *Context) Trans(key string, param ...string) string {
+	return lang.Trans(c.GetLang(), key, param...)
+}
+
+//Transf translator
+func (c *Context) Transf(key string, param ...interface{}) string {
+	var ps []string
+	if param != nil {
+		ps = make([]string, 0, len(param))
+		for _, v := range param {
+			ps = append(ps, fmt.Sprint(v))
+		}
+	}
+	return lang.Trans(c.GetLang(), key, ps...)
 }

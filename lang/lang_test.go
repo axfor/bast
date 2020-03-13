@@ -79,3 +79,19 @@ func Benchmark_fmt(t *testing.B) {
 		}
 	})
 }
+
+func Test_file(t *testing.T) {
+	err := Dir("./lang")
+	if err != nil {
+		t.Error(err)
+	}
+	s := Trans("en", "hi")
+	if s != "hi" {
+		t.Fail()
+	}
+
+	s = Trans("zh_cn", "hi")
+	if s != "你好" {
+		t.Fail()
+	}
+}

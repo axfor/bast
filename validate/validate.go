@@ -122,7 +122,7 @@ func (c *Validator) structVerify(v reflect.Value) error {
 			tk = ks
 		}
 		tags := strings.Split(tag, split)
-		val := Val{ks, lang.Key(c.Lang, tk), "", real, real, rv}
+		val := Val{ks, lang.Transk(c.Lang, tk), "", real, real, rv}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
@@ -199,7 +199,7 @@ func (c *Validator) Request(data url.Values, rules ...string) error {
 		} else if strings.Index(tag, "email") >= 0 {
 			expect = Email
 		}
-		val := Val{k, lang.Key(c.Lang, tk), "", reflect.String, expect, nil}
+		val := Val{k, lang.Transk(c.Lang, tk), "", reflect.String, expect, nil}
 		for _, tg := range tags {
 			pos := strings.Index(tg, ":")
 			fk := tg
