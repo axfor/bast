@@ -421,7 +421,8 @@ bast.Run(":9999")
         "debug":false,
         "baseUrl":"", 
         "idNode":0,  
-        "lang":"en",//en,zh-cn
+        "lang":"en",//default lang en,zh-cn 
+        "trans":"",//translator files or dir
         "sameSite":"none",//cookie sameSite strict、lax、none 
         "wrap":true,//wrap response body 
         "session":{//session conf
