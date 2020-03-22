@@ -45,6 +45,10 @@ bast.Get("/xxx", func(ctx *bast.Context) {
         Name: name,
         Age:  Age,
     }
+
+    //translator address
+    person.Addr = ctx.Trans("addr", person.Name)
+
     //handling
     //...
     ctx.JSON(person)
@@ -58,8 +62,9 @@ bast.Get("/xxx", func(ctx *bast.Context) {
 ``` golang 
 //Person struct
 type Person struct {
-    Name string `json:"name" v:"required|min:1"`
-    Age  int    `json:"age"  v:"min:1"`
+    Name   string    `json:"name" v:"required|min:1"`
+    Age    int       `json:"age"  v:"min:1"`
+    Title  string    `json:"title"`
 }
 
 bast.Post("/xxx", func(ctx *bast.Context) {
@@ -71,6 +76,9 @@ bast.Post("/xxx", func(ctx *bast.Context) {
         return
     }
     person.Age += 2
+
+    //translator title
+    person.Title = ctx.Trans("title", person.Name)
 
     //handling
     //...
