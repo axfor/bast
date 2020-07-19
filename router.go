@@ -7,48 +7,38 @@ type Pattern struct {
 	Fn            func(ctx *Context)
 	Parameter     interface{}
 	Name          string
-	ServerName    string
+	Service       string
 	authorization bool
 	publish       bool
 	publishFinish bool
 	toRouter      bool
 }
 
-//Authorization need api authorization
-func (c *Pattern) Authorization() *Pattern {
-	c.authorization = true
-	return c
-}
-
-//Unauthorization not need api authorization
-func (c *Pattern) Unauthorization() *Pattern {
-	c.authorization = false
-	return c
-}
-
 //Auth need api authorization
 //eq Authorization
 func (c *Pattern) Auth() *Pattern {
-	return c.Authorization()
+	c.authorization = true
+	return c
 }
 
 //Unauth need api Unauthorization
 //eq Unauthorization
 func (c *Pattern) Unauth() *Pattern {
-	return c.Unauthorization()
+	c.authorization = false
+	return c
 }
 
 //Publish register to etcd etc.
-func (c *Pattern) Publish(serverName string) *Pattern {
+func (c *Pattern) Publish(service string) *Pattern {
 	c.publish = true
-	c.ServerName = serverName
+	c.Service = service
 	return c
 }
 
 //Unpublish unregister to etcd etc.
 func (c *Pattern) Unpublish() *Pattern {
 	c.publish = false
-	c.ServerName = ""
+	c.Service = ""
 	return c
 }
 

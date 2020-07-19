@@ -57,7 +57,7 @@ type AppConf struct {
 	Conf         interface{}       `json:"conf"`     //user conf
 	Extend       string            `json:"extend"`   //user extend
 	Page         *Pagination       `json:"page"`     //pagination conf
-	Registry     *Registry         `json:"registry"` //
+	Service      *Service          `json:"service"`  //
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
@@ -78,9 +78,9 @@ type Pagination struct {
 	PageRow string `json:"pageRow"`
 }
 
-//Registry  config
-type Registry struct {
-	Publish     bool   `json:"publish"`   //
+//Service  config
+type Service struct {
+	Enable      bool   `json:"enable"`    //
 	BaseURL     string `json:"baseUrl"`   //
 	Prefix      string `json:"prefix"`    //
 	Endpoints   string `json:"endpoints"` //localhost:2379,localhost:22379
@@ -289,11 +289,11 @@ func PageConf() *Pagination {
 	return p
 }
 
-//RegistryConf return Registry conf
-func RegistryConf() *Registry {
+//ServiceConf return service conf
+func ServiceConf() *Service {
 	c := Conf()
 	if c != nil {
-		return c.Registry
+		return c.Service
 	}
 	return nil
 }

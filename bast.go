@@ -23,13 +23,15 @@ import (
 
 	"github.com/aixiaoxiang/bast/conf"
 	"github.com/aixiaoxiang/bast/guid"
+	"github.com/aixiaoxiang/bast/httpc"
 	"github.com/aixiaoxiang/bast/ids"
 	"github.com/aixiaoxiang/bast/lang"
 	"github.com/aixiaoxiang/bast/logs"
-	"github.com/aixiaoxiang/bast/registry"
 	"github.com/aixiaoxiang/bast/session"
+	"github.com/aixiaoxiang/daemon"
+
+	"github.com/aixiaoxiang/bast/service"
 	"github.com/aixiaoxiang/bast/snowflake"
-	sdaemon "github.com/aixiaoxiang/daemon"
 	"github.com/julienschmidt/httprouter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -50,7 +52,8 @@ type App struct {
 	pool                                      sync.Pool
 	Router                                    *httprouter.Router
 	pattern                                   map[string]*Pattern
-	registry                                  *registry.Service
+	registry                                  *service.Registry
+	discovery                                 *service.Discovery
 	Addr, pipeName, CertFile, KeyFile         string
 	Server                                    *http.Server
 	Before                                    BeforeHandle
@@ -121,8 +124,8 @@ func Before(f BeforeHandle) {
 	app.Before = f
 }
 
-//Authorization set the request 'authorization' handle
-func Authorization(f AuthorizationHandle) {
+//Auth set the request 'authorization' handle
+func Auth(f AuthorizationHandle) {
 	app.Authorization = f
 }
 
@@ -222,43 +225,75 @@ func routerHandle(method, pattern string, fn func(ctx *Context)) *Pattern {
 //Router register to httpRouter
 func Router() {
 	for _, p := range app.pattern {
-		pp := p
-		pp.Router()
+		pRef := p
+		pRef.Router()
 	}
 	go Publish()
 }
 
-//Publish publish to Registry
-func Publish() error {
+func initService() error {
 	var err error
-	rc := conf.RegistryConf()
-	if rc != nil && rc.Publish {
-		if app.pattern == nil {
-			return nil
+	c := conf.ServiceConf()
+	if c != nil && c.Enable {
+		err = initRegistry(c)
+		if err != nil {
+			return err
 		}
-		if app.registry == nil {
-			app.registry, err = registry.New(rc)
-			if err != nil {
-				return err
-			}
+		err = initDiscovery(c)
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func initRegistry(c *conf.Service) error {
+	var err error
+	if app.registry == nil {
+		app.registry, err = service.NewRegistry(c)
+		if err != nil {
+			logs.Errors("create registry failed", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func initDiscovery(c *conf.Service) error {
+	var err error
+	if app.discovery == nil {
+		app.discovery, err = service.NewDiscovery(c)
+		if err != nil {
+			logs.Errors("create discovery failed", err)
+			return err
+		}
+		httpc.InitDiscovery(app.discovery)
+	}
+	return nil
+}
+
+//Publish publish to registry
+func Publish() error {
+	initService()
+	var err error
+	c := conf.ServiceConf()
+	if c != nil && c.Enable && app.pattern != nil && app.registry != nil {
 		pubs := 0
 		ctx := context.Background()
 		for _, p := range app.pattern {
-			pp := p
-			if !pp.publish {
+			pRef := p
+			if !pRef.publish {
 				continue
 			}
-			_, err = app.registry.Put(ctx, rc.Prefix+pp.ServerName, rc.Prefix+pp.Pattern)
+			_, err = app.registry.Put(ctx, c.Prefix+pRef.Service, c.Prefix+pRef.Pattern)
 			if err != nil {
 				continue
 			}
-			pp.publishFinish = err == nil
+			pRef.publishFinish = err == nil
 			pubs++
 		}
 		if pubs > 0 {
-			app.registry.StopKeepAlive()
-			app.registry.StartKeepAlive()
+			app.registry.KeepAlive()
 		}
 	}
 	return nil
@@ -644,21 +679,17 @@ func Command() bool {
 	if flagStart {
 		r, err = start()
 	} else if flagService {
-		service()
-		// err = errors.New("service child process")
+		serviceInstall()
 		r = false
 	} else if flagStop {
 		stop()
-		// err = errors.New("stop child process")
 		r = false
 	} else if flagReload {
 		reload()
-		// err = errors.New("inside child process for reload")
 		r = false
 	} else if flagDaemon {
-		daemon()
+		doDaemon()
 	} else if isInstall {
-		// err = errors.New("install service")
 		install()
 		r = false
 	} else if isUninstall {
@@ -691,11 +722,11 @@ func start() (bool, error) {
 	return false, nil
 }
 
-func service() {
+func serviceInstall() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	service, err := sdaemon.New(flagName, flagName+" --service")
+	service, err := daemon.New(flagName, flagName+" --service")
 	if err != nil {
 		logs.Errors("service failed", err)
 		return
@@ -882,7 +913,7 @@ func sendSignal(sig os.Signal, pid int) error {
 	return nil
 }
 
-func daemon() {
+func doDaemon() {
 	app.Daemon = true
 	go signalListen()
 }
@@ -893,7 +924,7 @@ func install() {
 	}
 	var agrs = []string{"--service", "--force", "--conf=" + flagConf}
 
-	service, err := sdaemon.New(flagName, flagName+" service")
+	service, err := daemon.New(flagName, flagName+" service")
 	if err != nil {
 		fmt.Println("install failed," + err.Error())
 		return
@@ -910,7 +941,7 @@ func uninstall() {
 	if flagName == "" {
 		flagName = AppName()
 	}
-	service, err := sdaemon.New(flagName, flagName+" service")
+	service, err := daemon.New(flagName, flagName+" service")
 	if err != nil {
 		fmt.Println("uninstall failed," + err.Error())
 		return
@@ -1154,7 +1185,7 @@ func clear() {
 	logs.Clear()
 	removePid()
 	if app.registry != nil {
-		app.registry.StopKeepAlive()
+		app.registry.Stop()
 	}
 }
 
@@ -1240,41 +1271,4 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 	}
 	conf.Command(&flagConf, &flagAppKey)
 
-	// usage := `help:
-	// -h | -help                    show help
-	// -develop                      run in develop(develop environment)
-	// -start                        run in background
-	// -stop                         graceful for stop
-	// -reload                       graceful for reload
-	// -migration                    migration or initial system
-	// -conf=your path/config.conf   config path(default is ./config.conf)
-	// -install                      install to service
-	// -uninstall                    uninstall for service
-	// `
-	// f := flag.NewFlagSet("bast", flag.ContinueOnError)
-	// f.Usage = func() {
-	// 	fmt.Println(usageline)
-	// 	os.Exit(0)
-	// }
-	// if len(os.Args) == 2 && (os.Args[1] == "h" || os.Args[1] == "help") {
-	// 	//f.Usage()
-	// }
-
-	// f.BoolVar(&flagDevelop, "develop", false, "")
-	// f.BoolVar(&flagStart, "start", false, "")
-	// f.BoolVar(&flagStop, "stop", false, "")
-	// f.BoolVar(&flagReload, "reload", false, "")
-	// f.BoolVar(&flagDaemon, "daemon", false, "")
-	// f.BoolVar(&isUninstall, "uninstall", false, "")
-	// f.BoolVar(&isForce, "force", false, "")
-	// f.BoolVar(&isInstall, "install", false, "")
-	// f.BoolVar(&flagService, "service", false, "")
-	// f.BoolVar(&isMaster, "master", false, "")
-	// f.BoolVar(&isMigration, "migration", false, "")
-	// f.StringVar(&flagName, "name", "", "")
-	// f.StringVar(&flagConf, "conf", "", "")
-	// f.StringVar(&flagAppKey, "appkey", "", "")
-	// f.StringVar(&flagPipe, "pipe", "", "")
-	// f.IntVar(&flagPPid, "pid", 0, "")
-	//f.Parse(os.Args[1:])
 }

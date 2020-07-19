@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/aixiaoxiang/bast/logs"
+	"github.com/aixiaoxiang/bast/service"
 	"gopkg.in/yaml.v2"
 )
 
@@ -33,9 +34,10 @@ var (
 	//DefaultTransport default transport
 	defaultTransport *http.Transport
 	//DefaultClient HTTP  clientdefault
-	defaultClient *http.Client
-	before        func(*Client) error
-	after         func(*Client)
+	defaultClient    *http.Client
+	before           func(*Client) error
+	after            func(*Client)
+	defaultDiscovery *service.Discovery
 )
 
 //Client http client
@@ -540,6 +542,11 @@ func Get(url string) *Client {
 	return createRequest(url, http.MethodGet)
 }
 
+//Gets returns *Client with service name ang http get method
+func Gets(serviceName string) *Client {
+	return Service(serviceName, http.MethodGet)
+}
+
 // Post issues a POST to the specified URL.
 //
 // Caller should close resp.Body when done reading from it.
@@ -557,6 +564,11 @@ func Post(url string) *Client {
 	return createRequest(url, http.MethodPost)
 }
 
+//Posts returns *Client with service name ang http post method
+func Posts(serviceName string) *Client {
+	return Service(serviceName, http.MethodPost)
+}
+
 // Head issues a HEAD to the specified URL. If the response is one of
 // the following redirect codes, Head follows the redirect, up to a
 // maximum of 10 redirects:
@@ -572,19 +584,48 @@ func Head(url string) *Client {
 	return createRequest(url, http.MethodHead)
 }
 
-// Put returns *HTTPClient with PUT method
+//Heads returns *Client with service name ang http head method
+func Heads(serviceName string) *Client {
+	return Service(serviceName, http.MethodHead)
+}
+
+// Put returns *Client with PUT method
 func Put(url string) *Client {
 	return createRequest(url, http.MethodPut)
 }
 
-// Delete returns *HTTPClient with Delete method
+//Puts returns *Client with service name ang http put method
+func Puts(serviceName string) *Client {
+	return Service(serviceName, http.MethodPut)
+}
+
+// Delete returns *Client with Delete method
 func Delete(url string) *Client {
 	return createRequest(url, http.MethodDelete)
 }
 
-// Patch returns *HTTPClient with Patch method
+//Deletes returns *Client with service name ang http delete method
+func Deletes(serviceName string) *Client {
+	return Service(serviceName, http.MethodDelete)
+}
+
+// Patch returns *Client with Patch method
 func Patch(url string) *Client {
 	return createRequest(url, http.MethodPatch)
+}
+
+//Patchs returns *Client with service name ang http patch method
+func Patchs(serviceName string) *Client {
+	return Service(serviceName, http.MethodPatch)
+}
+
+//Service returns *Client with service name ang http xxx method
+func Service(serviceName, method string) *Client {
+	uri := ""
+	if serviceName != "" && defaultDiscovery != nil {
+		uri = defaultDiscovery.Name(serviceName)
+	}
+	return createRequest(uri, method)
 }
 
 func createRequest(uri, method string) *Client {
@@ -776,22 +817,25 @@ func callAfter(c *Client) {
 }
 
 //Before before handler for each network request
-func Before(f func(*Client) error) {
-	before = f
+func Before(fn func(*Client) error) {
+	before = fn
 }
 
 //After after handler for each network request
-func After(f func(*Client)) {
-	after = f
+func After(fn func(*Client)) {
+	after = fn
+}
+
+//InitDiscovery init service discovery
+func InitDiscovery(discovery *service.Discovery) {
+	defaultDiscovery = discovery
 }
 
 //init
 func init() {
 	DefaultCookieJar, _ = cookiejar.New(nil)
-
 	defaultTransport = NewTransport()
-
 	defaultClient = &http.Client{}
-
 	defaultClient.Transport = defaultTransport
+
 }
