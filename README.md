@@ -96,7 +96,7 @@ bast.Post("/xxx", func(ctx *bast.Context) {
 bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Auth().Param("test xxx data")
 
 //service registry to etcd
-bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Publish("UserAPI") 
+bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Registry("UserAPI") 
 
 
 ``` 
