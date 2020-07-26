@@ -62,10 +62,10 @@ type App struct {
 	Migration                                 MigrationHandle
 	Debug, Daemon, isCallCommand, runing, tls bool
 	cmd                                       []work
-	cors                                      *conf.CORS
+	cors                                      *conf.CORSConf
 	wrap                                      bool
 	id                                        *snowflake.Node
-	page                                      *conf.Pagination
+	page                                      *conf.PaginationConf
 }
 
 type work struct {
@@ -97,19 +97,19 @@ func init() {
 	}
 	//init module config
 	if conf.OK() {
-		Log = logs.Init(conf.LogConf())
-		session.Init(conf.SessionConf())
+		Log = logs.Init(conf.Log())
+		session.Init(conf.Session())
 		lang.TransFile(conf.Trans())
 	} else {
 		Log = logs.Init(nil)
 	}
-	app.cors = conf.CORSConf()
+	app.cors = conf.CORS()
 
 	app.wrap = conf.Wrap()
 
 	app.id = ids.New()
 
-	app.page = conf.PageConf()
+	app.page = conf.Page()
 
 	//register not found handler of router
 	app.Router.NotFound = NotFoundHandler{}
@@ -228,28 +228,25 @@ func Router() {
 		pRef := p
 		pRef.Router()
 	}
-	go Publish()
+	go Registry()
 }
 
 func initService() error {
-	var err error
-	c := conf.ServiceConf()
-	if c != nil && c.Enable {
-		err = initRegistry(c)
-		if err != nil {
-			return err
-		}
-		err = initDiscovery(c)
-		if err != nil {
-			return err
-		}
+	err := initDiscovery()
+	if err != nil {
+		return err
+	}
+	err = initRegistry()
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func initRegistry(c *conf.Service) error {
+func initRegistry() error {
+	c := conf.Registry()
 	var err error
-	if app.registry == nil {
+	if c != nil && c.Enable && app.registry == nil {
 		app.registry, err = service.NewRegistry(c)
 		if err != nil {
 			logs.Errors("create registry failed", err)
@@ -259,9 +256,38 @@ func initRegistry(c *conf.Service) error {
 	return nil
 }
 
-func initDiscovery(c *conf.Service) error {
+//Registry registry service to etce
+func Registry() error {
+	initService()
 	var err error
-	if app.discovery == nil {
+	c := conf.Registry()
+	if app.pattern != nil && app.registry != nil {
+		pubs := 0
+		for _, p := range app.pattern {
+			pRef := p
+			if !pRef.publish {
+				continue
+			}
+			_, err = app.registry.Put(context.TODO(), pRef.Service, c.BaseURL+pRef.Pattern)
+			if err != nil {
+				logs.Errors("registry put failed", err)
+				continue
+			}
+			pRef.publishFinish = err == nil
+			pubs++
+		}
+		if pubs > 0 {
+			app.registry.Start()
+		}
+	}
+	return nil
+
+}
+
+func initDiscovery() error {
+	c := conf.Discovery()
+	var err error
+	if c != nil && c.Enable && app.discovery == nil {
 		app.discovery, err = service.NewDiscovery(c)
 		if err != nil {
 			logs.Errors("create discovery failed", err)
@@ -272,32 +298,20 @@ func initDiscovery(c *conf.Service) error {
 	return nil
 }
 
-//Publish publish to registry
-func Publish() error {
-	initService()
-	var err error
-	c := conf.ServiceConf()
-	if c != nil && c.Enable && app.pattern != nil && app.registry != nil {
-		pubs := 0
-		ctx := context.Background()
-		for _, p := range app.pattern {
-			pRef := p
-			if !pRef.publish {
-				continue
-			}
-			_, err = app.registry.Put(ctx, c.Prefix+pRef.Service, c.Prefix+pRef.Pattern)
-			if err != nil {
-				continue
-			}
-			pRef.publishFinish = err == nil
-			pubs++
-		}
-		if pubs > 0 {
-			app.registry.KeepAlive()
-		}
+//ServiceName random gets url with service name
+func ServiceName(key string) string {
+	if app.discovery != nil {
+		return app.discovery.Name(key)
+	}
+	return ""
+}
+
+//ServiceNames gets all url with service name
+func ServiceNames(key string) []string {
+	if app.discovery != nil {
+		return app.discovery.Names(key)
 	}
 	return nil
-
 }
 
 // FileServer registers the handler function for the given pattern
@@ -592,12 +606,12 @@ func RunWithTLS(addr, certFile, keyFile string) {
 //doRun real run app
 func doRun(addr, certFile, keyFile string) {
 	defer clear()
-	Router()
 	app.Addr = addr
 	app.CertFile = certFile
 	app.KeyFile = keyFile
 	err := tryRun()
 	if err == nil {
+		Router()
 		logs.Info("run",
 			logs.String("address", app.Addr))
 		errMsg := ""
@@ -780,7 +794,7 @@ func doStart() error {
 
 func startWork(index int) *exec.Cmd {
 	w := app.cmd[index]
-	c := conf.Config(w.key)
+	c := conf.WithKey(w.key)
 	if c != nil {
 		path := conf.Path()
 		// pid := strconv.Itoa(os.Getpid())
@@ -1141,7 +1155,7 @@ func Conf() *conf.AppConf {
 
 //UserConf  returns the current user config
 func UserConf() interface{} {
-	return conf.UserConf()
+	return conf.User()
 }
 
 //FileDir if app config configuration fileDir return it，orherwise return app exec path

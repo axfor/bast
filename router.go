@@ -28,15 +28,15 @@ func (c *Pattern) Unauth() *Pattern {
 	return c
 }
 
-//Publish register to etcd etc.
-func (c *Pattern) Publish(service string) *Pattern {
+//Registry register to etcd etc.
+func (c *Pattern) Registry(service string) *Pattern {
 	c.publish = true
 	c.Service = service
 	return c
 }
 
-//Unpublish unregister to etcd etc.
-func (c *Pattern) Unpublish() *Pattern {
+//Unregistry unregister to etcd etc.
+func (c *Pattern) Unregistry() *Pattern {
 	c.publish = false
 	c.Service = ""
 	return c

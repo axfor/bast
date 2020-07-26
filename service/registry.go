@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,17 +14,20 @@ import (
 
 //Registry inwrap for clientv3 of etcd
 type Registry struct {
-	Client       *clientv3.Client
-	ID           clientv3.LeaseID
+	client       *clientv3.Client
+	leaseID      clientv3.LeaseID
+	prefix       string
+	postfix      string
 	stop         chan struct{}
 	keepAliveing bool
 }
 
 //NewRegistry create an clientv3 of etcd
-func NewRegistry(c *conf.Service) (*Registry, error) {
+func NewRegistry(c *conf.RegistryConf) (*Registry, error) {
 	if c.DialTimeout <= 0 {
-		c.DialTimeout = 5
+		c.DialTimeout = 10
 	}
+
 	if c.TTL <= 0 {
 		c.TTL = 5
 	}
@@ -37,147 +41,161 @@ func NewRegistry(c *conf.Service) (*Registry, error) {
 		return nil, err
 	}
 
-	resp, err := cli.Grant(context.TODO(), c.TTL)
+	resp, err := cli.Grant(cli.Ctx(), c.TTL)
 	if err != nil {
 		return nil, err
 	}
-	s := &Registry{
-		Client: cli,
-		ID:     resp.ID,
+	r := &Registry{
+		client:  cli,
+		leaseID: resp.ID,
+		prefix:  c.Prefix,
+		postfix: fmt.Sprintf(".%d", resp.ID),
 	}
-	return s, nil
+	return r, nil
 }
 
 //Put inwrap for clientv3.Put of etcd
-func (s *Registry) Put(ctx context.Context, key, val string, opts ...clientv3.OpOption) (*clientv3.PutResponse, error) {
-	if s.Client == nil {
-		return nil, errors.New("connection error")
+func (r *Registry) Put(ctx context.Context, key, val string, opts ...clientv3.OpOption) (*clientv3.PutResponse, error) {
+	if r.client == nil {
+		return nil, errors.New("registry etcd client is nil")
 	}
-	return s.Client.Put(ctx, key, val, s.op(opts)...)
+	key = r.prefix + key + r.postfix
+	return r.client.Put(ctx, key, val, r.op(opts)...)
 }
 
 //Get inwrap for clientv3.Get of etcd
-func (s *Registry) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	if s.Client == nil {
-		return nil, errors.New("connection error")
+func (r *Registry) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	if r.client == nil {
+		return nil, errors.New("registry etcd client is nil")
 	}
-	return s.Client.Get(ctx, key, s.op(opts)...)
+	key = r.prefix + key + r.postfix
+	return r.client.Get(ctx, key, r.op(opts)...)
 }
 
 //Delete inwrap for clientv3.Delete of etcd
-func (s *Registry) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
-	if s.Client == nil {
-		return nil, errors.New("connection error")
+func (r *Registry) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
+	if r.client == nil {
+		return nil, errors.New("registry etcd client is nil")
 	}
-	return s.Client.Delete(ctx, key, s.op(opts)...)
+	key = r.prefix + key + r.postfix
+	return r.client.Delete(ctx, key, r.op(opts)...)
 }
 
 //Compact inwrap for clientv3.Compact of etcd
-func (s *Registry) Compact(ctx context.Context, rev int64, opts ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
-	if s.Client == nil {
-		return nil, errors.New("connection error")
+func (r *Registry) Compact(ctx context.Context, rev int64, opts ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
+	if r.client == nil {
+		return nil, errors.New("registry etcd client is nil")
 	}
-	return s.Client.Compact(ctx, rev, opts...)
+	return r.client.Compact(ctx, rev, opts...)
 }
 
 //Do inwrap for clientv3.Do of etcd
-func (s *Registry) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
-	if s.Client == nil {
-		return clientv3.OpResponse{}, errors.New("connection error")
+func (r *Registry) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+	if r.client == nil {
+		return clientv3.OpResponse{}, errors.New("registry etcd client is nil")
 	}
-	return s.Client.Do(ctx, op)
+	return r.client.Do(ctx, op)
 }
 
 //Txn inwrap for clientv3.Txn of etcd
-func (s *Registry) Txn(ctx context.Context) clientv3.Txn {
-	if s.Client == nil {
+func (r *Registry) Txn(ctx context.Context) clientv3.Txn {
+	if r.client == nil {
 		return nil
 	}
-	return s.Client.Txn(ctx)
+	return r.client.Txn(ctx)
 }
 
 //Watch inwrap for clientv3.Watch of etcd
-func (s *Registry) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
-	if s.Client == nil {
+func (r *Registry) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	if r.client == nil {
 		return nil
 	}
-	return s.Client.Watch(ctx, key, s.op(opts)...)
+	return r.client.Watch(ctx, key, r.op(opts)...)
 }
 
 //RequestProgress inwrap for clientv3.RequestProgress of etcd
-func (s *Registry) RequestProgress(ctx context.Context) error {
-	return s.Client.RequestProgress(ctx)
+func (r *Registry) RequestProgress(ctx context.Context) error {
+	return r.client.RequestProgress(ctx)
 }
 
 //Close inwrap for clientv3.Close of etcd
-func (s *Registry) Close() error {
-	return s.Client.Close()
+func (r *Registry) Close() error {
+	return r.client.Close()
+}
+
+//Start start keepAlive and discovery
+func (r *Registry) Start() error {
+	err := r.KeepAlive()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //KeepAlive start keepAlive
-func (s *Registry) KeepAlive() error {
-	if !s.keepAliveing {
+func (r *Registry) KeepAlive() error {
+	if r.keepAliveing {
 		return nil
 	}
-	if s.Client == nil {
-		return errors.New("connection error")
+	if r.client == nil {
+		logs.Error("registry etcd client is nil")
+		return errors.New("registry etcd client is nil")
 	}
-	ch, err := s.keepAlive()
+	ch, err := r.doKeepAlive()
 	if err != nil {
-		logs.Errors("registry-start", err)
+		logs.Errors("registry start", err)
 		return err
 	}
-	s.keepAliveing = true
+	r.keepAliveing = true
 	for {
 		select {
-		case <-s.stop:
-			s.revoke()
-			s.keepAliveing = false
+		case <-r.stop:
+			r.revoke()
+			r.keepAliveing = false
 			return nil
-		case <-s.Client.Ctx().Done():
-			s.keepAliveing = false
-			logs.Error("registry-start", logs.String("server", "server closed"))
+		case <-r.client.Ctx().Done():
+			r.keepAliveing = false
+			logs.Error("registry keepAlive done", logs.String("server", "server closed"))
 			return errors.New("server closed")
 		case _, ok := <-ch:
 			if !ok {
-				s.keepAliveing = false
-				logs.Error("registry-start", logs.String("keepAlive", "keep alive channel closed"))
-				s.revoke()
-				return nil
+				r.keepAliveing = false
+				logs.Error("registry keepAlive close", logs.String("keepAlive", "keep alive channel closed"))
+				err := r.revoke()
+				return err
 			}
-			//  else {
-			// 	// log.Printf("Recv reply from Registry: %s, ttl:%d", s.Name, ka.TTL)
+			// else {
+			// 	// log.Printf("recv reply from registry: %s, ttl:%d", sv.String(), sv.TTL)
 			// }
 		}
 	}
 }
 
 //Stop stop keepAlive
-func (s *Registry) Stop() {
-	if s.keepAliveing {
-		if s.Client == nil {
+func (r *Registry) Stop() {
+	if r.keepAliveing {
+		if r.client == nil {
 			return
 		}
-		s.stop <- struct{}{}
-		s.keepAliveing = false
+		r.stop <- struct{}{}
+		r.keepAliveing = false
 	}
 }
 
-func (s *Registry) op(opts []clientv3.OpOption) []clientv3.OpOption {
+func (r *Registry) op(opts []clientv3.OpOption) []clientv3.OpOption {
 	if opts != nil {
-		opts = append(opts, clientv3.WithLease(s.ID))
+		opts = append(opts, clientv3.WithLease(r.leaseID))
 	} else {
-		opts = []clientv3.OpOption{clientv3.WithLease(s.ID)}
+		opts = []clientv3.OpOption{clientv3.WithLease(r.leaseID)}
 	}
 	return opts
 }
 
-func (s *Registry) keepAlive() (<-chan *clientv3.LeaseKeepAliveResponse, error) {
-
-	return s.Client.KeepAlive(context.TODO(), s.ID)
+func (r *Registry) doKeepAlive() (<-chan *clientv3.LeaseKeepAliveResponse, error) {
+	return r.client.KeepAlive(context.TODO(), r.leaseID)
 }
 
-func (s *Registry) revoke() error {
-	_, err := s.Client.Revoke(context.TODO(), s.ID)
+func (r *Registry) revoke() error {
+	_, err := r.client.Revoke(context.TODO(), r.leaseID)
 	return err
 }

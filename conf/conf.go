@@ -46,24 +46,25 @@ type AppConf struct {
 	FileDir      string            `json:"fileDir"`
 	Debug        bool              `json:"debug"`
 	BaseURL      string            `json:"baseUrl"`
-	IDNode       uint8             `json:"idNode"`   //id node
-	Lang         string            `json:"lang"`     //lang
-	Trans        string            `json:"trans"`    //trans
-	SameSiteText string            `json:"sameSite"` //strict|lax|none
-	Wrap         *bool             `json:"wrap"`     //wrap response body
-	Session      *sessionConf.Conf `json:"session"`  //session
-	Log          *logs.Conf        `json:"log"`      //log conf
-	CORS         *CORS             `json:"cors"`     //CORS
-	Conf         interface{}       `json:"conf"`     //user conf
-	Extend       string            `json:"extend"`   //user extend
-	Page         *Pagination       `json:"page"`     //pagination conf
-	Service      *Service          `json:"service"`  //
+	IDNode       uint8             `json:"idNode"`    //id node
+	Lang         string            `json:"lang"`      //lang
+	Trans        string            `json:"trans"`     //trans
+	SameSiteText string            `json:"sameSite"`  //strict|lax|none
+	Wrap         *bool             `json:"wrap"`      //wrap response body
+	Session      *sessionConf.Conf `json:"session"`   //session
+	Log          *logs.Conf        `json:"log"`       //log conf
+	CORS         *CORSConf         `json:"cors"`      //CORS
+	Conf         interface{}       `json:"conf"`      //user conf
+	Extend       string            `json:"extend"`    //user extend
+	Page         *PaginationConf   `json:"page"`      //pagination conf
+	Registry     *RegistryConf     `json:"registry"`  //service registry center
+	Discovery    *DiscoveryConf    `json:"discovery"` //service discovery center
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
 
-//CORS  config
-type CORS struct {
+//CORSConf  config
+type CORSConf struct {
 	AllowOrigin      string `json:"allowOrigin"`
 	AllowMethods     string `json:"allowMethods"`
 	AllowHeaders     string `json:"allowHeaders"`
@@ -71,15 +72,15 @@ type CORS struct {
 	MaxAge           string `json:"maxAge"`
 }
 
-//Pagination  config
-type Pagination struct {
+//PaginationConf  config
+type PaginationConf struct {
 	Page    string `json:"page"`
 	Total   string `json:"total"`
 	PageRow string `json:"pageRow"`
 }
 
-//Service  config
-type Service struct {
+//RegistryConf  config
+type RegistryConf struct {
 	Enable      bool   `json:"enable"`    //
 	BaseURL     string `json:"baseUrl"`   //
 	Prefix      string `json:"prefix"`    //
@@ -88,11 +89,21 @@ type Service struct {
 	TTL         int64  `json:"ttl"`
 }
 
+//DiscoveryConf  config
+type DiscoveryConf struct {
+	Enable      bool   `json:"enable"`    //
+	Prefix      string `json:"prefix"`    //
+	Endpoints   string `json:"endpoints"` //localhost:2379,localhost:22379
+	DialTimeout int64  `json:"timeout"`   //second default 5s
+}
+
 //Init data
 func Init() {
 	if confObj == nil {
 		data, err := ioutil.ReadFile(Path())
 		if err != nil {
+			logs.Errors("read conf error", err)
+			fmt.Println("read conf error:" + err.Error())
 			return
 		}
 		s := strings.TrimSpace(string(data))
@@ -224,6 +235,15 @@ func Trans() string {
 	return ""
 }
 
+//Confs returns the all app configs
+func Confs() []AppConf {
+	appConf := Manager()
+	if appConf != nil && appConf.Confs != nil {
+		return appConf.rawConfs
+	}
+	return nil
+}
+
 //Conf returns the current app config
 func Conf() *AppConf {
 	appConf := Manager()
@@ -239,10 +259,28 @@ func Conf() *AppConf {
 	return nil
 }
 
+//WithKey returns the key app config
+func WithKey(key string) *AppConf {
+	appConf := Manager()
+	if appConf != nil && appConf.Confs != nil {
+		c, ok := appConf.Confs[key]
+		if c != nil && ok {
+			return c
+		}
+	}
+	return nil
+}
+
 //WithPath returns the current app config
-func WithPath(filePath string) *AppConf {
-	flagConf = filePath
+func WithPath(path string) *AppConf {
+	flagConf = path
 	return Conf()
+}
+
+//WithPaths returns the all app config
+func WithPaths(path string) []AppConf {
+	flagConf = path
+	return Confs()
 }
 
 //FileDir if app config configuration fileDir return it，orherwise return app exec path
@@ -254,8 +292,8 @@ func FileDir() string {
 	return filepath.Dir(os.Args[0])
 }
 
-//SessionConf return session conf
-func SessionConf() *sessionConf.Conf {
+//Session return session conf
+func Session() *sessionConf.Conf {
 	c := Conf()
 	if c != nil {
 		return c.Session
@@ -263,15 +301,15 @@ func SessionConf() *sessionConf.Conf {
 	return sessionConf.DefaultConf
 }
 
-//PageConf return Pagination conf
-func PageConf() *Pagination {
-	var p *Pagination
+//Page return Pagination conf
+func Page() *PaginationConf {
+	var p *PaginationConf
 	c := Conf()
 	if c != nil && c.Page != nil {
 		p = c.Page
 	}
 	if p == nil {
-		p = &Pagination{
+		p = &PaginationConf{
 			Page:    "page",
 			Total:   "total",
 			PageRow: "pageRow",
@@ -289,11 +327,20 @@ func PageConf() *Pagination {
 	return p
 }
 
-//ServiceConf return service conf
-func ServiceConf() *Service {
+//Registry return service registry conf
+func Registry() *RegistryConf {
 	c := Conf()
 	if c != nil {
-		return c.Service
+		return c.Registry
+	}
+	return nil
+}
+
+//Discovery return service discovery conf
+func Discovery() *DiscoveryConf {
+	c := Conf()
+	if c != nil {
+		return c.Discovery
 	}
 	return nil
 }
@@ -318,35 +365,8 @@ func sameSite(same string) http.SameSite {
 	return http.SameSiteDefaultMode
 }
 
-//Config returns the key app config
-func Config(key string) *AppConf {
-	appConf := Manager()
-	if appConf != nil && appConf.Confs != nil {
-		c, ok := appConf.Confs[key]
-		if c != nil && ok {
-			return c
-		}
-	}
-	return nil
-}
-
-//Confs returns the all app config
-func Confs() []AppConf {
-	appConf := Manager()
-	if appConf != nil && appConf.Confs != nil {
-		return appConf.rawConfs
-	}
-	return nil
-}
-
-//ConfsWithPath returns the all app config
-func ConfsWithPath(path string) []AppConf {
-	flagConf = path
-	return Confs()
-}
-
-//UserConf  returns the current user config
-func UserConf() interface{} {
+//User  returns the current user config
+func User() interface{} {
 	appConf := Conf()
 	if appConf != nil && appConf.Conf != nil {
 		return appConf.Conf
@@ -354,8 +374,8 @@ func UserConf() interface{} {
 	return nil
 }
 
-//LogConf  returns the current log config
-func LogConf() *logs.Conf {
+//Log  returns the current log config
+func Log() *logs.Conf {
 	appConf := Conf()
 	if appConf != nil && appConf.Log != nil {
 		return appConf.Log
@@ -363,8 +383,8 @@ func LogConf() *logs.Conf {
 	return nil
 }
 
-//CORSConf  returns the current log config
-func CORSConf() *CORS {
+//CORS  returns the current log config
+func CORS() *CORSConf {
 	appConf := Conf()
 	if appConf != nil && appConf.CORS != nil {
 		if appConf.CORS.AllowMethods == "" {
@@ -381,7 +401,7 @@ func CORSConf() *CORS {
 		}
 		return appConf.CORS
 	}
-	return &CORS{
+	return &CORSConf{
 		AllowOrigin:      "",
 		AllowMethods:     "GET, POST, OPTIONS, PATCH, PUT, DELETE, HEAD,UPDATE",
 		AllowHeaders:     "Authorization, Content-Length, X-CSRF-Token, Token,session,X_Requested_With,Accept, Origin, Host, Connection, Accept-Encoding, Accept-Language,DNT, X-CustomHeader, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Pragma, BaseUrl, baseurl",

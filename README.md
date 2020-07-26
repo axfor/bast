@@ -1,7 +1,8 @@
 # bast [![Build Status](https://travis-ci.org/aixiaoxiang/bast.svg?branch=master)](https://travis-ci.org/aixiaoxiang/bast)
 
-# A lightweight RESTful  for Golang
+# A lightweight RESTful  for Golang   
 
+`support registry and discovery of services`
 
 
 > Install
@@ -94,6 +95,10 @@ bast.Post("/xxx", func(ctx *bast.Context) {
 
 bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Auth().Param("test xxx data")
 
+//service registry to etcd
+bast.Get(/* pattern string */, /* f func(ctx *Context) */)).Publish("UserAPI") 
+
+
 ``` 
 ---
 
@@ -177,6 +182,17 @@ func init() {
 ``` golang
 
 	result, err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").String()
+	if err != nil {
+		//handling
+	}
+
+``` 
+
+### string result by service dscovery version
+
+``` golang
+
+	result, err := httpc.Gets("UserAPI").String()
 	if err != nil {
 		//handling
 	}
@@ -478,6 +494,17 @@ bast.Run(":9999")
             "dbPwd":"******",
             "dbServer":"localhost"
             //..more field..//
+        }, 
+        "registry":{ //service registry to etcd
+            "enable":true,
+            "baseUrl":"http://127.0.0.1:9999/",
+            "prefix":"bast/",
+            "endpoints":"http://127.0.0.1:2379"
+        },
+        "discovery":{//service discovery from etcd
+            "enable":true, 
+            "prefix":"bast/",
+            "endpoints":"http://127.0.0.1:2379"
         },
         "extend":""//user extend
     }
