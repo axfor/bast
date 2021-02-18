@@ -181,7 +181,7 @@ func init() {
 
 ``` golang
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
 	result, err := httpc.Get(reqUrl).String()
 	if err != nil {
 		//handling
@@ -210,7 +210,7 @@ func init() {
 
 	rv := &tb{}
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
 	err := httpc.Get(reqUrl).Param("q", "phone").ToJSON(rv)
 	if err != nil {
 		//handling
@@ -228,7 +228,7 @@ func init() {
 
 	rv := &tb{}
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
 	err := httpc.Get().Param("q", "phone").ToXML(rv)
 	if err != nil {
 		//handling
@@ -247,7 +247,7 @@ func init() {
 
 	rv := &tb{}
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
 	err := httpc.Get(reqUrl).Param("q", "phone").ToYAML(rv)
 	if err != nil {
 		//handling
@@ -260,7 +260,7 @@ func init() {
 ``` golang
 
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
 	err := httpc.Post(reqUrl).ToFile("./files/f.json")
 	if err != nil {
 		//handling
@@ -272,7 +272,7 @@ func init() {
 
 ``` golang
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
 	result, err := httpc.Post(reqUrl).File("testFile", "./files/f.json").String()
 	if err != nil {
 		//handling
@@ -285,7 +285,7 @@ func init() {
 
 ``` golang
 
-    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
 	result, err := httpc.Post(reqUrl).MarkTag("ai").String()
 	if err != nil {
 		//handling
