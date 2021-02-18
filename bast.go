@@ -1098,8 +1098,12 @@ func getWorkPidsFormFile() []int {
 
 //Shutdown app
 func Shutdown(ctx context.Context) error {
+	var cancel context.CancelFunc
 	if ctx == nil {
-		ctx, _ = context.WithTimeout(context.Background(), conf.Shutdown())
+		ctx, cancel = context.WithTimeout(context.Background(), conf.Shutdown())
+	}
+	if cancel != nil {
+		defer cancel()
 	}
 	app.Server.SetKeepAlivesEnabled(false)
 	return app.Server.Shutdown(ctx)
