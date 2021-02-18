@@ -181,7 +181,8 @@ func init() {
 
 ``` golang
 
-	result, err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8&q=phone").String()
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	result, err := httpc.Get(reqUrl).String()
 	if err != nil {
 		//handling
 	}
@@ -209,7 +210,8 @@ func init() {
 
 	rv := &tb{}
 
-	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToJSON(rv)
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	err := httpc.Get(reqUrl).Param("q", "phone").ToJSON(rv)
 	if err != nil {
 		//handling
 	}
@@ -226,7 +228,8 @@ func init() {
 
 	rv := &tb{}
 
-	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToXML(rv)
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	err := httpc.Get().Param("q", "phone").ToXML(rv)
 	if err != nil {
 		//handling
 	}
@@ -244,7 +247,8 @@ func init() {
 
 	rv := &tb{}
 
-	err := httpc.Get("https://suggest.taobao.com/sug?code=utf-8").Param("q", "phone").ToYAML(rv)
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8"
+	err := httpc.Get(reqUrl).Param("q", "phone").ToYAML(rv)
 	if err != nil {
 		//handling
 	}
@@ -255,7 +259,9 @@ func init() {
 
 ``` golang
 
-	err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").ToFile("./files/f.json")
+
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	err := httpc.Post(reqUrl).ToFile("./files/f.json")
 	if err != nil {
 		//handling
 	}
@@ -266,7 +272,8 @@ func init() {
 
 ``` golang
 
-	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").File("testFile", "./files/f.json").String()
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	result, err := httpc.Post(reqUrl).File("testFile", "./files/f.json").String()
 	if err != nil {
 		//handling
 	}
@@ -278,7 +285,8 @@ func init() {
 
 ``` golang
 
-	result, err := httpc.Post("https://suggest.taobao.com/sug?code=utf-8&q=phone").MarkTag("ai").String()
+    reqUrl := "https://suggest.taobao.com/sug?code=utf-8&q=phone"
+	result, err := httpc.Post(reqUrl).MarkTag("ai").String()
 	if err != nil {
 		//handling
 	}
@@ -506,7 +514,8 @@ bast.Run(":9999")
             "prefix":"bast/",
             "endpoints":"http://127.0.0.1:2379"
         },
-        "extend":""//user extend
+        "extend":"",//user extend
+        "shutdown":60000,
     }
     //..more instances..//
 ]
