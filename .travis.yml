@@ -9,6 +9,7 @@ services:
 install:
     - go get -v .
     - go get -v golang.org/x/lint/golint
+    - go get -v github.com/easierway/concurrent_map
 
 script:
     - diff <(gofmt -d .) <(echo -n)
