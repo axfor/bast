@@ -6,7 +6,7 @@
 
 ``` bash
 
- go get -u github.com/aixiaoxiang/bast/httpc
+ go get -u github.com/axfor/bast/httpc
 
 ``` 
 

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/aixiaoxiang/bast/lang"
+	"github.com/axfor/bast/lang"
 )
 
 var vfuncs = map[string]VerifyFunc{}

@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/aixiaoxiang/bast/lang"
+	"github.com/axfor/bast/lang"
 )
 
 type vv struct {
@@ -75,7 +75,7 @@ func TestRules(t *testing.T) {
 			"127.0.0.1",
 		},
 		"bast": {
-			"github.aixiaoxiang/bast",
+			"github.axfor/bast",
 		},
 		"bast1": {
 			"github.axx/bast",

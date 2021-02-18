@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aixiaoxiang/bast/conf"
-	"github.com/aixiaoxiang/bast/logs"
+	"github.com/axfor/bast/conf"
+	"github.com/axfor/bast/logs"
 	"go.etcd.io/etcd/clientv3"
 )
 

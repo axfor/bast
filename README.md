@@ -1,4 +1,4 @@
-# bast [![Build Status](https://travis-ci.org/aixiaoxiang/bast.svg?branch=master)](https://travis-ci.org/aixiaoxiang/bast)
+# bast [![Build Status](https://travis-ci.org/axfor/bast.svg?branch=master)](https://travis-ci.org/axfor/bast)
 
 # A lightweight RESTful  for Golang   
 
@@ -9,7 +9,7 @@
 
 ``` bash
 
- go get -u github.com/aixiaoxiang/bast
+ go get -u github.com/axfor/bast
 
  ```
 
@@ -169,7 +169,7 @@ func init() {
 
 ``` bash
 
- go get -u github.com/aixiaoxiang/bast/httpc
+ go get -u github.com/axfor/bast/httpc
 
 ``` 
 
@@ -538,6 +538,6 @@ physics cpu ``` 4 ```
     Benchmark_ID-4              20000000    72.1 ns/op       16 B/op     1 allocs/op
     Benchmark_Parallel_ID-4     10000000    150 ns/op        16 B/op     1 allocs/op
     PASS
-    ok      github.com/aixiaoxiang/bast/ids 10.126s
+    ok      github.com/axfor/bast/ids 10.126s
 
 ```

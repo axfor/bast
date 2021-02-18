@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aixiaoxiang/bast/conf"
-	"github.com/aixiaoxiang/bast/logs"
+	"github.com/axfor/bast/conf"
+	"github.com/axfor/bast/logs"
 	"github.com/coreos/etcd/clientv3"
 )
 

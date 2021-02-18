@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aixiaoxiang/bast/ids"
-	"github.com/aixiaoxiang/bast/session/memory"
-	"github.com/aixiaoxiang/bast/session/redis"
-	"github.com/aixiaoxiang/bast/snowflake"
+	"github.com/axfor/bast/ids"
+	"github.com/axfor/bast/session/memory"
+	"github.com/axfor/bast/session/redis"
+	"github.com/axfor/bast/snowflake"
 
-	"github.com/aixiaoxiang/bast/session/conf"
-	"github.com/aixiaoxiang/bast/session/engine"
+	"github.com/axfor/bast/session/conf"
+	"github.com/axfor/bast/session/engine"
 )
 
 var cf *conf.Conf = conf.DefaultConf

@@ -3,9 +3,9 @@
 package redis
 
 import (
-	"github.com/aixiaoxiang/bast/session/conf"
-	"github.com/aixiaoxiang/bast/session/redis/cluster"
-	"github.com/aixiaoxiang/bast/session/redis/standalone"
+	"github.com/axfor/bast/session/conf"
+	"github.com/axfor/bast/session/redis/cluster"
+	"github.com/axfor/bast/session/redis/standalone"
 )
 
 //Init init

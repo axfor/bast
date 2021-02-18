@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aixiaoxiang/bast/session/conf"
-	"github.com/aixiaoxiang/bast/session/engine"
+	"github.com/axfor/bast/session/conf"
+	"github.com/axfor/bast/session/engine"
 )
 
 func Test_Session_Memory(t *testing.T) {

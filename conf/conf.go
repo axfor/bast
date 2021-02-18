@@ -4,16 +4,16 @@ package conf
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/aixiaoxiang/bast/ids"
-	"github.com/aixiaoxiang/bast/logs"
-	sessionConf "github.com/aixiaoxiang/bast/session/conf"
+	"github.com/axfor/bast/ids"
+	"github.com/axfor/bast/logs"
+	sessionConf "github.com/axfor/bast/session/conf"
 )
 
 var (
@@ -59,6 +59,7 @@ type AppConf struct {
 	Page         *PaginationConf   `json:"page"`      //pagination conf
 	Registry     *RegistryConf     `json:"registry"`  //service registry center
 	Discovery    *DiscoveryConf    `json:"discovery"` //service discovery center
+	Shutdown     int64             `json:"shutdown"`  //service shutdown timeout(default 60 second)
 	SameSite     http.SameSite     `json:"-"`
 	initTag      bool
 }
@@ -103,7 +104,6 @@ func Init() {
 		data, err := ioutil.ReadFile(Path())
 		if err != nil {
 			logs.Errors("read conf error", err)
-			fmt.Println("read conf error:" + err.Error())
 			return
 		}
 		s := strings.TrimSpace(string(data))
@@ -119,7 +119,6 @@ func Init() {
 		err = json.Unmarshal(data, &appConf)
 		if err != nil {
 			logs.Errors("conf manager init error", err)
-			fmt.Println("conf manager init error:" + err.Error())
 			return
 		}
 		if confObj != nil {
@@ -186,6 +185,10 @@ func appConfWithInit(c *AppConf) {
 		if c.FileDir[len(c.FileDir)-1] != '/' {
 			c.FileDir += "/"
 		}
+	}
+
+	if c.Shutdown > 0 {
+		c.Shutdown *= int64(time.Microsecond)
 	}
 }
 
@@ -446,4 +449,13 @@ func Register(handle ConfingHandle, finish ...FinishHandle) {
 		confFinishHandle = finish[0]
 	}
 	callbackHandle()
+}
+
+//Shutdown returns service shutdown timeout
+func Shutdown() time.Duration {
+	c := Conf()
+	if c != nil && c.Shutdown > 0 {
+		return time.Duration(c.Shutdown)
+	}
+	return time.Duration(60 * int64(time.Second))
 }

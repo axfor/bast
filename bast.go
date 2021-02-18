@@ -21,25 +21,24 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aixiaoxiang/bast/conf"
-	"github.com/aixiaoxiang/bast/guid"
-	"github.com/aixiaoxiang/bast/httpc"
-	"github.com/aixiaoxiang/bast/ids"
-	"github.com/aixiaoxiang/bast/lang"
-	"github.com/aixiaoxiang/bast/logs"
-	"github.com/aixiaoxiang/bast/session"
-	"github.com/aixiaoxiang/daemon"
+	"github.com/axfor/bast/conf"
+	"github.com/axfor/bast/guid"
+	"github.com/axfor/bast/httpc"
+	"github.com/axfor/bast/ids"
+	"github.com/axfor/bast/lang"
+	"github.com/axfor/bast/logs"
+	"github.com/axfor/bast/session"
+	"github.com/axfor/daemon"
 
-	"github.com/aixiaoxiang/bast/service"
-	"github.com/aixiaoxiang/bast/snowflake"
+	"github.com/axfor/bast/service"
+	"github.com/axfor/bast/snowflake"
 	"github.com/julienschmidt/httprouter"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 // var
 var (
-	flagDevelop, flagStart, flagStop, flagReload, flagDaemon                     bool
+	flagStart, flagStop, flagReload, flagDaemon                                  bool
 	isInstall, isUninstall, isForce, flagService, isMaster, isClear, isMigration bool
 	flagConf, flagName, flagAppKey, flagPipe                                     string
 	flagPid                                                                      int
@@ -383,19 +382,15 @@ func (MethodOptionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logs.String("referer", r.Referer()),
 	)
 	if app.cors.AllowHeaders != "" || allowHeaders == "" {
-		w.Header().Set("Access-Control-Allow-Headers", app.cors.AllowHeaders)
-		w.Header().Set("Access-Control-Expose-Headers", app.cors.AllowHeaders)
-	} else {
-		w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
-		w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
+		allowHeaders = app.cors.AllowHeaders
 	}
 	if app.cors.AllowOrigin != "" || allowOrigin == "" {
-		w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
-		w.Header().Set("Vary", app.cors.AllowOrigin)
-	} else {
-		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-		w.Header().Set("Vary", allowOrigin)
+		allowOrigin = app.cors.AllowOrigin
 	}
+	w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
+	w.Header().Set("Access-Control-Expose-Headers", allowHeaders)
+	w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+	w.Header().Set("Vary", allowOrigin)
 	w.Header().Set("Access-Control-Allow-Methods", app.cors.AllowMethods)
 	w.Header().Set("Access-Control-Max-Age", app.cors.MaxAge)
 	w.Header().Set("Access-Control-Allow-Credentials", app.cors.AllowCredentials)
@@ -410,19 +405,13 @@ func doHandle(pattern *Pattern) {
 	}
 	//app.Router.HandlerFunc(method,pattern)
 	app.Router.Handle(pattern.Method, pattern.Pattern, func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		logs.Info("access-start",
-			logs.String("url", r.RequestURI),
-			logs.String("method", r.Method),
-		)
-		st := time.Now()
+		start := time.Now()
 		allowOrigin := r.Header.Get("Origin")
 		if app.cors.AllowOrigin != "" || allowOrigin == "" {
-			w.Header().Set("Access-Control-Allow-Origin", app.cors.AllowOrigin)
-			w.Header().Set("Vary", app.cors.AllowOrigin)
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-			w.Header().Set("Vary", allowOrigin)
+			allowOrigin = app.cors.AllowOrigin
 		}
+		w.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		w.Header().Set("Vary", allowOrigin)
 		w.Header().Set("Access-Control-Allow-Credentials", app.cors.AllowCredentials)
 		if pattern.Pattern == "/" && r.URL.Path != pattern.Pattern {
 			w.WriteHeader(http.StatusNotFound)
@@ -442,13 +431,13 @@ func doHandle(pattern *Pattern) {
 				if err := recover(); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					fmt.Fprint(w, http.StatusText(http.StatusInternalServerError))
-					panicCaller := zapcore.NewEntryCaller(runtime.Caller(4)).TrimmedPath()
-					logs.ErrorWithCaller("access-panic",
-						logs.String("caller", panicCaller),
-						logs.Any("error", err),
+					panicCaller := logs.NewEntryCaller(runtime.Caller(4)).TrimmedPath()
+					logs.ErrorWithCaller("handle-panic",
 						logs.String("url", r.RequestURI),
 						logs.String("method", r.Method),
-						logs.String("cost", time.Since(st).String()),
+						logs.String("caller", panicCaller),
+						logs.Any("error", err),
+						logs.String("cost", time.Since(start).String()),
 					)
 				}
 			}()
@@ -495,12 +484,17 @@ func doHandle(pattern *Pattern) {
 			}
 		}
 	end:
-		logs.Info("access-end",
-			logs.String("url", r.RequestURI),
-			logs.String("method", r.Method),
-			logs.String("cost", time.Since(st).String()),
-		)
+		access(r, start)
 	})
+}
+
+func access(r *http.Request, start time.Time) {
+	logs.Info("access",
+		logs.String("url", r.RequestURI),
+		logs.String("method", r.Method),
+		logs.String("userAgent", r.UserAgent()),
+		logs.String("cost", time.Since(start).String()),
+	)
 }
 
 //Serve use config(auto TLS) to start app
@@ -573,71 +567,77 @@ func IsRuning() bool {
 }
 
 //Run use addr to start app
-func Run(addr string) {
+func Run(addr string) error {
 	if addr == "" {
-		logs.Error("run addr is empty",
-			logs.String("address", addr))
+		logs.Error("run addr is empty", logs.String("address", addr))
 		logs.Sync()
-		os.Exit(-1)
+		return errors.New("run addr/port is empty")
 	}
 	if !app.isCallCommand && !Command() {
-		return
+		return nil
 	}
-	doRun(addr, "", "")
+	return doRun(addr, "", "")
 }
 
 //RunWithTLS use addr and cert to start app
-func RunWithTLS(addr, certFile, keyFile string) {
+func RunWithTLS(addr, certFile, keyFile string) error {
 	if certFile == "" {
 		logs.Error("run with TLS certFile is empty",
 			logs.String("address", addr),
 			logs.String("certFile", certFile),
 			logs.String("keyFile", keyFile))
 		logs.Sync()
-		os.Exit(-1)
+		return errors.New("run with TLS certFile is empty")
 	}
+
 	if !app.isCallCommand && !Command() {
-		return
+		return nil
 	}
+
 	app.tls = true
-	doRun(addr, certFile, keyFile)
+	return doRun(addr, certFile, keyFile)
 }
 
 //doRun real run app
-func doRun(addr, certFile, keyFile string) {
+func doRun(addr, certFile, keyFile string) error {
 	defer clear()
 	app.Addr = addr
 	app.CertFile = certFile
 	app.KeyFile = keyFile
 	err := tryRun()
-	if err == nil {
-		Router()
-		logs.Info("run",
-			logs.String("address", app.Addr))
-		errMsg := ""
-		if certFile == "" {
-			err = app.ListenAndServe()
-			errMsg = "listenAndServe"
-		} else {
-			err = app.ListenAndServeTLS()
-			errMsg = "ListenAndServeTLS"
-		}
-		if err != nil {
-			fmt.Println(errMsg + " error=" + err.Error())
-			logs.Errors(errMsg, err)
-			logs.Sync()
-			os.Exit(0)
-		}
-		logs.Info("finish")
-	} else {
-		logs.Error("listen",
+
+	if err != nil {
+		logs.Error("bast listen",
 			logs.Err(err),
 			logs.String("address", app.Addr),
 			logs.String("certFile", app.CertFile),
 			logs.String("keyFile", app.KeyFile))
 		logs.Sync()
-		os.Exit(-1)
+		return err
 	}
+
+	Router()
+
+	logs.Info("bast run", logs.String("address", app.Addr))
+
+	errMsg := ""
+	if certFile == "" {
+		err = app.ListenAndServe()
+		errMsg = "listenAndServe"
+	} else {
+		err = app.ListenAndServeTLS()
+		errMsg = "listenAndServeTLS"
+	}
+
+	if err != nil {
+		logs.Errors(errMsg, err)
+		logs.Sync()
+		return err
+	}
+
+	logs.Info("bast finish")
+	logs.Sync()
+	return nil
 }
 
 func tryRun() error {
@@ -707,7 +707,6 @@ func Command() bool {
 		install()
 		r = false
 	} else if isUninstall {
-		// err = errors.New("uninstall service")
 		uninstall()
 		r = false
 	}
@@ -1100,12 +1099,7 @@ func getWorkPidsFormFile() []int {
 //Shutdown app
 func Shutdown(ctx context.Context) error {
 	if ctx == nil {
-		ctx = context.Background()
-		// var cf context.CancelFunc
-		// ctx, cf = context.WithTimeout(context.Background(), 30*time.Second)
-		// if cf != nil {
-		// 	//
-		// }
+		ctx, _ = context.WithTimeout(context.Background(), conf.Shutdown())
 	}
 	app.Server.SetKeepAlivesEnabled(false)
 	return app.Server.Shutdown(ctx)
@@ -1220,7 +1214,7 @@ func parseCommandLine() {
 	if isInstall {
 		flagDaemon = false
 	}
-	if flagDevelop || flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
+	if flagStop || flagReload || flagDaemon || isInstall || isUninstall || flagService {
 		flagStart = false
 	}
 	if flagService {
@@ -1254,7 +1248,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		Short:                 "",
 		Long:                  "",
 		SilenceErrors:         true,
-		Example:               "app --start",
+		Example:               "./app --start",
 		DisableAutoGenTag:     true,
 		DisableFlagsInUseLine: true,
 		DisableSuggestions:    true,
@@ -1262,7 +1256,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
-	cmd.Flags().BoolVarP(&flagDevelop, "develop", "d", flagDevelop, "run in develop(develop environment)")
+
 	cmd.Flags().BoolVarP(&flagStart, "start", "s", flagStart, "run in background")
 	cmd.Flags().BoolVarP(&flagStop, "stop", "e", flagStop, "graceful for stop")
 	cmd.Flags().BoolVarP(&flagReload, "reload", "r", flagReload, "graceful for reload")
@@ -1270,7 +1264,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 	cmd.Flags().StringVarP(&flagConf, "conf", "c", flagConf, "config path(default is ./config.conf)")
 	cmd.Flags().BoolVarP(&isInstall, "install", "i", isInstall, "install to service")
 	cmd.Flags().BoolVarP(&isUninstall, "uninstall", "u", isUninstall, "uninstall for service")
-	cmd.Flags().BoolVar(&flagDaemon, "daemon", flagDaemon, "")
+	cmd.Flags().BoolVarP(&flagDaemon, "daemon", "d", flagDaemon, "daemon")
 	cmd.Flags().BoolVarP(&isForce, "force", "f", isForce, "")
 	cmd.Flags().BoolVar(&flagService, "service", flagService, "")
 	cmd.Flags().BoolVar(&isMaster, "master", isMaster, "")

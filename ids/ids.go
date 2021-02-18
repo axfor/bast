@@ -4,7 +4,7 @@
 
 package ids
 
-import "github.com/aixiaoxiang/bast/snowflake"
+import "github.com/axfor/bast/snowflake"
 
 var currentIDNode uint8
 

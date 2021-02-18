@@ -325,3 +325,9 @@ func Object(key string, val zapcore.ObjectMarshaler) zap.Field {
 func Any(key string, value interface{}) zap.Field {
 	return zap.Any(key, value)
 }
+
+// NewEntryCaller makes an EntryCaller from the return signature of
+// runtime.Caller.
+func NewEntryCaller(pc uintptr, file string, line int, ok bool) zapcore.EntryCaller {
+	return zapcore.NewEntryCaller(pc, file, line, ok)
+}

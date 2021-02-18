@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aixiaoxiang/bast/guid"
-	"github.com/aixiaoxiang/bast/logs"
+	"github.com/axfor/bast/guid"
+	"github.com/axfor/bast/logs"
 )
 
 //Fs struct

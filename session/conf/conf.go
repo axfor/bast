@@ -16,7 +16,10 @@ type Conf struct {
 	Suffix      string        `json:"suffix"`      //session id suffix
 	Engine      string        `json:"engine"`      //memory
 	Source      string        `json:"source"`      //header|cookie
+	HTTPOnly    bool          `json:"httpOnly"`    //httpOnly
+	Secure      bool          `json:"secure"`      //secure
 	SameSite    http.SameSite `json:"sameSite"`    //strict|lax|none
+	Domain      string        `json:"domain"`      //domain
 	SessionLock bool          `json:"sessionLock"` //each session a lock(default is false)
 	Redis       *RedisConf    `json:"redis"`       //redis
 }

@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aixiaoxiang/bast/logs"
-	"github.com/aixiaoxiang/bast/service"
+	"github.com/axfor/bast/logs"
+	"github.com/axfor/bast/service"
 	"gopkg.in/yaml.v2"
 )
 
@@ -232,14 +232,14 @@ func (c *Client) Files(paths map[string]string) *Client {
 
 // Param adds query param in to request.
 // params build query string as ?key1=value1&key2=value2...
-func (c *Client) Param(key, value string) *Client {
+func (c *Client) Param(key string, value interface{}) *Client {
 	if c.params == nil {
 		c.params = url.Values{}
 	}
 	if param, ok := c.params[key]; ok {
-		c.params[key] = append(param, value)
+		c.params[key] = append(param, fmt.Sprint(value))
 	} else {
-		c.params[key] = []string{value}
+		c.params[key] = []string{fmt.Sprint(value)}
 	}
 	return c
 }
@@ -364,6 +364,9 @@ func (c *Client) HasError() bool {
 
 // OK status code is 200
 func (c *Client) OK() bool {
+	if c.resp == nil {
+		c.Bytes()
+	}
 	return c.err == nil && c.resp != nil && c.resp.StatusCode == http.StatusOK
 }
 
